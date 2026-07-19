@@ -65,3 +65,70 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     D-1272 / NA-0649 (the GUI-surface functions); the 2026-07-16
     GUI-readiness investigation (the four startup rules, §4.1 system
     dependencies).
+
+- **ID:** D-0003
+  - **Status:** Accepted
+  - **Date:** 2026-07-19
+  - **Decision:** Land the GUI slice-A design pass per spine directive
+    D596 (QSL-DIR-2026-07-19-596, as amended at approval, sha256
+    508ac660…; spine decision D-1283; lane NA-0660) — presentation and
+    the acknowledgment rule ONLY; every state-machine, wizard, autolock,
+    wipe, destroy, and erase SEMANTIC is byte-for-byte the NA-0659
+    behavior (the two slice-A test files are byte-identical to the D-0002
+    tree and green). THE DESIGN SYSTEM (built once, applied app-wide):
+    one `:root` token layer in `ui/style.css` — the type scale
+    (hero/title/glyph/section/body/hint), the spacing scale (--sp-1..6),
+    ONE accent carrying primary actions, focus states, and the active
+    rail item, the destructive red family kept separate, greens/ambers as
+    status colors only, color literals confined to the token block —
+    plus the button tiers (primary filled-accent / secondary outline /
+    destructive red, every button exactly one tier or a named nav role)
+    and the NO-SILENT-STATE-CHANGES rule as ONE shared `acknowledge()`
+    helper (momentary "✓ Saved"-style flash on the control + the
+    section's persistent status line updated; applied to autolock save,
+    wipe arm/disarm, and self-alias save; binding on all future
+    settings). THE SCREEN WORK: display name "QuantumShield Chat" bound
+    to the window title + About line ONLY (identifier/productName/binary
+    unchanged — the identifier anchors the app data dir); the passphrase
+    step's honest checklist (12+ characters / match / not a
+    commonly-used password from a built-in ≥100-entry sorted array)
+    gating Create UI-side with the strength meter and no-recovery box
+    retained and zero composition theater; the "This is you" redesign
+    (verification-code hero, optional local-only self-alias stored as a
+    skip-when-empty `settings.json` key — non-secret by ruling, the
+    fresh-profile key set unchanged — the approved identity-safety copy
+    with the plain-English post-quantum line, the fingerprint +
+    mechanism naming behind "Show technical details", the Settings
+    reassurance line); the DEDICATED Identity pane FIRST in the Settings
+    rail (operator F1) fed exclusively by the existing
+    identity_show/settings_get surface — zero new core calls, command
+    count unchanged at 17 — with the alias editable there (operator F2)
+    and a rail identity dot (alias initial; "Y" for the empty default)
+    above the gear; rail hover tooltips (one pattern) and unmistakable
+    accent active states on both rails; the Vault & Security restructure
+    (controls first, prose trimmed; the failed-attempts line SILENT at
+    zero and rendered as an amber "N failed unlock attempts since your
+    last unlock" alert from the value CAPTURED AT UNLOCK-SCREEN ENTRY —
+    never a post-unlock read, the core resets its counter on success —
+    with an app-local dismiss); the shared destroy/erase confirmation
+    pattern (heading "Destroy vault", the one-sentence prose, the
+    one-line Type-to-confirm instruction above the input, [Destroy
+    permanently] [Cancel]; the erase screen inherits the identical form
+    with its own phrase and no passphrase field); and the main-window
+    empty state's honest warmth (inline SVG glyph, one line, one CTA;
+    "no server configured" untouched). Additive tests pin the
+    disciplines (tests/design_system.rs: password-list soundness, title
+    + identifier binding, type/spacing/color token discipline, button
+    tiers, Appendix A verbatim copy); settings tests extend for the
+    alias key only. ZERO dependency/lockfile/workflow motion; the qsc
+    pin stays `81143dcd…`; zero networking code (the scan stays green);
+    slice B remains OWED and untouched.
+  - **Rationale:** The operator's first-flight design review: the slice-A
+    surfaces become designed rather than assembled, and slice B's
+    surfaces will be born INTO the system instead of retrofitted; the
+    one functional gap the review found (identity visibility after
+    onboarding) closes with zero new core surface.
+  - **References:** spine D596 (the directive, as amended at approval);
+    spine D-1283 (the lane closeout); D-0002 (the slice-A landing this
+    pass restyles); spine D-1281 / NA-0658 (the protection surface whose
+    reset-on-success semantics dictate the capture rule).

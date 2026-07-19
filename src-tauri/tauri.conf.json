@@ -9,7 +9,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "QSL Desktop",
+        "title": "QuantumShield Chat",
         "label": "main",
         "width": 1024,
         "height": 700,

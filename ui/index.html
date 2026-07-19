@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>QSL Desktop</title>
+<title>QuantumShield Chat</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,12 +14,20 @@
     <h1>Create your vault</h1>
     <div id="cli-notice" class="notice hidden">Found existing qsc CLI data; v1 does not import it; the GUI keeps its own storage.</div>
     <p class="muted">Your vault protects everything this app stores on this computer. It is encrypted with the passphrase you choose.</p>
-    <label>Passphrase <input type="password" id="vault-pass" autocomplete="off"></label>
-    <div id="strength" class="strength"></div>
-    <label>Confirm passphrase <input type="password" id="vault-confirm" autocomplete="off"></label>
+    <div class="field-stack">
+      <label>Passphrase <input type="password" id="vault-pass" autocomplete="off"></label>
+      <div id="strength" class="strength"></div>
+      <label>Confirm passphrase <input type="password" id="vault-confirm" autocomplete="off"></label>
+    </div>
+    <ul class="req-list">
+      <li id="req-len" class="req">12+ characters</li>
+      <li id="req-match" class="req">Passphrases match</li>
+      <li id="req-common" class="req">Not a commonly-used password</li>
+    </ul>
+    <p class="hint">Length matters most — a few random words beat a short complex password.</p>
     <div class="warn">There is <strong>no recovery</strong>. If you forget this passphrase, no one — not you, not us — can recover your data. The only way back is to erase everything and start over.</div>
     <div id="vault-error" class="error"></div>
-    <button id="btn-vault-create" class="primary">Create vault</button>
+    <button id="btn-vault-create" class="primary" disabled>Create vault</button>
   </div>
 </section>
 
@@ -27,11 +35,22 @@
   <div class="card">
     <div class="progress"><span class="dot done"></span><span class="dot active"></span><span class="progress-label">Step 2 of 2 — This is you</span></div>
     <h1>This is you</h1>
-    <p id="identity-purpose" class="muted"></p>
-    <div class="mono fingerprint" id="identity-fp"></div>
-    <p class="muted small">Verification code (easier to compare aloud):</p>
+    <p class="muted">This identity was created on this device and belongs to this vault. The private part of it never leaves this device.</p>
+    <p class="hint code-caption">Your verification code</p>
     <div class="mono verify-code" id="identity-code"></div>
-    <p id="identity-pq" class="pq"></p>
+    <p id="identity-purpose" class="muted"></p>
+    <label>What should this device call you?
+      <input type="text" id="alias-input" maxlength="32" autocomplete="off" spellcheck="false">
+      <span class="hint">Local only — leave empty to be shown as “You”.</span>
+    </label>
+    <p id="identity-pq" class="muted"></p>
+    <details class="tech">
+      <summary>Show technical details</summary>
+      <p class="hint">Full fingerprint</p>
+      <div class="mono fingerprint" id="identity-fp"></div>
+      <p id="identity-mech" class="hint"></p>
+    </details>
+    <p class="hint">You don't need to write this down — view it anytime in Settings.</p>
     <div id="identity-error" class="error"></div>
     <button id="btn-identity-done" class="primary">Done</button>
   </div>
@@ -49,13 +68,12 @@
 
 <section id="scr-erase" class="screen hidden">
   <div class="card danger-card">
-    <h1>Erase everything and start over</h1>
-    <p>Without the passphrase, the data in this app's vault is permanently unreadable — that is what the encryption is for. Erasing removes this app's vault and settings from this computer and returns to setup. <strong>This cannot be undone.</strong></p>
-    <p class="muted">The qsc command-line profile (if you have one) is not touched.</p>
+    <h1>Erase everything</h1>
+    <p>Permanently erases this vault and this app's settings from this computer — this cannot be undone.</p>
+    <p class="hint">No passphrase is needed — without it the vault's contents are already permanently unreadable. The qsc command-line profile, if you have one, is not touched.</p>
     <label>Type <code>erase everything</code> to confirm <input type="text" id="erase-phrase" autocomplete="off"></label>
     <div id="erase-error" class="error"></div>
-    <button id="btn-erase" class="danger">Erase everything</button>
-    <button id="btn-erase-cancel">Cancel</button>
+    <div class="btnrow"><button id="btn-erase" class="danger">Erase everything</button><button id="btn-erase-cancel" class="secondary">Cancel</button></div>
   </div>
 </section>
 
@@ -70,10 +88,11 @@
 <section id="scr-main" class="screen hidden">
   <div class="main-layout">
     <nav class="rail">
-      <button class="rail-btn active" title="Chats">&#128172;</button>
-      <button class="rail-btn" id="btn-rail-contacts" title="Contacts — coming later">&#128100;</button>
+      <button class="rail-btn tip active" data-tip="Chats">&#128172;</button>
+      <button class="rail-btn tip" id="btn-rail-contacts" data-tip="Contacts — coming later">&#128100;</button>
       <div class="rail-spacer"></div>
-      <button class="rail-btn" id="btn-settings" title="Settings">&#9881;</button>
+      <button class="rail-btn rail-id tip" id="btn-rail-identity" data-tip="Identity"><span id="rail-initial">Y</span></button>
+      <button class="rail-btn tip" id="btn-settings" data-tip="Settings">&#9881;</button>
     </nav>
     <aside class="list-pane">
       <header>Chats</header>
@@ -81,9 +100,10 @@
     </aside>
     <main class="content-pane">
       <div class="empty-state center">
-        <p>Nothing here yet.</p>
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.5-.7L3 21l1.7-5.1a8.4 8.4 0 1 1 16.3-4.4z"/></svg>
+        <p>Your conversations will live here.</p>
         <button id="btn-add-contact" class="primary">Add your first contact</button>
-        <p id="stub-note" class="muted hidden">Adding contacts arrives in a future update — this build is the serverless skeleton.</p>
+        <p id="stub-note" class="hint hidden">Adding contacts arrives in a future update — this build is the serverless skeleton.</p>
       </div>
     </main>
   </div>
@@ -94,8 +114,9 @@
   <div class="settings-layout">
     <aside class="settings-rail">
       <header>Settings</header>
+      <button data-pane="identity" class="cat active">Identity</button>
       <button data-pane="server" class="cat">Server</button>
-      <button data-pane="vault" class="cat active">Vault &amp; Security</button>
+      <button data-pane="vault" class="cat">Vault &amp; Security</button>
       <button data-pane="appearance" class="cat">Appearance</button>
       <button data-pane="notifications" class="cat">Notifications</button>
       <button data-pane="about" class="cat">About</button>
@@ -103,39 +124,67 @@
       <button id="btn-settings-close" class="cat">&#8592; Back</button>
     </aside>
     <main class="settings-pane">
+      <div id="pane-identity" class="pane">
+        <h2>Identity</h2>
+        <div id="identity-empty" class="hint hidden">No identity exists yet — finish setup to create one.</div>
+        <div id="identity-body" class="stack">
+          <label>What should this device call you?
+            <input type="text" id="settings-alias" maxlength="32" autocomplete="off" spellcheck="false">
+          </label>
+          <div class="btnrow"><button id="btn-alias-save" class="secondary">Save</button></div>
+          <p id="alias-status" class="sect-status"></p>
+          <p class="hint code-caption">Your verification code</p>
+          <div class="mono verify-code" id="settings-code"></div>
+          <p id="settings-purpose" class="muted"></p>
+          <p id="settings-pq" class="muted"></p>
+          <details class="tech">
+            <summary>Show technical details</summary>
+            <p class="hint">Full fingerprint</p>
+            <div class="mono fingerprint" id="settings-fp"></div>
+            <p id="settings-mech" class="hint"></p>
+          </details>
+        </div>
+      </div>
       <div id="pane-server" class="pane hidden">
         <h2>Server</h2>
         <p class="muted">Server configuration arrives in a future update (the next slice). This build makes no network connections at all.</p>
       </div>
-      <div id="pane-vault" class="pane">
+      <div id="pane-vault" class="pane hidden">
         <h2>Vault &amp; Security</h2>
+        <div id="attempts-alert" class="alert-amber hidden"><span id="attempts-alert-text"></span><button id="btn-attempts-dismiss" class="secondary">Dismiss</button></div>
         <h3>Unlock protection</h3>
-        <p id="prot-status" class="mono small"></p>
-        <p class="muted">The escalating unlock delay is always on: the first two wrong attempts are free, then a 5-second delay doubles per failure, capped at 5 minutes. It defends this app's unlock path on this device; an offline copy of the vault file is defended only by your passphrase strength.</p>
+        <p class="hint">Wrong attempts are slowed automatically: two free tries, then a doubling delay capped at 5 minutes. An offline copy of the vault file is protected only by your passphrase strength.</p>
         <h3>Erase vault after failed attempts</h3>
-        <div class="warn">Off by default. If armed, reaching the limit <strong>permanently erases the vault</strong>. A guest — or a child at the keyboard — can trigger this. Arm it only if you understand the consequence.</div>
-        <p id="wipe-state" class="mono small"></p>
-        <label>Limit <input type="number" id="wipe-limit" min="1" max="100" value="10"></label>
-        <label class="inline"><input type="checkbox" id="wipe-ack"> I understand reaching the limit erases the vault permanently</label>
-        <div class="btnrow"><button id="btn-wipe-arm">Arm</button><button id="btn-wipe-disarm">Disarm</button></div>
+        <div class="ctlrow">
+          <label class="compact">Limit <input type="number" id="wipe-limit" min="1" max="100" value="10"></label>
+          <button id="btn-wipe-arm" class="secondary">Arm</button>
+          <button id="btn-wipe-disarm" class="secondary">Disarm</button>
+        </div>
+        <label class="inline"><input type="checkbox" id="wipe-ack"> Reaching the limit erases the vault permanently — I understand.</label>
+        <p id="wipe-state" class="sect-status"></p>
         <div id="wipe-error" class="error"></div>
+        <p class="hint">Off by default. A guest — or a child at the keyboard — can trigger an armed limit. Arm it only if you understand the consequence.</p>
         <h3>Idle autolock</h3>
-        <label>Lock after <input type="number" id="autolock-min" min="1" max="720"> minutes of inactivity</label>
-        <button id="btn-autolock-save">Save</button>
-        <p class="muted">On by default (15 minutes). Applies to the main window and settings; the setup wizard is exempt.</p>
-        <h3 class="danger-h">Danger zone</h3>
-        <p class="muted">Destroying the vault requires your current passphrase and permanently erases it through the core's confirmed-destroy path.</p>
+        <div class="ctlrow">
+          <label class="compact">Lock after <input type="number" id="autolock-min" min="1" max="720"> minutes</label>
+          <button id="btn-autolock-save" class="secondary">Save</button>
+        </div>
+        <p id="autolock-status" class="sect-status"></p>
+        <div id="autolock-error" class="error"></div>
+        <p class="hint">On by default (15 minutes). Applies to the main window and settings; the setup wizard is exempt.</p>
+        <h3 class="danger-h">Destroy vault</h3>
+        <p>Requires your passphrase. Permanently erases this vault — this cannot be undone.</p>
         <button id="btn-destroy-open" class="danger">Destroy vault…</button>
-        <div id="destroy-flow" class="hidden">
+        <div id="destroy-flow" class="stack hidden">
           <label>Current passphrase <input type="password" id="destroy-pass" autocomplete="off"></label>
           <label>Type <code>destroy my vault</code> to confirm <input type="text" id="destroy-phrase" autocomplete="off"></label>
           <div id="destroy-error" class="error"></div>
-          <div class="btnrow"><button id="btn-destroy" class="danger">Destroy permanently</button><button id="btn-destroy-cancel">Cancel</button></div>
+          <div class="btnrow"><button id="btn-destroy" class="danger">Destroy permanently</button><button id="btn-destroy-cancel" class="secondary">Cancel</button></div>
         </div>
       </div>
       <div id="pane-appearance" class="pane hidden"><h2>Appearance</h2><p class="muted">Not yet — coming in a later update.</p></div>
       <div id="pane-notifications" class="pane hidden"><h2>Notifications</h2><p class="muted">Not yet — coming in a later update.</p></div>
-      <div id="pane-about" class="pane hidden"><h2>About</h2><p id="about-text" class="muted"></p></div>
+      <div id="pane-about" class="pane hidden"><h2>About</h2><p id="about-name" class="sect-status"></p><p id="about-text" class="hint"></p></div>
     </main>
   </div>
 </section>
