@@ -17,10 +17,18 @@ use tauri::State;
 pub const ERASE_CONFIRM_PHRASE: &str = "erase everything";
 pub const DESTROY_CONFIRM_PHRASE: &str = "destroy my vault";
 
-pub const PQ_LINE: &str =
+/// The user-facing display name (D596 item 6): window title + About ONLY.
+/// The identifier, productName, binary name, and repo name never change.
+pub const APP_DISPLAY_NAME: &str = "QuantumShield Chat";
+
+/// D596 Appendix A copy (claim-discipline binding; no assurance adjectives).
+/// The plain-English PQ line is the visible copy; the mechanism naming lives
+/// behind the "Show technical details" disclosure.
+pub const PQ_LINE: &str = "Designed to stay secure even against future quantum computers.";
+pub const MECHANISM_LINE: &str =
     "Post-quantum hybrid: ML-KEM-768 (key agreement) + ML-DSA-65 (signatures)";
-pub const FINGERPRINT_PURPOSE_LINE: &str =
-    "Contacts use this fingerprint to verify it's really you.";
+pub const VERIFY_PURPOSE_LINE: &str = "Verification codes exist so you and a contact can \
+     confirm you're really talking to each other — they catch man-in-the-middle substitution.";
 
 #[derive(Serialize)]
 pub struct IdentityDto {
@@ -28,6 +36,7 @@ pub struct IdentityDto {
     pub verify_code: String,
     pub purpose_line: &'static str,
     pub pq_line: &'static str,
+    pub mechanism_line: &'static str,
 }
 
 #[derive(Serialize)]
@@ -63,6 +72,7 @@ pub struct MarkerStatsDto {
 
 #[derive(Serialize)]
 pub struct AppInfoDto {
+    pub display_name: &'static str,
     pub version: &'static str,
     pub slice: &'static str,
 }
@@ -73,8 +83,9 @@ fn identity_dto(rec: &qsc::identity::IdentityPublicRecord) -> IdentityDto {
     IdentityDto {
         fingerprint: fp,
         verify_code: code,
-        purpose_line: FINGERPRINT_PURPOSE_LINE,
+        purpose_line: VERIFY_PURPOSE_LINE,
         pq_line: PQ_LINE,
+        mechanism_line: MECHANISM_LINE,
     }
 }
 
@@ -215,8 +226,18 @@ pub fn settings_get(st: State<'_, AppState>) -> AppSettings {
 }
 
 #[tauri::command]
-pub fn settings_set(st: State<'_, AppState>, autolock_minutes: u32) -> Result<(), String> {
-    settings::save(&st.data_dir, &AppSettings { autolock_minutes })
+pub fn settings_set(
+    st: State<'_, AppState>,
+    autolock_minutes: u32,
+    self_alias: String,
+) -> Result<(), String> {
+    settings::save(
+        &st.data_dir,
+        &AppSettings {
+            autolock_minutes,
+            self_alias: self_alias.trim().to_string(),
+        },
+    )
 }
 
 #[tauri::command]
@@ -289,6 +310,7 @@ pub fn core_busy(st: State<'_, AppState>) -> bool {
 #[tauri::command]
 pub fn app_info() -> AppInfoDto {
     AppInfoDto {
+        display_name: APP_DISPLAY_NAME,
         version: env!("CARGO_PKG_VERSION"),
         slice: "A (serverless skeleton; server connectivity arrives in a future update)",
     }
