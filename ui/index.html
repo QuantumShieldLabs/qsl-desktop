@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>QSL Desktop</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="busy-indicator" class="busy hidden">Working…</div>
+
+<section id="scr-wizard-vault" class="screen hidden">
+  <div class="card">
+    <div class="progress"><span id="p1-dot1" class="dot active"></span><span class="dot"></span><span class="progress-label">Step 1 of 2 — Create your vault</span></div>
+    <h1>Create your vault</h1>
+    <div id="cli-notice" class="notice hidden">Found existing qsc CLI data; v1 does not import it; the GUI keeps its own storage.</div>
+    <p class="muted">Your vault protects everything this app stores on this computer. It is encrypted with the passphrase you choose.</p>
+    <label>Passphrase <input type="password" id="vault-pass" autocomplete="off"></label>
+    <div id="strength" class="strength"></div>
+    <label>Confirm passphrase <input type="password" id="vault-confirm" autocomplete="off"></label>
+    <div class="warn">There is <strong>no recovery</strong>. If you forget this passphrase, no one — not you, not us — can recover your data. The only way back is to erase everything and start over.</div>
+    <div id="vault-error" class="error"></div>
+    <button id="btn-vault-create" class="primary">Create vault</button>
+  </div>
+</section>
+
+<section id="scr-wizard-identity" class="screen hidden">
+  <div class="card">
+    <div class="progress"><span class="dot done"></span><span class="dot active"></span><span class="progress-label">Step 2 of 2 — This is you</span></div>
+    <h1>This is you</h1>
+    <p id="identity-purpose" class="muted"></p>
+    <div class="mono fingerprint" id="identity-fp"></div>
+    <p class="muted small">Verification code (easier to compare aloud):</p>
+    <div class="mono verify-code" id="identity-code"></div>
+    <p id="identity-pq" class="pq"></p>
+    <div id="identity-error" class="error"></div>
+    <button id="btn-identity-done" class="primary">Done</button>
+  </div>
+</section>
+
+<section id="scr-unlock" class="screen hidden">
+  <div class="card">
+    <h1>Unlock</h1>
+    <label>Passphrase <input type="password" id="unlock-pass" autocomplete="off"></label>
+    <div id="unlock-feedback" class="feedback"></div>
+    <button id="btn-unlock" class="primary">Unlock</button>
+    <div class="linkrow"><a id="link-forgot" href="#">Forgot your passphrase?</a></div>
+  </div>
+</section>
+
+<section id="scr-erase" class="screen hidden">
+  <div class="card danger-card">
+    <h1>Erase everything and start over</h1>
+    <p>Without the passphrase, the data in this app's vault is permanently unreadable — that is what the encryption is for. Erasing removes this app's vault and settings from this computer and returns to setup. <strong>This cannot be undone.</strong></p>
+    <p class="muted">The qsc command-line profile (if you have one) is not touched.</p>
+    <label>Type <code>erase everything</code> to confirm <input type="text" id="erase-phrase" autocomplete="off"></label>
+    <div id="erase-error" class="error"></div>
+    <button id="btn-erase" class="danger">Erase everything</button>
+    <button id="btn-erase-cancel">Cancel</button>
+  </div>
+</section>
+
+<section id="scr-wiped" class="screen hidden">
+  <div class="card danger-card">
+    <h1>Vault erased</h1>
+    <p>The vault was erased after the armed number of failed unlock attempts was reached. This is the protection you (or whoever set it) opted into; the data is gone.</p>
+    <button id="btn-wiped-restart" class="primary">Start over</button>
+  </div>
+</section>
+
+<section id="scr-main" class="screen hidden">
+  <div class="main-layout">
+    <nav class="rail">
+      <button class="rail-btn active" title="Chats">&#128172;</button>
+      <button class="rail-btn" id="btn-rail-contacts" title="Contacts — coming later">&#128100;</button>
+      <div class="rail-spacer"></div>
+      <button class="rail-btn" id="btn-settings" title="Settings">&#9881;</button>
+    </nav>
+    <aside class="list-pane">
+      <header>Chats</header>
+      <div class="empty-state">No conversations yet.</div>
+    </aside>
+    <main class="content-pane">
+      <div class="empty-state center">
+        <p>Nothing here yet.</p>
+        <button id="btn-add-contact" class="primary">Add your first contact</button>
+        <p id="stub-note" class="muted hidden">Adding contacts arrives in a future update — this build is the serverless skeleton.</p>
+      </div>
+    </main>
+  </div>
+  <footer id="status-line" class="status-line">No server configured — server setup arrives in a future update.</footer>
+</section>
+
+<section id="scr-settings" class="screen hidden">
+  <div class="settings-layout">
+    <aside class="settings-rail">
+      <header>Settings</header>
+      <button data-pane="server" class="cat">Server</button>
+      <button data-pane="vault" class="cat active">Vault &amp; Security</button>
+      <button data-pane="appearance" class="cat">Appearance</button>
+      <button data-pane="notifications" class="cat">Notifications</button>
+      <button data-pane="about" class="cat">About</button>
+      <div class="rail-spacer"></div>
+      <button id="btn-settings-close" class="cat">&#8592; Back</button>
+    </aside>
+    <main class="settings-pane">
+      <div id="pane-server" class="pane hidden">
+        <h2>Server</h2>
+        <p class="muted">Server configuration arrives in a future update (the next slice). This build makes no network connections at all.</p>
+      </div>
+      <div id="pane-vault" class="pane">
+        <h2>Vault &amp; Security</h2>
+        <h3>Unlock protection</h3>
+        <p id="prot-status" class="mono small"></p>
+        <p class="muted">The escalating unlock delay is always on: the first two wrong attempts are free, then a 5-second delay doubles per failure, capped at 5 minutes. It defends this app's unlock path on this device; an offline copy of the vault file is defended only by your passphrase strength.</p>
+        <h3>Erase vault after failed attempts</h3>
+        <div class="warn">Off by default. If armed, reaching the limit <strong>permanently erases the vault</strong>. A guest — or a child at the keyboard — can trigger this. Arm it only if you understand the consequence.</div>
+        <p id="wipe-state" class="mono small"></p>
+        <label>Limit <input type="number" id="wipe-limit" min="1" max="100" value="10"></label>
+        <label class="inline"><input type="checkbox" id="wipe-ack"> I understand reaching the limit erases the vault permanently</label>
+        <div class="btnrow"><button id="btn-wipe-arm">Arm</button><button id="btn-wipe-disarm">Disarm</button></div>
+        <div id="wipe-error" class="error"></div>
+        <h3>Idle autolock</h3>
+        <label>Lock after <input type="number" id="autolock-min" min="1" max="720"> minutes of inactivity</label>
+        <button id="btn-autolock-save">Save</button>
+        <p class="muted">On by default (15 minutes). Applies to the main window and settings; the setup wizard is exempt.</p>
+        <h3 class="danger-h">Danger zone</h3>
+        <p class="muted">Destroying the vault requires your current passphrase and permanently erases it through the core's confirmed-destroy path.</p>
+        <button id="btn-destroy-open" class="danger">Destroy vault…</button>
+        <div id="destroy-flow" class="hidden">
+          <label>Current passphrase <input type="password" id="destroy-pass" autocomplete="off"></label>
+          <label>Type <code>destroy my vault</code> to confirm <input type="text" id="destroy-phrase" autocomplete="off"></label>
+          <div id="destroy-error" class="error"></div>
+          <div class="btnrow"><button id="btn-destroy" class="danger">Destroy permanently</button><button id="btn-destroy-cancel">Cancel</button></div>
+        </div>
+      </div>
+      <div id="pane-appearance" class="pane hidden"><h2>Appearance</h2><p class="muted">Not yet — coming in a later update.</p></div>
+      <div id="pane-notifications" class="pane hidden"><h2>Notifications</h2><p class="muted">Not yet — coming in a later update.</p></div>
+      <div id="pane-about" class="pane hidden"><h2>About</h2><p id="about-text" class="muted"></p></div>
+    </main>
+  </div>
+</section>
+
+<script src="main.js"></script>
+</body>
+</html>

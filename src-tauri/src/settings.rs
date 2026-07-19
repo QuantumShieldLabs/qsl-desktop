@@ -1,0 +1,77 @@
+//! GUI-local NON-SECRET settings. Anything secret lives in the qsc vault —
+//! never here; the allowlist test pins the file's key set.
+
+use crate::paths::settings_file;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::Path;
+
+pub const AUTOLOCK_DEFAULT_MINUTES: u32 = 15;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct AppSettings {
+    /// Idle autolock: ON by default at ~15 minutes; adjustable; the wizard is
+    /// exempt (enforced UI-side). 0 is not accepted (autolock stays on in v1;
+    /// the minimum interval is 1 minute).
+    pub autolock_minutes: u32,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        AppSettings {
+            autolock_minutes: AUTOLOCK_DEFAULT_MINUTES,
+        }
+    }
+}
+
+pub fn load(data_dir: &Path) -> AppSettings {
+    let path = settings_file(data_dir);
+    match fs::read(&path) {
+        Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
+        Err(_) => AppSettings::default(),
+    }
+}
+
+pub fn save(data_dir: &Path, s: &AppSettings) -> Result<(), String> {
+    if s.autolock_minutes == 0 {
+        return Err("autolock_minimum_one_minute".into());
+    }
+    let path = settings_file(data_dir);
+    let tmp = path.with_extension("json.tmp");
+    let bytes = serde_json::to_vec_pretty(s).map_err(|e| e.to_string())?;
+    fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_is_fifteen_minutes() {
+        assert_eq!(AppSettings::default().autolock_minutes, 15);
+    }
+
+    #[test]
+    fn roundtrip_and_zero_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut s = AppSettings::default();
+        s.autolock_minutes = 30;
+        save(dir.path(), &s).unwrap();
+        assert_eq!(load(dir.path()), s);
+        s.autolock_minutes = 0;
+        assert!(save(dir.path(), &s).is_err());
+    }
+
+    /// The settings file is non-secret by construction: its serialized key
+    /// set is exactly the allowlist. A new field must be added here
+    /// deliberately (and must never be a secret).
+    #[test]
+    fn settings_key_allowlist() {
+        let v = serde_json::to_value(AppSettings::default()).unwrap();
+        let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec!["autolock_minutes"]);
+    }
+}

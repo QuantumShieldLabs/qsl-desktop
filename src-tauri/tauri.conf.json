@@ -1,0 +1,27 @@
+{
+  "productName": "qsl-desktop",
+  "version": "0.1.0",
+  "identifier": "org.quantumshieldlabs.qsldesktop",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "QSL Desktop",
+        "label": "main",
+        "width": 1024,
+        "height": 700,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}
