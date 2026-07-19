@@ -1,61 +1,88 @@
-/* qsl-desktop — the D596 design system. Dark, calm; ONE token layer.
-   Discipline (test-enforced by tests/design_system.rs): every font-size
-   references the type scale; every padding/margin/gap references the
-   spacing scale; no color literal exists outside this :root block; ONE
-   accent carries primary actions, focus, and the active rail item — the
-   destructive red family is separate, and greens/ambers are status colors,
-   never emphasis. */
+/* qsl-desktop — the D596 design system at the D597 round-2 token values.
+   Dark, calm; ONE token layer. Discipline (test-enforced by
+   tests/design_system.rs + tests/design_round2.rs): every font-size
+   references a type token; every padding/margin/gap references a spacing
+   token; no color literal exists outside this :root block; the accent
+   family carries primary actions, focus, and active navigation — the
+   destructive red family is separate, and greens/ambers are status
+   colors, never emphasis.
+   Authority: docs/DESIGN_SPEC.md (§1 tokens, §2 status banner) +
+   docs/DESIGN_SPEC_AppendixD.md (layout DNA). Where annotations disagree,
+   the appendix governs layout and §1 governs values (D.1 precedence). */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* surfaces + text */
-  --bg: #14161a;
-  --bg-raised: #1c1f25;
-  --bg-inset: #101216;
-  --fg: #d7dae0;
-  --fg-muted: #8a919d;
-  --border: #2a2e36;
+  /* §1 surfaces + text */
+  --bg: #1D1D1F;            /* page */
+  --bg-raised: #252528;     /* card */
+  --bg-inset: #1A1A1C;      /* field */
+  --fg: #E8E8E8;            /* text-primary */
+  --fg-secondary: #A8A8A8;
+  --fg-muted: #7A7A7A;
+  --border: #3A3A3E;        /* hairline */
 
-  /* THE accent — primary actions, focus states, active rail (item 4) */
-  --accent: #4f8cc9;
-  --accent-fg: #eaf2fa;
-  --accent-soft: rgba(79, 140, 201, 0.18);
+  /* §1 accent role (bg / border / text) + the primary button fill */
+  --accent-bg: #1C2A3E;
+  --accent-border: #2E5A8E;
+  --accent-text: #8FBAF0;
+  --accent-fill: #3D7BC4;
+  --accent-fill-text: #FFFFFF;
+  --rail-active-bg: #2E3B4E;   /* D.2 rail-item active */
 
-  /* destructive family (never the accent) */
-  --danger: #b0524d;
-  --danger-strong: #d98984;
-  --danger-fg: #f6e8e7;
+  /* §1 danger role (bg / border / text) — never the accent */
+  --danger-bg: #3A1D1D;
+  --danger-border: #8A3A3A;
+  --danger-text: #F0A0A0;
 
-  /* status colors (semantic state — checklist, saved-flash, alerts) */
-  --ok: #5d9e6f;
+  /* §1 success text + neutral status (also the disabled tier) */
+  --ok: #8FDCA8;
+  --neutral-bg: #2A2A2E;
+
+  /* status colors retained from D596 (R2: the attempts alert stays
+     amber; red is reserved for the armed-erasure state) */
   --amber: #c9974f;
   --amber-soft: rgba(201, 151, 79, 0.13);
-  --warn-bg: #2a2420;
-  --warn-border: #6b5537;
+  --warn-bg: #2A2418;       /* D.6 no-recovery warn box */
+  --warn-border: #6E5A2E;
+  --warn-text: #E8C87A;
   --info-bg: #1e2733;
   --info-border: #33465c;
 
-  /* type scale (item 1) — titles > sections > body > hints */
-  --fs-hero: 26px;
-  --fs-title: 21px;
-  --fs-glyph: 18px;
-  --fs-section: 15px;
-  --fs-body: 14px;
+  /* §1 type scale, plus the appendix-annotated roles absent from §1
+     (welcome / list header / micro / rail glyph — the D values land) */
+  --fs-title: 17px;
+  --fs-section: 14px;
+  --fs-body: 13px;
   --fs-hint: 12px;
-  --fw-title: 650;
+  --fs-mono: 17px;
+  --fs-welcome: 15px;
+  --fs-listhead: 16px;
+  --fs-micro: 11px;
+  --fs-glyph: 19px;
+  --fw-title: 600;
   --fw-section: 600;
+  --fw-mid: 500;
 
-  /* spacing scale (item 2) — the one rhythm for cards, fields, buttons */
+  /* §1 spacing scale (the general rhythm) */
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
   --sp-5: 24px;
   --sp-6: 32px;
+  /* spec-§2/appendix-annotated component spacing (explicit pixels) */
+  --sp-x6: 6px;
+  --sp-x7: 7px;
+  --sp-x10: 10px;
+  --sp-x13: 13px;
+  --sp-x14: 14px;
+  --sp-x20: 20px;
+  --sp-x22: 22px;
 
-  --radius: 10px;
-  --radius-small: 6px;
+  /* §1 radius: 8px controls, 12px cards */
+  --radius: 12px;
+  --radius-small: 8px;
 }
 
 html, body { height: 100%; }
@@ -69,11 +96,12 @@ body {
   user-select: none;
 }
 .hidden { display: none !important; }
+/* item 14 (D.1): the full-bleed canvas — screens fill the window edge to
+   edge; the wizard/unlock cards are the one centered exception */
 .screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 #scr-main.screen, #scr-settings.screen { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; }
 
-/* item 4: one visible accent focus ring on every focusable control */
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 1px; }
 
 .busy {
   position: fixed; top: var(--sp-3); right: var(--sp-4); z-index: 50;
@@ -81,100 +109,113 @@ body {
 }
 
 .card {
-  width: min(480px, 92vw);
+  width: min(440px, 92vw);
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: var(--sp-5);
+  padding: var(--sp-x22) var(--sp-5);
   display: flex; flex-direction: column; gap: var(--sp-3);
 }
 .card h1 { font-size: var(--fs-title); font-weight: var(--fw-title); }
-.danger-card { border-color: var(--danger); }
+.danger-card { border-color: var(--danger-border); }
 
-.progress { display: flex; align-items: center; gap: var(--sp-2); }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
-.dot.active { background: var(--accent); }
-.dot.done { background: var(--ok); }
-.progress-label { color: var(--fg-muted); font-size: var(--fs-hint); margin: 0 0 0 var(--sp-1); }
+/* D.6/D.7: the steps line (text dots, micro type) */
+.progress { display: flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-micro); color: var(--fg-muted); }
+.dot { color: var(--fg-muted); }
+.dot.active { color: var(--accent-text); }
+.dot.done { color: var(--ok); }
+.progress-label { margin: 0 0 0 var(--sp-1); }
 
 label { display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs-hint); color: var(--fg-muted); }
 label.inline { flex-direction: row; align-items: center; gap: var(--sp-2); }
 label.compact { flex-direction: row; align-items: center; gap: var(--sp-2); }
+.field-label { font-size: var(--fs-hint); color: var(--fg-muted); }
+.inline-label { font-size: var(--fs-body); color: var(--fg-secondary); }
 input[type="password"], input[type="text"], input[type="number"] {
   background: var(--bg-inset); color: var(--fg);
   border: 1px solid var(--border); border-radius: var(--radius-small);
   padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body);
 }
-input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
-input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); }
+input:focus { outline: 2px solid var(--accent-fill); border-color: var(--accent-fill); }
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent-fill); }
+input.num { width: 56px; text-align: center; }
+input.w-alias { width: 190px; }
 
-/* the tight two-field stack of the passphrase step (item 7) */
-.field-stack { display: flex; flex-direction: column; gap: var(--sp-2); }
+/* §3: the passphrase step — single column, 12px gaps, nothing between
+   the two fields (items 1-2) */
+.field-stack { display: flex; flex-direction: column; gap: var(--sp-3); }
 
-/* item 3: button tiers — every action button is exactly one of these */
+/* §1 button tiers — every action button is exactly one of these */
 button {
   font-family: inherit; font-size: var(--fs-body);
   border-radius: var(--radius-small); cursor: pointer;
   padding: var(--sp-2) var(--sp-4);
   background: transparent; color: var(--fg); border: 1px solid var(--border);
 }
-button:disabled { opacity: .45; cursor: default; }
 button.primary {
-  background: var(--accent); border-color: var(--accent);
-  color: var(--accent-fg); font-weight: var(--fw-section);
+  background: var(--accent-fill); border-color: var(--accent-fill);
+  color: var(--accent-fill-text); font-weight: var(--fw-mid);
 }
-button.primary:hover:enabled { border-color: var(--accent-fg); }
+button.primary:hover:enabled { border-color: var(--accent-text); }
 button.secondary { background: transparent; border-color: var(--border); color: var(--fg); }
-button.secondary:hover:enabled { border-color: var(--accent); }
+button.secondary:hover:enabled { border-color: var(--accent-fill); }
+/* §1 destructive tier: danger bg + danger border + danger text (item 8) */
 button.danger {
-  background: var(--danger); border-color: var(--danger);
-  color: var(--danger-fg); font-weight: var(--fw-section);
+  background: var(--danger-bg); border-color: var(--danger-border);
+  color: var(--danger-text); font-weight: var(--fw-section);
 }
-button.danger:hover:enabled { border-color: var(--danger-strong); }
-/* item 5: the momentary acknowledgment flash (one shared look) */
+button.danger:hover:enabled { border-color: var(--danger-text); }
+/* §1 disabled tier: neutral-status bg, text-muted, no border emphasis —
+   NEVER dimmed accent (item 10). Placed AFTER the tier rules so it wins
+   the equal-specificity cascade against every tier. */
+button:disabled {
+  background: var(--neutral-bg); border-color: var(--neutral-bg);
+  color: var(--fg-muted); cursor: default;
+}
+/* the momentary acknowledgment flash (one shared look; after :disabled so
+   the flash wins while the control is momentarily disabled) */
 button.acked, button.acked:disabled {
-  background: transparent; border-color: var(--ok); color: var(--ok); opacity: 1;
+  background: transparent; border-color: var(--ok); color: var(--ok);
 }
+button.full { width: 100%; }
 .btnrow { display: flex; gap: var(--sp-3); }
-.ctlrow { display: flex; align-items: center; gap: var(--sp-3); }
+.ctlrow { display: flex; align-items: center; gap: var(--sp-2); }
 
-.muted { color: var(--fg-muted); font-size: var(--fs-body); }
+.muted { color: var(--fg-secondary); font-size: var(--fs-body); }
+.body-sm { color: var(--fg-secondary); font-size: var(--fs-hint); }
 .hint { color: var(--fg-muted); font-size: var(--fs-hint); }
 .sect-status { font-size: var(--fs-body); color: var(--fg); }
 .mono { font-family: ui-monospace, monospace; }
+/* §5: the ONE instruction line of the confirmation ceremony (item 6) */
+.instruction { font-size: var(--fs-body); color: var(--fg-secondary); }
+.instruction code { color: var(--fg); }
 .notice {
   background: var(--info-bg); border: 1px solid var(--info-border); border-radius: var(--radius-small);
   padding: var(--sp-3) var(--sp-3); font-size: var(--fs-body);
 }
 .warn {
   background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: var(--radius-small);
-  padding: var(--sp-3) var(--sp-3); font-size: var(--fs-body);
+  padding: var(--sp-x10) var(--sp-3); font-size: var(--fs-hint);
+  color: var(--warn-text); line-height: 1.5;
 }
-.error { color: var(--danger-strong); font-size: var(--fs-body); min-height: 1.2em; }
+.error { color: var(--danger-text); font-size: var(--fs-body); min-height: 1.2em; }
 .feedback { font-size: var(--fs-body); min-height: 2.4em; color: var(--fg-muted); }
-.feedback.reject { color: var(--danger-strong); }
+.feedback.reject { color: var(--danger-text); }
 
-/* item 7: the honest requirements checklist */
+/* §3: the two-row honest checklist (item 3) */
 .req-list { list-style: none; display: flex; flex-direction: column; gap: var(--sp-1); }
-.req { font-size: var(--fs-hint); color: var(--fg-muted); }
+.req { font-size: var(--fs-body); color: var(--fg-muted); }
 .req::before { content: "○ "; }
 .req.ok { color: var(--ok); }
 .req.ok::before { content: "✓ "; }
 
-.strength { font-size: var(--fs-hint); color: var(--fg-muted); min-height: 1.2em; }
-.strength .bar {
-  display: inline-block; width: 90px; height: 5px; border-radius: 3px;
-  background: var(--border); margin: 0 var(--sp-2) 0 0; vertical-align: middle; overflow: hidden;
-}
-.strength .bar i { display: block; height: 100%; }
-.strength .bar i.lvl0, .strength .bar i.lvl1 { background: var(--danger); }
-.strength .bar i.lvl2 { background: var(--amber); }
-.strength .bar i.lvl3, .strength .bar i.lvl4 { background: var(--ok); }
-
-/* item 8: the verification code is the hero element */
+/* §4: the verification code — one line, never wraps, shrink-to-fit
+   (item 5; shared by wizard step 2 and the Identity pane) */
 .verify-code {
-  font-size: var(--fs-hero); letter-spacing: 4px; text-align: center;
-  padding: var(--sp-3); background: var(--bg-inset);
+  font-size: var(--fs-mono); font-weight: var(--fw-mid);
+  letter-spacing: 1.5px; white-space: nowrap; overflow: hidden;
+  text-align: center;
+  padding: var(--sp-x13); background: var(--bg-inset);
   border: 1px solid var(--border); border-radius: var(--radius-small);
   -webkit-user-select: text; user-select: text;
 }
@@ -184,7 +225,7 @@ button.acked, button.acked:disabled {
   padding: var(--sp-3); font-size: var(--fs-hint); word-break: break-all;
   -webkit-user-select: text; user-select: text;
 }
-details.tech summary { cursor: pointer; color: var(--fg-muted); font-size: var(--fs-hint); }
+details.tech summary { cursor: pointer; color: var(--accent-text); font-size: var(--fs-body); }
 details.tech summary:hover { color: var(--fg); }
 details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 
@@ -192,7 +233,7 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 .linkrow a { color: var(--fg-muted); font-size: var(--fs-hint); }
 .linkrow a:hover { color: var(--fg); }
 
-/* item 11: the amber failed-attempts alert (silent at zero) */
+/* the amber failed-attempts alert (silent at zero; stays amber per R2) */
 .alert-amber {
   background: var(--amber-soft); border: 1px solid var(--amber);
   border-radius: var(--radius-small); padding: var(--sp-3) var(--sp-4);
@@ -200,30 +241,47 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
   justify-content: space-between; gap: var(--sp-3);
 }
 
-.main-layout { flex: 1; display: flex; min-height: 0; }
+/* §2: the status banner component (item 12) — structure/CSS per the spec */
+.status-banner {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-x10) var(--sp-x14); border-radius: var(--radius-small);
+  font-size: var(--fs-section);
+}
+.status-danger {
+  background: var(--danger-bg); border: 1px solid var(--danger-border);
+  color: var(--danger-text); font-weight: var(--fw-section);
+}
+.status-accent {
+  background: var(--accent-bg); border: 1px solid var(--accent-border);
+  color: var(--accent-text); font-weight: var(--fw-section);
+}
+.status-neutral {
+  background: var(--neutral-bg); border: none;
+  color: var(--fg-secondary); font-weight: 400;
+}
+.status-banner .icon { display: flex; align-items: center; }
+.status-banner svg { width: 17px; height: 17px; }
+
+/* item 14 (D.1-D.2): the full-bleed three-pane shell — grid
+   52px | 210px | 1fr, hairline separation only, panes meet the edges */
+.main-layout { flex: 1; display: grid; grid-template-columns: 52px 210px 1fr; min-height: 0; }
 .rail {
-  width: 56px; background: var(--bg-inset); border-right: 1px solid var(--border);
+  background: var(--bg-inset); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; align-items: center;
   padding: var(--sp-3) 0; gap: var(--sp-2);
 }
 .rail-btn {
-  position: relative; width: 40px; height: 40px; border-radius: var(--radius-small);
+  position: relative; width: 34px; height: 34px; border-radius: var(--radius-small);
   border: 1px solid transparent; background: transparent;
   font-size: var(--fs-glyph); color: var(--fg-muted);
   padding: 0; display: flex; align-items: center; justify-content: center;
 }
+.rail-btn svg { width: 19px; height: 19px; }
 .rail-btn:hover { background: var(--bg-raised); color: var(--fg); }
-/* item 10: unmistakable active state — accent pill + accent bar */
-.rail-btn.active { background: var(--accent-soft); color: var(--fg); }
-.rail-btn.active::before {
-  content: ""; position: absolute; left: -8px; top: 20%; bottom: 20%;
-  width: 3px; border-radius: 2px; background: var(--accent);
-}
-/* item 9: the rail identity dot (initial avatar) */
-.rail-id { border-radius: 50%; background: var(--bg-raised); border: 1px solid var(--border); color: var(--fg); font-weight: var(--fw-section); }
+.rail-btn.active { background: var(--rail-active-bg); color: var(--accent-text); }
 .rail-spacer { flex: 1; }
 
-/* item 10: one tooltip pattern for every rail entry */
+/* one tooltip pattern for every rail entry */
 .tip { position: relative; }
 .tip:hover::after {
   content: attr(data-tip);
@@ -235,35 +293,53 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
   z-index: 60; pointer-events: none;
 }
 
-.list-pane { width: 260px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-.list-pane header, .settings-rail header {
-  padding: var(--sp-4) var(--sp-4); font-weight: var(--fw-section);
-  font-size: var(--fs-section); border-bottom: 1px solid var(--border);
+/* D.2: the list pane */
+.list-pane { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; }
+.list-header { padding: var(--sp-3) var(--sp-x14) var(--sp-x10); display: flex; flex-direction: column; gap: var(--sp-2); }
+.list-header h2 { font-size: var(--fs-listhead); font-weight: var(--fw-mid); }
+.search {
+  background: var(--bg-raised); border-radius: var(--radius-small);
+  padding: var(--sp-x6) var(--sp-x10); display: flex; align-items: center;
+  gap: var(--sp-2); color: var(--fg-muted); font-size: var(--fs-hint);
 }
-.content-pane { flex: 1; display: flex; }
-.empty-state { color: var(--fg-muted); font-size: var(--fs-body); padding: var(--sp-4) var(--sp-4); }
-.empty-state.center { margin: auto; text-align: center; display: flex; flex-direction: column; gap: var(--sp-3); align-items: center; }
-.empty-icon { width: 56px; height: 56px; color: var(--fg-muted); opacity: .6; }
+.search svg { width: 14px; height: 14px; }
+.empty-note { color: var(--fg-muted); font-size: var(--fs-hint); padding: 0 var(--sp-x14); }
+
+/* D.2: the welcome content pane */
+.content-pane { display: flex; min-width: 0; }
+.content-pane.welcome { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.welcome-icon { width: 38px; height: 38px; color: var(--accent-fill); margin: 0 0 var(--sp-3) 0; }
+.welcome-title { font-size: var(--fs-welcome); font-weight: var(--fw-mid); color: var(--fg); }
+.welcome-sub { font-size: var(--fs-hint); color: var(--fg-secondary); margin: 0 0 var(--sp-x14) 0; }
+.stub-gap { margin: var(--sp-3) 0 0 0; }
+
+/* D.1: the status bar — full-width last row, hairline top */
 .status-line {
   border-top: 1px solid var(--border); background: var(--bg-inset);
-  color: var(--fg-muted); font-size: var(--fs-hint); padding: var(--sp-2) var(--sp-3);
+  color: var(--fg-muted); font-size: var(--fs-micro); padding: var(--sp-x6) var(--sp-x14);
 }
 
-.settings-layout { flex: 1; display: flex; min-height: 0; }
-.settings-rail { width: 220px; background: var(--bg-inset); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+/* item 14 (D.3): Settings is a VIEW — same shell, 52px | 160px | 1fr */
+.settings-layout { flex: 1; display: grid; grid-template-columns: 52px 160px 1fr; min-height: 0; }
+.settings-rail { background: var(--bg-inset); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: var(--sp-3) 0; }
+.settings-rail header {
+  font-size: var(--fs-listhead); font-weight: var(--fw-mid);
+  padding: 0 var(--sp-x14); margin: 0 0 var(--sp-x10) 0;
+}
 .settings-rail .cat {
   text-align: left; border: none; background: transparent; border-radius: 0;
-  padding: var(--sp-2) var(--sp-4); color: var(--fg-muted); font-size: var(--fs-body);
+  padding: var(--sp-x7) var(--sp-x14); color: var(--fg-secondary); font-size: var(--fs-body);
 }
 .settings-rail .cat:hover { background: var(--bg-raised); color: var(--fg); }
 .settings-rail .cat.active {
-  background: var(--accent-soft); color: var(--fg);
-  box-shadow: inset 3px 0 0 0 var(--accent);
+  background: var(--accent-bg); color: var(--accent-text);
+  box-shadow: inset 2px 0 0 0 var(--accent-fill);
 }
-.settings-pane { flex: 1; overflow-y: auto; padding: var(--sp-5) var(--sp-5); }
+.settings-rail .cat.dim { color: var(--fg-muted); }
+.settings-pane { flex: 1; overflow-y: auto; padding: var(--sp-4) var(--sp-x20); }
 .pane { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 560px; }
 .pane h2 { font-size: var(--fs-title); font-weight: var(--fw-title); }
 .pane h3 { font-size: var(--fs-section); font-weight: var(--fw-section); margin: var(--sp-3) 0 0 0; color: var(--fg); }
-.pane h3.danger-h { color: var(--danger-strong); }
+.pane h3.danger-h { color: var(--danger-text); }
 .pane label { max-width: 320px; }
 .stack { display: flex; flex-direction: column; gap: var(--sp-3); }

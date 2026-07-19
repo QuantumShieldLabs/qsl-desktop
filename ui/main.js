@@ -1,7 +1,8 @@
 // qsl-desktop slice A frontend. Static vanilla JS (F3: zero npm/node — no JS
 // supply chain). All state lives in the backend; this file renders it.
-// D596 design pass: presentation + the no-silent-state-changes rule only —
-// every backend semantic is byte-for-byte the NA-0659 behavior.
+// D597 round-2 design pass: presentation/copy, the item-13 webview state
+// reset, the full-bleed shell, and the menu event wiring only — every
+// backend semantic is byte-for-byte the NA-0660 behavior.
 "use strict";
 
 const tauriInvoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
@@ -24,15 +25,47 @@ const SCREENS = [
 ];
 let currentScreen = null;
 function show(id) {
+  // Item 13 (§5 STATE RULE): every screen transition clears the ceremony
+  // and passphrase fields — no typed secret survives a state transition.
+  clearCeremonyState();
   for (const s of SCREENS) byId(s).classList.toggle("hidden", s !== id);
   currentScreen = id;
+  // Item 15 (R1): the backend disables the state-dependent menu entries
+  // (File > Settings / Lock now) unless an unlocked surface is showing.
+  invoke("ui_surface_changed", { surface: id }).catch(() => {});
 }
 
-// ---- item 5: the NO-SILENT-STATE-CHANGES rule, ONE implementation --------
+// Item 13 (§5 STATE RULE, F2): ceremony forms never persist. Fields are
+// cleared on collapse, cancel, completion, and every state transition; the
+// destroy/erase COMPLETION paths additionally perform a full webview
+// reload (see their handlers) so nothing typed — and no in-memory value —
+// survives into the next session.
+function clearCeremonyState() {
+  for (const id of [
+    "vault-pass", "vault-confirm", "unlock-pass",
+    "erase-phrase", "destroy-pass", "destroy-phrase",
+  ]) {
+    const el = byId(id);
+    if (el) el.value = "";
+  }
+  const flow = byId("destroy-flow");
+  if (flow) flow.classList.add("hidden");
+  const derr = byId("destroy-error");
+  if (derr) derr.textContent = "";
+  updateReqs();
+}
+function resetDestroyFlow() {
+  byId("destroy-flow").classList.add("hidden");
+  byId("destroy-pass").value = "";
+  byId("destroy-phrase").value = "";
+  byId("destroy-error").textContent = "";
+}
+
+// ---- the NO-SILENT-STATE-CHANGES rule, ONE implementation ---------------
 // Every state-changing control acknowledges in two places: a momentary
-// "✓ Saved"-style flash ON the control, and the section's persistent status
-// line updated to the new reality. The flash is presentation; the status
-// line is the durable truth. Microcopy stays factual ("Saved", never more).
+// "✓ Saved"-style flash ON the control, and the section's persistent
+// status (line or banner) updated to the new reality. The flash is
+// presentation; the status is the durable truth. Microcopy stays factual.
 function acknowledge(btn, flashText, statusEl, statusText) {
   if (statusEl && statusText !== undefined) statusEl.textContent = statusText;
   const original = btn.textContent;
@@ -46,13 +79,27 @@ function acknowledge(btn, flashText, statusEl, statusText) {
   }, 1400);
 }
 
+// ---- item 12: the status banner component (spec §2) ----------------------
+// One helper owns the banner: class, icon, and message swap together.
+// Red is RESERVED for the armed-erasure state (R2).
+const BANNER_ICONS = {
+  danger:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.29 3.86-8.2 14.14A2 2 0 0 0 3.82 21h16.36a2 2 0 0 0 1.73-3l-8.2-14.14a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  accent:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  neutral:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>',
+};
+function setBanner(el, kind, message) {
+  el.className = "status-banner status-" + kind;
+  el.querySelector(".icon").innerHTML = BANNER_ICONS[kind];
+  el.querySelector(".status-text").textContent = message;
+}
+
 // ---- GUI-local non-secret settings (autolock + self-alias) ----------------
 let currentSettings = { autolock_minutes: 15, self_alias: "" };
 function aliasDisplay() {
   return currentSettings.self_alias.trim() === "" ? "You" : currentSettings.self_alias.trim();
-}
-function updateRailInitial() {
-  byId("rail-initial").textContent = [...aliasDisplay()][0].toLocaleUpperCase();
 }
 async function saveSettings() {
   await invoke("settings_set", {
@@ -66,7 +113,7 @@ function adoptSettings(cfg) {
   autolockMinutes = cfg.autolock_minutes;
 }
 
-// ---- item 11 (binding rule): failed-attempts capture ----------------------
+// ---- failed-attempts capture (binding D596 rule, unchanged) --------------
 // A successful unlock RESETS the core counter, so the "since your last
 // unlock" value is captured AT UNLOCK-SCREEN ENTRY (and updated from the
 // typed outcomes seen in-session) — never read back after unlock. Dismissal
@@ -101,70 +148,19 @@ async function route() {
   }
 }
 
-// ---- wizard step 1: vault (item 7 — the honest checklist gates Create) ---
-// BEGIN COMMON_PASSWORDS (tests/design_system.rs asserts: >=100 entries,
-// lowercase, sorted, unique; membership is checked case-insensitively)
-const COMMON_PASSWORDS = [
-  "000000", "102030", "111111", "112233", "121212", "123123", "123321",
-  "1234", "12345", "123456", "1234567", "12345678", "123456789",
-  "1234567890", "123abc", "131313", "159753", "191919", "1q2w3e",
-  "1q2w3e4r", "202020", "212121", "222222", "232323", "252525", "333333",
-  "444444", "555555", "654321", "666666", "696969", "777777", "789456",
-  "888888", "987654", "987654321", "999999", "aaaaaa", "abc123",
-  "abcd1234", "abcdef", "access", "admin", "admin123", "alexander",
-  "amanda", "andrea", "andrew", "angel", "anthony", "apple", "arsenal",
-  "asdfgh", "ashley", "austin", "banana", "barcelona", "baseball",
-  "basketball", "batman", "blink182", "bubbles", "buster", "butterfly",
-  "charlie", "cheese", "chelsea", "chicken", "chocolate", "computer",
-  "cookie", "corvette", "daniel", "dexter", "dragon", "elephant",
-  "family", "ferrari", "flower", "football", "forever", "freedom",
-  "friends", "george", "ginger", "hannah", "harley", "hello", "hockey",
-  "hunter", "iloveyou", "jasmine", "jennifer", "jessica", "jordan",
-  "jordan23", "joshua", "juventus", "killer", "letmein", "liverpool",
-  "london", "lovely", "maggie", "master", "matrix", "matthew", "melissa",
-  "michael", "michelle", "monkey", "mustang", "naruto", "nicole", "ninja",
-  "orange", "password", "password1", "password123", "peanut", "pepper",
-  "pokemon", "princess", "purple", "qazwsx", "qwerty", "qwerty123",
-  "qwertyuiop", "ranger", "robert", "samantha", "samsung", "secret",
-  "shadow", "snoopy", "soccer", "sophie", "spiderman", "starwars",
-  "summer", "sunshine", "superman", "taylor", "thomas", "tigger",
-  "trustno1", "welcome", "whatever", "william", "winter", "zaq12wsx",
-  "zxcvbnm",
-];
-// END COMMON_PASSWORDS
-
+// ---- wizard step 1: vault (items 1-3, 10 — spec §3 / D.6) ----------------
+// Exactly TWO checks: length and match. No strength meter, no third check.
 function updateReqs() {
   const p = byId("vault-pass").value;
   const c = byId("vault-confirm").value;
   const okLen = p.length >= 12;
   const okMatch = p.length > 0 && p === c;
-  const okCommon = p.length > 0 && !COMMON_PASSWORDS.includes(p.toLowerCase());
   byId("req-len").classList.toggle("ok", okLen);
   byId("req-match").classList.toggle("ok", okMatch);
-  byId("req-common").classList.toggle("ok", okCommon);
-  // Create gates on ALL green (a UI gate; the core contract is unchanged).
-  byId("btn-vault-create").disabled = !(okLen && okMatch && okCommon);
+  // Create gates on BOTH green (a UI gate; the core contract is unchanged).
+  byId("btn-vault-create").disabled = !(okLen && okMatch);
 }
-
-function strengthEstimate(p) {
-  if (!p) return null;
-  let classes = 0;
-  if (/[a-z]/.test(p)) classes++;
-  if (/[A-Z]/.test(p)) classes++;
-  if (/[0-9]/.test(p)) classes++;
-  if (/[^a-zA-Z0-9]/.test(p)) classes++;
-  const score = Math.min(4, Math.floor(p.length / 6) + (classes > 2 ? 1 : 0));
-  const labels = ["very weak", "weak", "fair", "good", "strong"];
-  return { label: labels[score], lvl: score, pct: [10, 25, 50, 75, 100][score] };
-}
-byId("vault-pass").addEventListener("input", () => {
-  const est = strengthEstimate(byId("vault-pass").value);
-  byId("strength").innerHTML = est
-    ? `<span class="bar"><i class="lvl${est.lvl}" style="width:${est.pct}%"></i></span>` +
-      `${est.label} <span class="hint">(guidance only)</span>`
-    : "";
-  updateReqs();
-});
+byId("vault-pass").addEventListener("input", updateReqs);
 byId("vault-confirm").addEventListener("input", updateReqs);
 
 byId("btn-vault-create").addEventListener("click", async () => {
@@ -178,10 +174,9 @@ byId("btn-vault-create").addEventListener("click", async () => {
   btn.disabled = true;
   try {
     await invoke("vault_create", { passphrase: pass, confirm });
-    byId("vault-pass").value = "";
-    byId("vault-confirm").value = "";
     // Step 1 is DONE and not revisitable (no false Back — un-creating a
-    // vault is not a navigation action). Straight into step 2:
+    // vault is not a navigation action). Straight into step 2 (show()
+    // clears both passphrase fields on the transition):
     await showIdentityStep();
   } catch (e) {
     err.textContent = mapErr(e, {
@@ -193,7 +188,17 @@ byId("btn-vault-create").addEventListener("click", async () => {
   }
 });
 
-// ---- wizard step 2: identity (item 8 — the verification code is the hero) -
+// ---- wizard step 2: "Your identity" (items 4-5 — D.7) --------------------
+// Item 5 (§4): the verification code renders on ONE line, never wrapping —
+// start at the mono token size and shrink to fit. Shared by both surfaces.
+function fitCode(el) {
+  el.style.fontSize = "";
+  let px = 17;
+  while (el.scrollWidth > el.clientWidth && px > 11) {
+    px -= 1;
+    el.style.fontSize = px + "px";
+  }
+}
 async function showIdentityStep() {
   const errEl = byId("identity-error");
   errEl.textContent = "";
@@ -204,8 +209,12 @@ async function showIdentityStep() {
     byId("identity-purpose").textContent = d.purpose_line;
     byId("identity-pq").textContent = d.pq_line;
     byId("identity-mech").textContent = d.mechanism_line;
-    byId("alias-input").value = currentSettings.self_alias;
+    // Item 13 (F2 inventory): a NEW identity starts with an EMPTY alias —
+    // the wizard never pre-fills a prior value; Settings is the edit
+    // surface (D596 F2).
+    byId("alias-input").value = "";
     show("scr-wizard-identity");
+    fitCode(byId("identity-code"));
   } catch (e) {
     errEl.textContent = "Identity setup failed: " + e;
     show("scr-wizard-identity");
@@ -257,8 +266,8 @@ byId("btn-unlock").addEventListener("click", async () => {
     const r = await invoke("unlock_attempt", { passphrase: pass });
     if (r.kind === "unlocked") {
       byId("unlock-pass").value = "";
-      // The captured pre-unlock count becomes the item-11 alert value; the
-      // core counter has just reset itself (the binding capture rule).
+      // The captured pre-unlock count becomes the alert value; the core
+      // counter has just reset itself (the binding capture rule).
       vaultAlertCount = observedFailedUnlocks;
       vaultAlertDismissed = false;
       observedFailedUnlocks = 0;
@@ -285,9 +294,8 @@ byId("btn-unlock").addEventListener("click", async () => {
 
 byId("link-forgot").addEventListener("click", (ev) => {
   ev.preventDefault();
-  byId("erase-phrase").value = "";
   byId("erase-error").textContent = "";
-  show("scr-erase"); // deliberate step 2 of 2: the typed phrase below
+  show("scr-erase"); // deliberate step 2 of 2; show() clears the phrase field
 });
 
 // ---- erase (forgotten passphrase; app-level file removal ONLY) -----------
@@ -301,7 +309,10 @@ byId("btn-erase").addEventListener("click", async () => {
   }
   try {
     await invoke("erase_all", { confirmPhrase: phrase });
-    await route();
+    // Item 13 (F2): completion performs a FULL webview state reset — the
+    // document reloads, so no typed value and no in-memory state survives
+    // into the next session. Boot lands in S0 via route().
+    window.location.reload();
   } catch (e) {
     err.textContent = "Erase failed: " + e;
   }
@@ -311,7 +322,6 @@ byId("btn-wiped-restart").addEventListener("click", () => route());
 
 // ---- main window ----------------------------------------------------------
 function enterMain() {
-  updateRailInitial();
   show("scr-main");
   // slice A: exactly one honest status; no capability data exists to go stale.
   byId("status-line").textContent =
@@ -324,9 +334,7 @@ byId("btn-rail-contacts").addEventListener("click", () => {
   byId("stub-note").classList.remove("hidden");
 });
 
-// ---- settings -------------------------------------------------------------
-// F1: the Identity pane is first in the Settings rail; the rail identity dot
-// and the gear both open Settings (landing on the first pane, Identity).
+// ---- settings (item 14: a VIEW in the same shell; the icon rail is live) --
 async function openSettings(pane) {
   show("scr-settings");
   selectPane(pane);
@@ -338,10 +346,16 @@ async function openSettings(pane) {
     `Slice ${info.slice}. This build makes no network connections and no security-assurance claims.`;
 }
 byId("btn-settings").addEventListener("click", () => openSettings("identity"));
-byId("btn-rail-identity").addEventListener("click", () => openSettings("identity"));
-byId("btn-settings-close").addEventListener("click", () => enterMain());
+byId("btn-rail-chats").addEventListener("click", () => enterMain());
+byId("btn-rail-contacts-s").addEventListener("click", () => {
+  enterMain();
+  byId("stub-note").classList.remove("hidden");
+});
 
 function selectPane(name) {
+  // Item 13 (§5): pane navigation is a state transition — the ceremony
+  // always returns to collapsed and empty.
+  resetDestroyFlow();
   for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
     b.classList.toggle("active", b.dataset.pane === name);
   }
@@ -353,7 +367,7 @@ for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
   b.addEventListener("click", () => selectPane(b.dataset.pane));
 }
 
-// ---- item 9: the Identity pane (existing identity_show surface ONLY) ------
+// ---- the Identity pane (existing identity_show surface ONLY) -------------
 async function refreshIdentityPane() {
   let rec = null;
   try {
@@ -375,13 +389,13 @@ async function refreshIdentityPane() {
   byId("settings-mech").textContent = rec.mechanism_line;
   byId("settings-alias").value = currentSettings.self_alias;
   byId("alias-status").textContent = `Shown as: ${aliasDisplay()} (local only)`;
+  fitCode(byId("settings-code"));
 }
 
 byId("btn-alias-save").addEventListener("click", async () => {
   currentSettings.self_alias = byId("settings-alias").value.trim();
   try {
     await saveSettings();
-    updateRailInitial();
     acknowledge(byId("btn-alias-save"), "✓ Saved", byId("alias-status"),
       `Shown as: ${aliasDisplay()} (local only)`);
   } catch (e) {
@@ -389,7 +403,7 @@ byId("btn-alias-save").addEventListener("click", async () => {
   }
 });
 
-// ---- item 11: Vault & Security (controls first; silent at zero) -----------
+// ---- Vault and Security (items 7-9, 12 — D.5; controls first) ------------
 function renderAttemptsAlert() {
   const box = byId("attempts-alert");
   if (vaultAlertCount > 0 && !vaultAlertDismissed) {
@@ -405,22 +419,30 @@ byId("btn-attempts-dismiss").addEventListener("click", () => {
   renderAttemptsAlert();
 });
 
-function wipeStatusText(s) {
-  return s.wipe_after === null
-    ? "Off — wrong attempts never erase the vault."
-    : `Armed — erases after ${s.wipe_after} failed attempts.`;
+// Item 12: banner copy per spec §2 (red reserved for the armed state).
+function renderWipeBanner(s) {
+  const el = byId("wipe-state");
+  if (s.wipe_after === null) {
+    setBanner(el, "neutral", "Off — wrong attempts never erase the vault");
+  } else {
+    setBanner(el, "danger",
+      `Armed — erases after ${s.wipe_after} failed attempt${s.wipe_after === 1 ? "" : "s"}`);
+  }
+}
+function renderAutolockBanner(minutes) {
+  setBanner(byId("autolock-status"), "accent",
+    `Locks after ${minutes} minute${minutes === 1 ? "" : "s"} of inactivity`);
 }
 async function refreshVaultPane() {
   renderAttemptsAlert();
   const s = await invoke("protection_status");
-  byId("wipe-state").textContent = wipeStatusText(s);
+  renderWipeBanner(s);
   byId("wipe-limit").min = s.wipe_min;
   byId("wipe-limit").max = s.wipe_max;
   const cfg = await invoke("settings_get");
   adoptSettings(cfg);
   byId("autolock-min").value = cfg.autolock_minutes;
-  byId("autolock-status").textContent =
-    `Locks after ${cfg.autolock_minutes} minute${cfg.autolock_minutes === 1 ? "" : "s"} of inactivity.`;
+  renderAutolockBanner(cfg.autolock_minutes);
 }
 
 byId("btn-wipe-arm").addEventListener("click", async () => {
@@ -435,7 +457,8 @@ byId("btn-wipe-arm").addEventListener("click", async () => {
     await invoke("wipe_arm", { limit });
     byId("wipe-ack").checked = false;
     const s = await invoke("protection_status");
-    acknowledge(byId("btn-wipe-arm"), "✓ Armed", byId("wipe-state"), wipeStatusText(s));
+    renderWipeBanner(s);
+    acknowledge(byId("btn-wipe-arm"), "✓ Armed");
   } catch (e) {
     err.textContent = mapErr(e, { wipe_limit_out_of_bounds: "Limit must be between 1 and 100." });
   }
@@ -445,7 +468,8 @@ byId("btn-wipe-disarm").addEventListener("click", async () => {
   try {
     await invoke("wipe_disarm");
     const s = await invoke("protection_status");
-    acknowledge(byId("btn-wipe-disarm"), "✓ Off", byId("wipe-state"), wipeStatusText(s));
+    renderWipeBanner(s);
+    acknowledge(byId("btn-wipe-disarm"), "✓ Off");
   } catch (e) {
     byId("wipe-error").textContent = String(e);
   }
@@ -458,8 +482,8 @@ byId("btn-autolock-save").addEventListener("click", async () => {
     currentSettings.autolock_minutes = minutes;
     await saveSettings();
     autolockMinutes = minutes;
-    acknowledge(byId("btn-autolock-save"), "✓ Saved", byId("autolock-status"),
-      `Locks after ${minutes} minute${minutes === 1 ? "" : "s"} of inactivity.`);
+    renderAutolockBanner(minutes);
+    acknowledge(byId("btn-autolock-save"), "✓ Saved");
   } catch (e) {
     byId("autolock-error").textContent = mapErr(e, {
       autolock_minimum_one_minute: "The minimum autolock interval is 1 minute.",
@@ -467,16 +491,16 @@ byId("btn-autolock-save").addEventListener("click", async () => {
   }
 });
 
-// item 12: destroy — the shared confirmation pattern (semantics unchanged:
-// typed phrase + passphrase → the tokened core destroy).
+// Item 6 (§5) + item 13: the destroy ceremony — always opens collapsed and
+// empty; semantics unchanged (typed phrase + passphrase → the tokened core
+// destroy).
 byId("btn-destroy-open").addEventListener("click", () => {
   byId("destroy-flow").classList.remove("hidden");
   byId("destroy-pass").value = "";
   byId("destroy-phrase").value = "";
   byId("destroy-error").textContent = "";
 });
-byId("btn-destroy-cancel").addEventListener("click", () =>
-  byId("destroy-flow").classList.add("hidden"));
+byId("btn-destroy-cancel").addEventListener("click", () => resetDestroyFlow());
 byId("btn-destroy").addEventListener("click", async () => {
   const err = byId("destroy-error");
   err.textContent = "";
@@ -490,7 +514,11 @@ byId("btn-destroy").addEventListener("click", async () => {
       passphrase: byId("destroy-pass").value,
       confirmPhrase: phrase,
     });
-    await route(); // the vault is gone; the state machine lands in S0
+    // Item 13 (F2): the vault is gone — completion performs a FULL webview
+    // state reset. The reloaded document boots into S0; the typed
+    // passphrase, the phrase, the ceremony expansion, and every in-memory
+    // value (alias, alert counters) die with this document.
+    window.location.reload();
   } catch (e) {
     err.textContent = "Destroy refused: " + e;
   }
@@ -512,6 +540,21 @@ setInterval(async () => {
     byId("unlock-feedback").textContent = "Locked after inactivity.";
   }
 }, 5000);
+
+// ---- item 15: native menu events (R1: backend gates the entries) ---------
+if (window.__TAURI__.event && window.__TAURI__.event.listen) {
+  window.__TAURI__.event.listen("menu-open-settings", () => {
+    if (currentScreen === "scr-main" || currentScreen === "scr-settings") {
+      openSettings("identity");
+    }
+  });
+  window.__TAURI__.event.listen("menu-lock-now", async () => {
+    if (currentScreen === "scr-main" || currentScreen === "scr-settings") {
+      await invoke("lock_now");
+      await showUnlockScreen("main");
+    }
+  });
+}
 
 function mapErr(e, table) {
   const s = String(e);

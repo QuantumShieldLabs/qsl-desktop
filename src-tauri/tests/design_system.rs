@@ -1,7 +1,9 @@
 //! D596 design-system source disciplines (additive; the slice-A test files
 //! are byte-frozen). These pin the token layer, the button tiers, the
-//! common-passwords data, the display-name binding, and the Appendix A
-//! verbatim copy so a later edit cannot silently drift out of the system.
+//! display-name binding, and the Appendix A verbatim copy so a later edit
+//! cannot silently drift out of the system. D597 item 3 removed the
+//! common-passwords check (the ONE sanctioned amendment of this file);
+//! the round-2 pins live in tests/design_round2.rs.
 
 use std::fs;
 use std::path::Path;
@@ -29,35 +31,6 @@ fn split_root_block(css: &str) -> (String, String) {
     outside.push_str(&css[..start]);
     outside.push_str(&css[end + 1..]);
     (root, outside)
-}
-
-/// Item 7: the built-in common-passwords list is sound — at least 100
-/// entries, all lowercase, sorted, unique (membership is checked
-/// case-insensitively in the frontend gate).
-#[test]
-fn common_passwords_list_is_sound() {
-    let js = ui_file("main.js");
-    let begin = js.find("BEGIN COMMON_PASSWORDS").expect("BEGIN marker");
-    let end = js.find("END COMMON_PASSWORDS").expect("END marker");
-    let block = &js[begin..end];
-    let entries: Vec<&str> = block.split('"').skip(1).step_by(2).collect();
-    assert!(
-        entries.len() >= 100,
-        "expected >=100 common passwords, found {}",
-        entries.len()
-    );
-    for e in &entries {
-        assert_eq!(*e, e.to_lowercase(), "entry `{e}` is not lowercase");
-        assert!(
-            !e.contains(char::is_whitespace),
-            "entry `{e}` has whitespace"
-        );
-    }
-    let mut sorted = entries.clone();
-    sorted.sort_unstable();
-    assert_eq!(entries, sorted, "the list must be sorted");
-    sorted.dedup();
-    assert_eq!(entries.len(), sorted.len(), "the list must be unique");
 }
 
 /// Item 6: the display name binds to the window title (and About via

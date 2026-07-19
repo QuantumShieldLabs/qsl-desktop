@@ -132,3 +132,98 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     spine D-1283 (the lane closeout); D-0002 (the slice-A landing this
     pass restyles); spine D-1281 / NA-0658 (the protection surface whose
     reset-on-success semantics dictate the capture rule).
+
+- **ID:** D-0004
+  - **Status:** Accepted
+  - **Date:** 2026-07-19
+  - **Decision:** Land the GUI slice-A design pass ROUND 2 per spine
+    directive D597 (QSL-DIR-2026-07-19-597, as amended at approval,
+    sha256 `0bdde81a…`; spine decision D-1284; lane NA-0661) — the
+    operator's post-merge review of the D-0003 build: presentation/copy,
+    the item-13 webview state reset, the full-bleed shell, and the
+    native-menu wiring ONLY; what destroy, erase, unlock, wipe-after-N,
+    and autolock DO — and the S0/S1/S2 machine and wizard order — are
+    byte-for-byte the D-0003 behavior (the two slice-A test files are
+    byte-identical to the D-0003 tree and green). THE DESIGN AUTHORITY
+    LANDS IN-REPO: `docs/DESIGN_SPEC.md` (the operator-approved round-2
+    spec, byte-exact from the directive's Appendix C, sha256
+    `34ced51b…`) + `docs/DESIGN_SPEC_AppendixD.md` (the operator's
+    reference markup, byte-exact from Appendix D, sha256 `a7d45a0a…`)
+    — BINDING on this and all future GUI lanes until revised; the
+    `:root` token layer migrates to the spec §1 values (page #1D1D1F,
+    card #252528, field #1A1A1C, hairline #3A3A3E; text #E8E8E8 /
+    #A8A8A8 / #7A7A7A; the accent/danger/success/neutral role trios;
+    17px/600 titles, 13px body; radius 12 cards / 8 controls) with the
+    D596 discipline greps kept green. THE FIFTEEN ITEMS: (1) Confirm
+    passphrase directly below Passphrase; (2) the strength meter
+    REMOVED; (3) the checklist = exactly two checks — the
+    common-password check, its 149-entry list, and its
+    design_system.rs soundness test REMOVED (the one sanctioned test
+    amendment); (4) the step-2 heading "Your identity"; (5) the
+    verification code on ONE line, never wrapping (17px mono
+    shrink-to-fit, shared by wizard + Identity pane); (6) the §5
+    ceremony pattern on destroy AND erase — the instruction as its own
+    one line, the erase screen's extra prose deleted, no passphrase
+    field on erase (unchanged semantics); (7) the autolock helper
+    verbatim with no number restated; (8) Arm = destructive tier /
+    Disarm = secondary; (9) the duplicated guest-warning paragraph
+    deleted; (10) the true disabled tier (#2A2A2E + muted text, never
+    dimmed accent); (11) the rail identity dot REMOVED (rail = Chats,
+    Contacts, gear; the Identity pane stays first in Settings — the dot
+    half of the D596 F1 ruling is superseded by the operator's round-2
+    item 11, recorded not relitigated); (12) both Vault and Security
+    status lines become the spec-§2 status-banner component (ARMED =
+    danger + warning icon; OFF = neutral + shield icon; AUTOLOCK =
+    accent + lock icon; red RESERVED for the armed-erasure state; the
+    attempts alert stays amber); (13) the STATE-HYGIENE FIX (the
+    operator-verified defect: the destroy success path never cleared or
+    collapsed the ceremony and no reload existed, so the prior vault's
+    typed passphrase + phrase — and in-memory alias/alert state —
+    survived into the next session): destroy/erase completion now
+    performs a FULL webview reload (F2 default; provable by
+    construction — all durable state is backend-side), PLUS the §5
+    ceremony rules independent of the reload (every screen transition
+    clears all six sensitive fields and collapses the ceremony; pane
+    navigation resets the destroy flow; the wizard never pre-fills a
+    prior alias). BINDING RULE RECORDED: no secret or prior-vault value
+    may cross a destroy/erase boundary. HONEST RESIDUE: `destroy_vault`
+    leaves `settings.json` (autolock minutes + alias, both non-secret)
+    on disk by landed D-0002 semantics — changing what destroy removes
+    was out of this lane's scope; surfaced to the operator as a
+    semantics question; (14) the FULL-BLEED SHELL per Appendix D.1–D.3:
+    no outer padding or inset frame, panes meet the window edges, 1px
+    hairlines only, grid 52px | 210px | 1fr with the status bar as the
+    full-width last row; SETTINGS IS A VIEW, NOT A MODAL — the same
+    shell (52px | 160px | 1fr) with the icon rail live (gear active,
+    Chats returns to main); the wizard card (max-width 440) stays the
+    one centered exception; (15) the NATIVE MENU via the pinned
+    tauri 2 core menu API ONLY (zero new crates/features): File
+    (Settings, Lock now, Quit), Edit (Cut, Copy, Paste, Select all —
+    native predefined), View (Reload — the item-13 reset mechanism;
+    Full screen), Help (About — native, factual name/version + the
+    honesty line); WORKING ENTRIES ONLY, and per R1 the two
+    state-dependent File entries are live-DISABLED unless an unlocked
+    surface shows (the frontend reports surface changes through the new
+    app-layer `ui_surface_changed` command; zero qsc symbols, zero
+    marker strings). Appendix-D tensions dispositioned as pre-ruled:
+    About stays FUNCTIONAL (not muted-unbuilt); the D.2 search
+    affordance lands as-shown, non-interactive, claiming nothing; the
+    D.6 wizard-card background resolves to the §1 card value #252528
+    per the appendix's own precedence sentence (layout from D, values
+    from §1). Round-2 pins live in the additive
+    tests/design_round2.rs. ZERO dependency/lockfile/workflow/
+    tauri.conf.json motion; the qsc pin stays `81143dcd…`; zero
+    networking code (the scan stays green); slice B remains OWED and
+    untouched.
+  - **Rationale:** The operator flew the D-0003 build and returned
+    fifteen findings; the spec they approved becomes the repo's living
+    design authority so round-3 and slice B are corrected against a
+    written standard, not memory. The one state-hygiene defect the
+    review found (typed secrets surviving destroy/erase in the living
+    webview) closes with a mechanism that is provable by construction.
+  - **References:** spine D597 (the directive, as amended at approval);
+    spine D-1284 (the lane closeout); D-0003 (the round-1 pass this
+    corrects); D-0002 (the slice-A semantics re-proven byte-frozen);
+    spine D-1281 / NA-0658 (the protection surface; the capture rule
+    unchanged); docs/DESIGN_SPEC.md + docs/DESIGN_SPEC_AppendixD.md
+    (the landed design authority).
