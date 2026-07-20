@@ -6,14 +6,15 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-pub const AUTOLOCK_DEFAULT_MINUTES: u32 = 15;
+pub const AUTOLOCK_DEFAULT_MINUTES: u32 = 60;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct AppSettings {
-    /// Idle autolock: ON by default at ~15 minutes; adjustable; the wizard is
-    /// exempt (enforced UI-side). 0 is not accepted (autolock stays on in v1;
-    /// the minimum interval is 1 minute).
+    /// Idle autolock: ON by default at 60 minutes; adjustable; the wizard is
+    /// exempt (enforced UI-side). 0 is VALID and means never-auto-lock (the
+    /// D598 operator decision; the UI's idle timer never fires at 0 and the
+    /// danger banner renders; range validation is UI-side per F2).
     pub autolock_minutes: u32,
     /// The optional local-only display alias ("What should this device call
     /// you?"); empty renders as "You". NON-SECRET by ruling (a display
@@ -41,9 +42,6 @@ pub fn load(data_dir: &Path) -> AppSettings {
 }
 
 pub fn save(data_dir: &Path, s: &AppSettings) -> Result<(), String> {
-    if s.autolock_minutes == 0 {
-        return Err("autolock_minimum_one_minute".into());
-    }
     let path = settings_file(data_dir);
     let tmp = path.with_extension("json.tmp");
     let bytes = serde_json::to_vec_pretty(s).map_err(|e| e.to_string())?;
@@ -57,12 +55,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_is_fifteen_minutes() {
-        assert_eq!(AppSettings::default().autolock_minutes, 15);
+    fn default_is_sixty_minutes() {
+        assert_eq!(AppSettings::default().autolock_minutes, 60);
     }
 
+    /// 0 is VALID and means never-auto-lock (D598 item 2): it saves and
+    /// loads like any other value; no backend range bound exists (F2 —
+    /// range validation is UI-side and visible).
     #[test]
-    fn roundtrip_and_zero_rejected() {
+    fn roundtrip_and_zero_accepted() {
         let dir = tempfile::tempdir().unwrap();
         let mut s = AppSettings::default();
         s.autolock_minutes = 30;
@@ -70,7 +71,8 @@ mod tests {
         save(dir.path(), &s).unwrap();
         assert_eq!(load(dir.path()), s);
         s.autolock_minutes = 0;
-        assert!(save(dir.path(), &s).is_err());
+        save(dir.path(), &s).unwrap();
+        assert_eq!(load(dir.path()).autolock_minutes, 0);
     }
 
     /// The settings file is non-secret by construction: its serialized key

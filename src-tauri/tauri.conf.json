@@ -11,8 +11,9 @@
       {
         "title": "QuantumShield Chat",
         "label": "main",
-        "width": 1024,
-        "height": 700,
+        "visible": false,
+        "width": 560,
+        "height": 660,
         "minWidth": 800,
         "minHeight": 600
       }

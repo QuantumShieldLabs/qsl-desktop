@@ -15,6 +15,7 @@ use gateway::CoreGateway;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use tauri::menu::{
     AboutMetadataBuilder, MenuBuilder, MenuItem, MenuItemBuilder, PredefinedMenuItem,
     SubmenuBuilder,
@@ -34,16 +35,86 @@ struct MenuHandles {
     lock_now: MenuItem<tauri::Wry>,
 }
 
+/// Item 10 (D598/E.1): the two window modes. The window is resized on the
+/// MODE transition (not per-render); compact modes hide the menu bar, the
+/// full mode shows it. Presentation state only — no core call.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum WindowMode {
+    /// Wizard steps 1-2: 560x660, centered, menu hidden.
+    CompactWizard,
+    /// Unlock / Erase / the wiped notice (all locked-state gate screens;
+    /// E.1 lists unlock and erase — the wiped notice, reachable only FROM
+    /// unlock, inherits the same compact class): 460x420, centered, menu
+    /// hidden.
+    CompactGate,
+    /// Main window + Settings: 1024x700 (min 800x600 restored), menu
+    /// visible.
+    Full,
+}
+
+pub fn mode_for_surface(surface: &str) -> WindowMode {
+    match surface {
+        "scr-wizard-vault" | "scr-wizard-identity" => WindowMode::CompactWizard,
+        "scr-unlock" | "scr-erase" | "scr-wiped" => WindowMode::CompactGate,
+        _ => WindowMode::Full, // scr-main, scr-settings
+    }
+}
+
+/// (size, min-size, menu-visible) per mode — the E.1 window table.
+pub fn window_mode_spec(mode: WindowMode) -> ((f64, f64), (f64, f64), bool) {
+    match mode {
+        WindowMode::CompactWizard => ((560.0, 660.0), (560.0, 660.0), false),
+        WindowMode::CompactGate => ((460.0, 420.0), (460.0, 420.0), false),
+        WindowMode::Full => ((1024.0, 700.0), (800.0, 600.0), true),
+    }
+}
+
+struct WindowModeState(Mutex<Option<WindowMode>>);
+
+fn apply_window_mode(w: &tauri::WebviewWindow<tauri::Wry>, mode: WindowMode) {
+    let (size, min, menu_visible) = window_mode_spec(mode);
+    // E.1 order: set_min_size, then set_size, then center — the pinned
+    // tauri 2 core window API only.
+    let _ = w.set_min_size(Some(tauri::LogicalSize::new(min.0, min.1)));
+    let _ = w.set_size(tauri::LogicalSize::new(size.0, size.1));
+    let _ = w.center();
+    if menu_visible {
+        let _ = w.show_menu();
+    } else {
+        let _ = w.hide_menu();
+    }
+}
+
 /// Item 15 (R1): the frontend reports every surface change; File > Settings
 /// and File > Lock now are enabled only while an unlocked surface (the main
-/// window or Settings view) is showing. Presentation state only — no core
-/// call, no persistence.
+/// window or Settings view) is showing. Item 10 (E.1) rides the same
+/// report: the window mode is applied when it CHANGES, and the F1 launch
+/// sequence shows the still-hidden window only after the first report has
+/// sized it — no 1024x700 -> compact snap ever renders. Presentation state
+/// only — no core call, no persistence.
 #[tauri::command]
 fn ui_surface_changed(app: tauri::AppHandle, surface: String) {
     let unlocked = surface == "scr-main" || surface == "scr-settings";
     if let Some(h) = app.try_state::<MenuHandles>() {
         let _ = h.settings.set_enabled(unlocked);
         let _ = h.lock_now.set_enabled(unlocked);
+    }
+    let mode = mode_for_surface(&surface);
+    if let Some(w) = app.get_webview_window("main") {
+        let changed = {
+            let st = app.state::<WindowModeState>();
+            let mut cur = st.0.lock().unwrap_or_else(|p| p.into_inner());
+            let changed = *cur != Some(mode);
+            *cur = Some(mode);
+            changed
+        };
+        if changed {
+            apply_window_mode(&w, mode);
+        }
+        if !w.is_visible().unwrap_or(true) {
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
     }
 }
 
@@ -80,6 +151,7 @@ pub fn run() {
     };
     tauri::Builder::default()
         .manage(app_state)
+        .manage(WindowModeState(Mutex::new(None)))
         .setup(|app| {
             // Item 15 (D597): the native menu — the pinned tauri 2 core
             // menu API only; WORKING entries only, nothing unbuilt.
@@ -132,6 +204,20 @@ pub fn run() {
             app.manage(MenuHandles {
                 settings: settings_item,
                 lock_now: lock_item,
+            });
+            // F1 fail-open: the window launches hidden (tauri.conf.json
+            // windows[0] visible:false) and is normally shown by the first
+            // sized surface report. If the frontend never reports (a boot
+            // fault), show the window anyway after a bounded wait — an
+            // invisible app is the worse failure.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                if let Some(w) = handle.get_webview_window("main") {
+                    if !w.is_visible().unwrap_or(true) {
+                        let _ = w.show();
+                    }
+                }
             });
             Ok(())
         })
