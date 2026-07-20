@@ -57,21 +57,32 @@
 <section id="scr-unlock" class="screen hidden">
   <div class="card">
     <h1>Unlock</h1>
-    <label>Passphrase <input type="password" id="unlock-pass" autocomplete="off"></label>
+    <span class="field-label">Passphrase</span>
+    <input type="password" id="unlock-pass" class="full" autocomplete="off" aria-label="Passphrase">
     <div id="unlock-feedback" class="feedback"></div>
     <button id="btn-unlock" class="primary full">Unlock</button>
-    <div class="linkrow"><a id="link-forgot" href="#">Forgot your passphrase?</a></div>
+    <div class="linkrow"><a id="link-forgot" href="#" class="link-danger">Delete vault?</a></div>
   </div>
 </section>
 
 <section id="scr-erase" class="screen hidden">
-  <div class="card danger-card">
-    <h1>Erase everything</h1>
-    <p class="muted">Permanently erases this vault and this app's settings from this computer — this cannot be undone.</p>
-    <p class="instruction">Type <code>erase everything</code> to confirm</p>
-    <input type="text" id="erase-phrase" autocomplete="off" aria-label="Type erase everything to confirm">
-    <div id="erase-error" class="error"></div>
-    <div class="btnrow"><button id="btn-erase" class="danger">Erase everything</button><button id="btn-erase-cancel" class="secondary">Cancel</button></div>
+  <div class="card ceremony-card">
+    <h1 class="ceremony-head">Erase everything</h1>
+    <div id="erase-form">
+      <p class="muted">Permanently erases this vault and this app's settings from this computer — this cannot be undone.</p>
+      <p class="instruction">Type <code>erase everything</code> to confirm</p>
+      <input type="text" id="erase-phrase" class="full" autocomplete="off" aria-label="Type erase everything to confirm">
+      <div id="erase-error" class="error"></div>
+      <div class="btnrow"><button id="btn-erase" class="danger">Erase everything</button><button id="btn-erase-cancel" class="secondary">Cancel</button></div>
+    </div>
+    <div id="erase-countdown" class="hidden">
+      <div class="countdown-panel">
+        <p class="countdown-number" id="countdown-number">30</p>
+        <p class="countdown-label" id="countdown-label">Erasing in 30 seconds…</p>
+      </div>
+      <p class="muted center">Close this window or press Cancel to stop.</p>
+      <button id="btn-erase-countdown-cancel" class="secondary full">Cancel</button>
+    </div>
   </div>
 </section>
 
@@ -158,32 +169,35 @@
         <h3>Erase vault after failed attempts</h3>
         <div class="ctlrow">
           <span class="inline-label">Limit</span>
-          <input type="number" id="wipe-limit" class="num" min="1" max="100" value="10" aria-label="Limit">
+          <input type="text" inputmode="numeric" id="wipe-limit" class="num" min="1" max="100" value="10" aria-label="Limit">
           <button id="btn-wipe-arm" class="danger">Arm</button>
           <button id="btn-wipe-disarm" class="secondary">Disarm</button>
         </div>
+        <div id="wipe-error" class="error"></div>
         <label class="inline"><input type="checkbox" id="wipe-ack"> Reaching the limit erases the vault permanently — I understand</label>
         <div id="wipe-state" class="status-banner status-neutral"><i class="icon"></i><span class="status-text"></span></div>
-        <div id="wipe-error" class="error"></div>
         <h3>Idle autolock</h3>
         <div class="ctlrow">
           <span class="inline-label">Lock after</span>
-          <input type="number" id="autolock-min" class="num" min="1" max="720" aria-label="Lock after minutes">
+          <input type="text" inputmode="numeric" id="autolock-min" class="num" min="0" max="1440" aria-label="Lock after minutes">
           <span class="inline-label">minutes</span>
           <button id="btn-autolock-save" class="secondary">Save</button>
         </div>
-        <div id="autolock-status" class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
         <div id="autolock-error" class="error"></div>
+        <div id="autolock-status" class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
         <p class="hint">On by default. Applies to the main window and settings; the setup wizard is exempt.</p>
-        <h3 class="danger-h">Destroy vault</h3>
-        <p class="muted">Requires your passphrase. Permanently erases this vault — this cannot be undone.</p>
-        <button id="btn-destroy-open" class="danger">Destroy vault…</button>
-        <div id="destroy-flow" class="stack hidden">
-          <label>Current passphrase <input type="password" id="destroy-pass" autocomplete="off"></label>
-          <p class="instruction">Type <code>destroy my vault</code> to confirm</p>
-          <input type="text" id="destroy-phrase" autocomplete="off" aria-label="Type destroy my vault to confirm">
-          <div id="destroy-error" class="error"></div>
-          <div class="btnrow"><button id="btn-destroy" class="danger">Destroy permanently</button><button id="btn-destroy-cancel" class="secondary">Cancel</button></div>
+        <div class="ceremony-card">
+          <h3 class="danger-h ceremony-head">Destroy vault</h3>
+          <p class="muted">Requires your passphrase. Permanently erases this vault — this cannot be undone.</p>
+          <button id="btn-destroy-open" class="danger">Destroy vault…</button>
+          <div id="destroy-flow" class="stack hidden">
+            <span class="field-label">Current passphrase</span>
+            <input type="password" id="destroy-pass" class="full" autocomplete="off" aria-label="Current passphrase">
+            <p class="instruction">Type <code>destroy my vault</code> to confirm</p>
+            <input type="text" id="destroy-phrase" class="full" autocomplete="off" aria-label="Type destroy my vault to confirm">
+            <div id="destroy-error" class="error"></div>
+            <div class="btnrow"><button id="btn-destroy" class="danger">Destroy permanently</button><button id="btn-destroy-cancel" class="secondary">Cancel</button></div>
+          </div>
         </div>
       </div>
       <div id="pane-appearance" class="pane hidden"><h2>Appearance</h2><p class="muted">Not yet — coming in a later update.</p></div>

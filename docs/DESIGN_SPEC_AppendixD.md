@@ -4,7 +4,9 @@ Companion to QSC_DESIGN_SPEC_v1_round2.md. This appendix BINDS item 14
 (full-bleed shell) and supplies the visual DNA for the round-2 surfaces.
 Adapt ids/selectors/wiring to the app; copy structure, tokens, spacing,
 and copy verbatim. Where this appendix and the spec prose disagree, this
-appendix governs for layout; §1 tokens still govern values.
+appendix governs for layout; §1 tokens still govern values. Round-3 note
+(2026-07-19): where Appendix E disagrees with this appendix, E governs —
+the round-3 amendments below are marked [E.x].
 
 ## D.1 — Shell rule (item 14)
 
@@ -13,11 +15,16 @@ appendix governs for layout; §1 tokens still govern values.
 - Grid: `52px | list-or-nav column | 1fr`, full window height.
 - Separation is `1px solid #3A3A3E` hairlines ONLY.
 - The status bar is the full-width last row, `border-top: 1px solid #3A3A3E`,
-  padding `6px 14px`, 11px text-muted.
+  padding `6px 14px`, 12px #A8A8A8 [E.7].
 - SETTINGS IS A VIEW, NOT A MODAL: identical shell, icon rail still present
   with the gear active; nav column 160px; content runs to the right edge.
-- The onboarding wizard is the ONE exception: a centered card
-  (max-width ~440px) on the full-bleed page background.
+- Round 3 [E.1] REPLACES the one-window assumption: the app runs in TWO
+  window modes, resized on state transition — wizard 560x660, unlock and
+  erase 460x420 (centered; menu bar HIDDEN; the card FILLS its compact
+  window with page padding 20-24px, no vertical void); main window +
+  Settings = full/default size, menu bar VISIBLE. Keyboard shortcuts and
+  the right-click context menu remain available on compact screens. The
+  full-bleed shell rules above apply to the main/Settings window.
 
 ## D.2 — Main window
 
@@ -25,7 +32,7 @@ appendix governs for layout; §1 tokens still govern values.
 <div class="shell">                                  <!-- grid 52px 210px 1fr -->
   <nav class="rail">                                  <!-- bg #1A1A1C, border-right hairline -->
     <button class="rail-item active">                 <!-- 34x34, radius 8, bg #2E3B4E when active -->
-      <i class="icon-message"></i>                    <!-- 19px, #8FBAF0 active / #7A7A7A idle -->
+      <i class="icon-message"></i>                    <!-- ~21px [E.7], #8FBAF0 active / #7A7A7A idle -->
     </button>
     <button class="rail-item"><i class="icon-users"></i></button>
     <div class="rail-spacer"></div>                   <!-- flex:1 -->
@@ -87,7 +94,9 @@ appendix governs for layout; §1 tokens still govern values.
 
 <p class="code-caption">Your verification code</p>    <!-- 12px #7A7A7A, centered, mb 6px -->
 <div class="code-box">                                <!-- bg #1A1A1C, 1px #3A3A3E, radius 8,
-                                                           padding 13px, centered, mb 12px -->
+                                                           padding 13px, centered, mb 12px;
+                                                           Settings rendering: max-width 420px,
+                                                           margin 0 auto [E.7] -->
   <span class="code">QSCF-P26A-0C0B-3B40-4</span>     <!-- mono 17px, letter-spacing 1.5px,
                                                            #E8E8E8, white-space: nowrap -->
 </div>
@@ -111,11 +120,14 @@ protected only by your passphrase strength.</p>       <!-- 12px #7A7A7A, lh 1.5,
 <h3>Erase vault after failed attempts</h3>            <!-- mb 8px -->
 <div class="row">                                     <!-- gap 8px, mb 8px -->
   <span class="inline-label">Limit</span>             <!-- 13px #A8A8A8 -->
-  <input class="text-input num" value="10">           <!-- width 56px, centered -->
+  <input class="text-input num" value="10">           <!-- ~64px, centered, NO native spinners,
+                                                           visible validation 1-100 [E.2] -->
   <button class="btn-destructive">Arm</button>        <!-- bg #3A1D1D, 1px #8A3A3A, #F0A0A0 -->
   <button class="btn-secondary">Disarm</button>
 </div>
-<label class="checkline">                             <!-- 13px #A8A8A8, gap 8px, mb 10px -->
+<label class="checkline">                             <!-- 13px #A8A8A8, gap 8px, mb 10px;
+                                                           checkbox >=16px, whole label
+                                                           clickable, ONE line [E.7] -->
   <input type="checkbox"> Reaching the limit erases the vault permanently — I understand
 </label>
 <div class="status-banner status-danger">             <!-- per spec §2 -->
@@ -132,18 +144,27 @@ protected only by your passphrase strength.</p>       <!-- 12px #7A7A7A, lh 1.5,
 <h3>Idle autolock</h3>                                <!-- mt 20px, mb 8px -->
 <div class="row">
   <span class="inline-label">Lock after</span>
-  <input class="text-input num" value="15">
+  <input class="text-input num" value="60">           <!-- default 60; 0 valid = never [E.3];
+                                                           no spinners, validation 0-1440 [E.2] -->
   <span class="inline-label">minutes</span>
   <button class="btn-secondary">Save</button>
 </div>
 <div class="status-banner status-accent">
   <i class="icon-lock"></i>
-  <span>Locks after 15 minutes of inactivity</span>
+  <span>Locks after 60 minutes of inactivity</span>
 </div>
+<!-- when the value is 0, the SAME slot renders status-danger + warning
+icon, bold: "Never locks — anyone with access to this device can open
+your vault" [E.3] -->
 <p class="hint">On by default. Applies to the main window and settings;
-the setup wizard is exempt.</p>                       <!-- NO number restated (item 7) -->
+the setup wizard is exempt.</p>                       <!-- NO number restated (item 7);
+                                                           DIRECTLY under the banner [E.3] -->
 
-<h3 class="danger-head">Destroy vault</h3>            <!-- 14px/500 #F0A0A0, mt 20px, mb 4px -->
+<!-- Round 3 [E.4]: the whole destroy surface sits in the shared
+red-bordered ceremony-card (bg #1D1D1F, 1px #8A3A3A, radius 12, padding
+20px 22px); the head renders 17px/600 #F0A0A0; both fields are FULL
+width of the card; the phrase renders quoted in danger mono -->
+<h3 class="danger-head">Destroy vault</h3>            <!-- ceremony-head [E.4], mt 20px, mb 4px -->
 <p class="body">Requires your passphrase. Permanently erases this vault —
 this cannot be undone.</p>                            <!-- 13px #A8A8A8, mb 10px -->
 <button class="btn-destructive full">Destroy vault…</button>
@@ -153,7 +174,8 @@ this cannot be undone.</p>                            <!-- 13px #A8A8A8, mb 10px
 ## D.6 — Wizard: Create your vault
 
 ```html
-<div class="wizard-card">                             <!-- max-width 440px, centered on page bg,
+<div class="wizard-card">                             <!-- FILLS the compact 560x660 wizard
+                                                           window, page padding 20-24px [E.1];
                                                            bg #1D1D1F, radius 12, padding 22px 24px -->
   <p class="steps">● ○  Step 1 of 2 — Create your vault</p>   <!-- 11px #7A7A7A, mb 10px -->
   <h1>Create your vault</h1>                          <!-- 17px/500, mb 6px -->

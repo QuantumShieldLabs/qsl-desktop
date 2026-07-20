@@ -1,8 +1,9 @@
 // qsl-desktop slice A frontend. Static vanilla JS (F3: zero npm/node — no JS
 // supply chain). All state lives in the backend; this file renders it.
-// D597 round-2 design pass: presentation/copy, the item-13 webview state
-// reset, the full-bleed shell, and the menu event wiring only — every
-// backend semantic is byte-for-byte the NA-0660 behavior.
+// D598 round-3 design pass: presentation, window sizing, the autolock 60/0
+// semantics, and the erase countdown gate only — the countdown changes WHEN
+// the erase commits, never what it erases; every other backend semantic is
+// byte-for-byte the NA-0661 behavior.
 "use strict";
 
 const tauriInvoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
@@ -52,6 +53,9 @@ function clearCeremonyState() {
   if (flow) flow.classList.add("hidden");
   const derr = byId("destroy-error");
   if (derr) derr.textContent = "";
+  // Item 11b (E.5): a running erase countdown dies on ANY state
+  // transition — the armed gate never survives leaving the screen.
+  eraseCountdownAbort();
   updateReqs();
 }
 function resetDestroyFlow() {
@@ -96,8 +100,25 @@ function setBanner(el, kind, message) {
   el.querySelector(".status-text").textContent = message;
 }
 
+// ---- item 1 (E.2): visible numeric validation — invalid entries are
+// BLOCKED with an inline message + the danger field border; never
+// silently clamped, never silently ignored ---------------------------------
+function validateNum(inputEl, errEl, min, max, message) {
+  const raw = inputEl.value.trim();
+  const ok = /^\d+$/.test(raw) && Number(raw) >= min && Number(raw) <= max;
+  inputEl.classList.toggle("invalid", !ok);
+  if (!ok) {
+    errEl.textContent = message;
+    return null;
+  }
+  return Number(raw);
+}
+for (const id of ["wipe-limit", "autolock-min"]) {
+  byId(id).addEventListener("input", () => byId(id).classList.remove("invalid"));
+}
+
 // ---- GUI-local non-secret settings (autolock + self-alias) ----------------
-let currentSettings = { autolock_minutes: 15, self_alias: "" };
+let currentSettings = { autolock_minutes: 60, self_alias: "" };
 function aliasDisplay() {
   return currentSettings.self_alias.trim() === "" ? "You" : currentSettings.self_alias.trim();
 }
@@ -298,8 +319,33 @@ byId("link-forgot").addEventListener("click", (ev) => {
   show("scr-erase"); // deliberate step 2 of 2; show() clears the phrase field
 });
 
-// ---- erase (forgotten passphrase; app-level file removal ONLY) -----------
-byId("btn-erase").addEventListener("click", async () => {
+// ---- erase (app-level file removal ONLY) ---------------------------------
+// Item 11b (E.5): the 30-second countdown GATE. It gates WHEN the erase
+// commits, never what it erases — erase_all, its phrase check, and its
+// scope are byte-untouched; the command is invoked ONLY at countdown zero.
+// Cancel, closing the window, or any state transition ABORTS with nothing
+// erased.
+let eraseCountdownTimer = null;
+let eraseCountdownLeft = 0;
+function renderEraseCountdown() {
+  byId("countdown-number").textContent = String(eraseCountdownLeft);
+  byId("countdown-label").textContent = `Erasing in ${eraseCountdownLeft} seconds…`;
+}
+function eraseCountdownAbort() {
+  if (eraseCountdownTimer !== null) {
+    clearInterval(eraseCountdownTimer);
+    eraseCountdownTimer = null;
+  }
+  const cd = byId("erase-countdown");
+  if (cd) cd.classList.add("hidden");
+  const form = byId("erase-form");
+  if (form) form.classList.remove("hidden");
+  const phrase = byId("erase-phrase");
+  if (phrase) phrase.value = "";
+  const err = byId("erase-error");
+  if (err) err.textContent = "";
+}
+byId("btn-erase").addEventListener("click", () => {
   const phrase = byId("erase-phrase").value;
   const err = byId("erase-error");
   err.textContent = "";
@@ -307,16 +353,34 @@ byId("btn-erase").addEventListener("click", async () => {
     err.textContent = 'Type exactly: erase everything';
     return;
   }
-  try {
-    await invoke("erase_all", { confirmPhrase: phrase });
-    // Item 13 (F2): completion performs a FULL webview state reset — the
-    // document reloads, so no typed value and no in-memory state survives
-    // into the next session. Boot lands in S0 via route().
-    window.location.reload();
-  } catch (e) {
-    err.textContent = "Erase failed: " + e;
-  }
+  // The typed phrase already satisfies the landed gate; the form is
+  // REPLACED (not merely disabled) by the countdown panel, the field
+  // cleared immediately (§5 hygiene). The validated phrase rides the
+  // closure to the zero-commit.
+  byId("erase-phrase").value = "";
+  byId("erase-form").classList.add("hidden");
+  byId("erase-countdown").classList.remove("hidden");
+  eraseCountdownLeft = 30;
+  renderEraseCountdown();
+  eraseCountdownTimer = setInterval(async () => {
+    eraseCountdownLeft -= 1;
+    renderEraseCountdown();
+    if (eraseCountdownLeft > 0) return;
+    clearInterval(eraseCountdownTimer);
+    eraseCountdownTimer = null;
+    try {
+      await invoke("erase_all", { confirmPhrase: phrase });
+      // Item 13 (F2): completion performs a FULL webview state reset — the
+      // document reloads, so no typed value and no in-memory state survives
+      // into the next session. Boot lands in S0 via route().
+      window.location.reload();
+    } catch (e) {
+      eraseCountdownAbort();
+      byId("erase-error").textContent = "Erase failed: " + e;
+    }
+  }, 1000);
 });
+byId("btn-erase-countdown-cancel").addEventListener("click", () => eraseCountdownAbort());
 byId("btn-erase-cancel").addEventListener("click", () => showUnlockScreen(unlockNext));
 byId("btn-wiped-restart").addEventListener("click", () => route());
 
@@ -429,9 +493,18 @@ function renderWipeBanner(s) {
       `Armed — erases after ${s.wipe_after} failed attempt${s.wipe_after === 1 ? "" : "s"}`);
   }
 }
+// Item 2c (E.3): the autolock banner state machine — value > 0 renders the
+// accent lock banner; value == 0 renders the DANGER banner (the recorded
+// R2 extension: red covers the never-locks state by operator decision).
 function renderAutolockBanner(minutes) {
-  setBanner(byId("autolock-status"), "accent",
-    `Locks after ${minutes} minute${minutes === 1 ? "" : "s"} of inactivity`);
+  const el = byId("autolock-status");
+  if (minutes === 0) {
+    setBanner(el, "danger",
+      "Never locks — anyone with access to this device can open your vault");
+  } else {
+    setBanner(el, "accent",
+      `Locks after ${minutes} minute${minutes === 1 ? "" : "s"} of inactivity`);
+  }
 }
 async function refreshVaultPane() {
   renderAttemptsAlert();
@@ -448,11 +521,13 @@ async function refreshVaultPane() {
 byId("btn-wipe-arm").addEventListener("click", async () => {
   const err = byId("wipe-error");
   err.textContent = "";
+  const limit = validateNum(byId("wipe-limit"), err, 1, 100,
+    "Enter a whole number from 1 to 100.");
+  if (limit === null) return;
   if (!byId("wipe-ack").checked) {
     err.textContent = "Tick the confirmation first — arming can permanently erase the vault.";
     return;
   }
-  const limit = parseInt(byId("wipe-limit").value, 10);
   try {
     await invoke("wipe_arm", { limit });
     byId("wipe-ack").checked = false;
@@ -476,8 +551,13 @@ byId("btn-wipe-disarm").addEventListener("click", async () => {
 });
 
 byId("btn-autolock-save").addEventListener("click", async () => {
-  byId("autolock-error").textContent = "";
-  const minutes = parseInt(byId("autolock-min").value, 10);
+  const err = byId("autolock-error");
+  err.textContent = "";
+  // Item 1/2 (E.2/E.3, F2): the 0-1440 range is UI-side visible
+  // validation; 0 is valid and means never-auto-lock.
+  const minutes = validateNum(byId("autolock-min"), err, 0, 1440,
+    "Enter a whole number from 0 to 1440.");
+  if (minutes === null) return;
   try {
     currentSettings.autolock_minutes = minutes;
     await saveSettings();
@@ -485,9 +565,7 @@ byId("btn-autolock-save").addEventListener("click", async () => {
     renderAutolockBanner(minutes);
     acknowledge(byId("btn-autolock-save"), "✓ Saved");
   } catch (e) {
-    byId("autolock-error").textContent = mapErr(e, {
-      autolock_minimum_one_minute: "The minimum autolock interval is 1 minute.",
-    });
+    err.textContent = String(e);
   }
 });
 
@@ -524,8 +602,9 @@ byId("btn-destroy").addEventListener("click", async () => {
   }
 });
 
-// ---- idle autolock (ON by default, ~15 min, adjustable; wizard exempt) ----
-let autolockMinutes = 15;
+// ---- idle autolock (ON by default at 60 min, adjustable; 0 = NEVER
+// auto-lock; wizard exempt) -------------------------------------------------
+let autolockMinutes = 60;
 let idleSince = Date.now();
 for (const ev of ["mousemove", "mousedown", "keydown", "wheel", "touchstart"]) {
   window.addEventListener(ev, () => { idleSince = Date.now(); }, { passive: true });
@@ -533,6 +612,10 @@ for (const ev of ["mousemove", "mousedown", "keydown", "wheel", "touchstart"]) {
 setInterval(async () => {
   const onLockedSurface = currentScreen === "scr-main" || currentScreen === "scr-settings";
   if (!onLockedSurface) return; // the wizard (and unlock itself) is exempt
+  // Item 2b (E.3, BINDING encoded rule): at 0 the timer must NEVER fire —
+  // without this guard the elapsed-time comparison below is satisfied
+  // immediately and the vault would lock the moment it unlocked.
+  if (autolockMinutes === 0) return;
   if (Date.now() - idleSince >= autolockMinutes * 60 * 1000) {
     idleSince = Date.now();
     await invoke("lock_now"); // the one-call NA-0658 lock()
