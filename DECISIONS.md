@@ -227,3 +227,113 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     spine D-1281 / NA-0658 (the protection surface; the capture rule
     unchanged); docs/DESIGN_SPEC.md + docs/DESIGN_SPEC_AppendixD.md
     (the landed design authority).
+
+- **ID:** D-0005
+  - **Status:** Accepted
+  - **Date:** 2026-07-20
+  - **Decision:** Land the GUI slice-A design pass ROUND 3 per spine
+    directive D598 (QSL-DIR-2026-07-19-598, approved+amended, sha256
+    `bb9dc338…`, 1073 lines; spine decision D-1285; lane NA-0662) — the
+    operator's flight review of the merged NA-0661 build: presentation,
+    window-sizing behavior, the autolock 60/0 semantics, and the
+    30-second erase countdown gate ONLY. THE DESIGN AUTHORITY BECOMES
+    THREE FILES: `docs/DESIGN_SPEC_AppendixE.md` lands BYTE-EXACT
+    (cmp-proven against the directive extract; sha256 `5175f3bc…`, 128
+    lines) and GOVERNS where it disagrees with the landed files; item 12
+    amends the landed files minimally against the enumerated
+    contradiction set, each amendment citing its [E.x]:
+    `docs/DESIGN_SPEC.md` `34ced51b…` (113 l) → `074244be…` (143 l);
+    `docs/DESIGN_SPEC_AppendixD.md` `a7d45a0a…` (222 l) → `5f5d3a2e…`
+    (244 l); no contradiction needle survives (grep-pinned). THE TWO
+    SANCTIONED BEHAVIOR DELTAS, exactly: (a) item 2 — autolock default
+    60 with 0 VALID meaning never-auto-lock (settings.rs is exactly the
+    item-2 set: AUTOLOCK_DEFAULT_MINUTES 15→60, the save() 0-reject and
+    its `autolock_minimum_one_minute` error REMOVED, the in-file tests
+    amended to pin default-60 + zero-valid, the doc comment updated;
+    per the F2 DEFAULT no backend upper bound exists — the 0-1440 range
+    is UI-side VISIBLE validation), superseding the 15-minute default
+    (operator decision; the DOC-PROG-004 roadmap-revision note is filed
+    in the spine ledger at this lane's closeout); the idle timer gains
+    the BINDING never-fire guard at 0 (`if (autolockMinutes === 0)
+    return;` before the elapsed comparison — at 0 the minutes*60000
+    path would lock immediately; source-pinned) and the banner state
+    machine renders accent/lock above 0 and the VERBATIM danger banner
+    at 0; (b) item 11b — the 30-second countdown GATE on erase: on a
+    validated confirm the form is REPLACED by the E.5 countdown panel,
+    30→0, Cancel (the only action), closing the window, or ANY state
+    transition aborts with nothing erased, and `erase_all` — its phrase
+    check and scope byte-untouched (commands.rs untouched in the diff)
+    — is invoked ONLY at countdown zero; the gate changes WHEN the
+    erase commits, never what it erases. ITEMS 1-11 as landed: (1) no
+    native number inputs (type=text + inputmode=numeric; the E.2
+    appearance/spin-button CSS; ~64px centered fields; invalid entries
+    BLOCKED with inline message + danger border via the shared
+    validateNum; erase Limit 1-100, autolock 0-1440, the landed 720
+    attr gone); (3) the danger phrases render QUOTED in danger mono —
+    the quotes are CSS content on the `.instruction code` element (the
+    round-2 byte-frozen markup needles bind the markup form; the
+    `.phrase` selector of E.4 lands as `.instruction code` per the
+    spec's adaptation rule; the typed phrase values stay unquoted); (4)
+    both destroy fields full width, `.field-label` above (the
+    label-wrap gone); (5) ONE `.ceremony-card` treatment on BOTH
+    destructive surfaces (E.4 tokens: page bg, danger border, radius
+    12, padding 20/22; `.ceremony-head` 17/600 danger; the settings
+    destroy head stays an h3 — `.danger-h ceremony-head` — because the
+    round-2 `>Destroy vault</h3>` needle is byte-frozen; verbatim
+    landed copy survives; collapsed/expanded mechanics and the D597
+    state-hygiene rules unchanged); (6) the arm checkbox 16px with the
+    one-line clickable label; (7) the helper DIRECTLY under the
+    autolock banner, the error surface moved to the validation slot
+    above it, the reserved `.error`/`.feedback` min-heights removed so
+    empty surfaces collapse (no voids); (8) `#settings-code` max-width
+    420px centered; (9) rail icons 21px (svg + --fs-glyph together) and
+    the status bar 12px #A8A8A8; (10) TWO WINDOW MODES resized on MODE
+    transition riding ui_surface_changed — wizard 560x660, unlock/erase
+    460x420, main+Settings 1024x700 (min 800x600 restored), each
+    centered, set_min_size→set_size→center from the pinned tauri 2 core
+    window API; scr-wiped (unlisted in E.1, reachable only FROM unlock)
+    inherits the CompactGate class — recorded as the total-mapping
+    completion; MENU VISIBILITY BY ATTACHMENT: compact modes
+    remove_menu(), the full mode re-attaches the app-wide menu +
+    show_menu() — chosen because tao's Linux set_visible(true) is gtk
+    show_all(), which RESURRECTS a merely-hidden menubar on the F1
+    deferred first show (found in the rig: hide_menu() returned Ok and
+    is_menu_visible read false, yet the bar re-rendered; the
+    attachment mechanism is deterministic and stays inside the pinned
+    tauri 2 core menu API — zero dependency motion, manifests
+    byte-untouched); the compact card FILLS its window (page padding
+    20px, stretch); keyboard shortcuts and the webview's native
+    right-click context menu remain available on compact screens
+    (operator eyes; no input driver on the rig); (11a) `#link-forgot`
+    renamed "Delete vault?" as `.link-danger` (12px #C87A7A tokenized
+    as --danger-link, underlined; the landed destination unchanged;
+    "Forgot your passphrase?" removed everywhere; the unlock error
+    renders inline only when present). F1 RESOLUTION AS EXECUTED (the
+    operator-ruled ALTERNATIVE): tauri.conf.json windows[0] ONLY — the
+    exact key-level diff: `visible: (absent)→false`, `width: 1024→560`,
+    `height: 700→660` (the compact initial size, wizard class);
+    minWidth/minHeight and every other key in the file BYTE-IDENTICAL
+    (they clamp only the never-shown pre-paint window; the backend
+    applies per-mode minimums before the first show); the window is
+    SHOWN by the backend on the first sized surface report — no
+    1024x700→compact snap ever renders — with a 5-second fail-open
+    fallback show in setup (an invisible app on a frontend boot fault
+    is the worse failure; recorded honestly). R2 EXTENSION RECORDED
+    (operator decision, not re-argued): the danger palette extends to
+    the autolock-0 banner, the quoted ceremony phrases, and the
+    "Delete vault?" link; red otherwise stays reserved for
+    armed-erasure. PROOF: suite 56 passed / 0 failed / 1 ignored (lib
+    5 + design_round2 17 + design_round3 16 NEW + design_system 6 +
+    slice_a_flows 7+1 + slice_a_rules 5); the four existing test files
+    BYTE-IDENTICAL to base and green; fmt/clippy -D warnings/metadata
+    --locked clean; audit exit 0 on the unchanged lock; qsc-symbol set
+    head == base (23/23); zero new markers; zero-networking scan
+    green; publication scan class pass, zero overclaims; headless
+    xwininfo geometry proof 560x660 / 460x420 per mode with NO menu
+    bar on the compact captures.
+  - **References:** spine D598 (the directive, as approved+amended);
+    spine D-1285 (the lane closeout); D-0004 (the round-2 pass this
+    corrects); D-0002 (the slice-A semantics re-proven byte-frozen);
+    docs/DESIGN_SPEC.md + docs/DESIGN_SPEC_AppendixD.md +
+    docs/DESIGN_SPEC_AppendixE.md (the three-file living design
+    authority).
