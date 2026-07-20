@@ -71,17 +71,32 @@ pub fn window_mode_spec(mode: WindowMode) -> ((f64, f64), (f64, f64), bool) {
 
 struct WindowModeState(Mutex<Option<WindowMode>>);
 
-fn apply_window_mode(w: &tauri::WebviewWindow<tauri::Wry>, mode: WindowMode) {
+fn apply_window_mode(
+    app: &tauri::AppHandle,
+    w: &tauri::WebviewWindow<tauri::Wry>,
+    mode: WindowMode,
+) {
     let (size, min, menu_visible) = window_mode_spec(mode);
     // E.1 order: set_min_size, then set_size, then center — the pinned
     // tauri 2 core window API only.
     let _ = w.set_min_size(Some(tauri::LogicalSize::new(min.0, min.1)));
     let _ = w.set_size(tauri::LogicalSize::new(size.0, size.1));
     let _ = w.center();
+    // Menu visibility by ATTACHMENT, not gtk-hide: tao's set_visible(true)
+    // is gtk show_all() on Linux, which resurrects hidden child widgets —
+    // a merely-hidden menubar reappears whenever the F1 deferred first
+    // show is processed. A REMOVED menubar has nothing to resurrect; the
+    // full mode re-attaches the app-wide menu (still the pinned tauri 2
+    // core menu API only).
     if menu_visible {
+        if w.menu().is_none() {
+            if let Some(m) = app.menu() {
+                let _ = w.set_menu(m);
+            }
+        }
         let _ = w.show_menu();
-    } else {
-        let _ = w.hide_menu();
+    } else if w.menu().is_some() {
+        let _ = w.remove_menu();
     }
 }
 
@@ -109,7 +124,7 @@ fn ui_surface_changed(app: tauri::AppHandle, surface: String) {
             changed
         };
         if changed {
-            apply_window_mode(&w, mode);
+            apply_window_mode(&app, &w, mode);
         }
         if !w.is_visible().unwrap_or(true) {
             let _ = w.show();

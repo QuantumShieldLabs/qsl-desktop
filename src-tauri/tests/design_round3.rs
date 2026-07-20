@@ -323,8 +323,8 @@ fn window_modes_and_menu_visibility() {
 
     let lib = manifest_file("src/lib.rs");
     for needle in [
-        "hide_menu",
         "show_menu",
+        "remove_menu",
         "set_min_size",
         "set_size",
         "center",
