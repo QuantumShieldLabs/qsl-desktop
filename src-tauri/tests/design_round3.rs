@@ -294,32 +294,71 @@ fn legibility_bump() {
     assert!(block.contains("var(--fg-secondary)"), "#A8A8A8 status bar");
 }
 
-/// Item 10 (E.1): the window-mode table — surfaces map to the three modes
-/// with the E.1 sizes and menu-visibility rules; sizing rides the
-/// surface-report carrier and the F1 launch sequence (visible:false +
-/// compact initial size, shown after the first sized report).
+/// Item 10 (E.1) as amended by round 4a (D601/F1): the window-mode table —
+/// every pre-main surface maps to its OWN mode with its own size, and the
+/// menu stays hidden on all of them; sizing rides the surface-report carrier
+/// and the F1 launch sequence (visible:false + compact initial size, shown
+/// after the first sized report).
 #[test]
 fn window_modes_and_menu_visibility() {
     assert_eq!(
         mode_for_surface("scr-wizard-vault"),
-        WindowMode::CompactWizard
+        WindowMode::WizardVault
     );
     assert_eq!(
         mode_for_surface("scr-wizard-identity"),
-        WindowMode::CompactWizard
+        WindowMode::WizardIdentity
     );
-    assert_eq!(mode_for_surface("scr-unlock"), WindowMode::CompactGate);
-    assert_eq!(mode_for_surface("scr-erase"), WindowMode::CompactGate);
-    assert_eq!(mode_for_surface("scr-wiped"), WindowMode::CompactGate);
+    assert_eq!(mode_for_surface("scr-unlock"), WindowMode::Unlock);
+    assert_eq!(mode_for_surface("scr-erase"), WindowMode::Erase);
+    assert_eq!(mode_for_surface("scr-wiped"), WindowMode::Wiped);
     assert_eq!(mode_for_surface("scr-main"), WindowMode::Full);
     assert_eq!(mode_for_surface("scr-settings"), WindowMode::Full);
 
-    let ((w, h), _, menu) = window_mode_spec(WindowMode::CompactWizard);
-    assert_eq!((w, h, menu), (560.0, 660.0, false));
-    let ((w, h), _, menu) = window_mode_spec(WindowMode::CompactGate);
-    assert_eq!((w, h, menu), (460.0, 420.0, false));
+    // Round 4a: one size per pre-main surface, and no two pre-main surfaces
+    // share a height any more — that sharing WAS the dead space.
+    let ((w, h), _, menu) = window_mode_spec(WindowMode::WizardVault);
+    assert_eq!((w, h, menu), (360.0, 585.0, false));
+    let ((w, h), _, menu) = window_mode_spec(WindowMode::WizardIdentity);
+    assert_eq!((w, h, menu), (360.0, 625.0, false));
+    let ((w, h), _, menu) = window_mode_spec(WindowMode::Unlock);
+    assert_eq!((w, h, menu), (360.0, 255.0, false));
+    let ((w, h), _, menu) = window_mode_spec(WindowMode::Erase);
+    assert_eq!((w, h, menu), (360.0, 275.0, false));
+    let ((w, h), _, menu) = window_mode_spec(WindowMode::Wiped);
+    assert_eq!((w, h, menu), (360.0, 220.0, false));
+
+    // Width is the operator's measured reading width and is SHARED by every
+    // pre-main surface; the heights are only valid at that width.
+    for m in [
+        WindowMode::WizardVault,
+        WindowMode::WizardIdentity,
+        WindowMode::Unlock,
+        WindowMode::Erase,
+        WindowMode::Wiped,
+    ] {
+        let ((w, _), _, _) = window_mode_spec(m);
+        assert_eq!(w, 360.0, "every pre-main surface shares the reading width");
+    }
     let ((w, h), (mw, mh), menu) = window_mode_spec(WindowMode::Full);
     assert_eq!((w, h, mw, mh, menu), (1024.0, 700.0, 800.0, 600.0, true));
+
+    // Every pre-main surface shares ONE modest minimum so the window can be
+    // dragged small enough to exercise the F4 wrap remedy.
+    for m in [
+        WindowMode::WizardVault,
+        WindowMode::WizardIdentity,
+        WindowMode::Unlock,
+        WindowMode::Erase,
+        WindowMode::Wiped,
+    ] {
+        let ((w, h), (mw, mh), _) = window_mode_spec(m);
+        assert_eq!((mw, mh), (360.0, 200.0), "compact floor");
+        assert!(
+            w >= mw && h >= mh,
+            "initial size must not start below the floor"
+        );
+    }
 
     let lib = manifest_file("src/lib.rs");
     for needle in [
@@ -337,15 +376,19 @@ fn window_modes_and_menu_visibility() {
     // compact initial size.
     let conf = manifest_file("tauri.conf.json");
     assert!(conf.contains(r#""visible": false"#), "F1 hidden launch");
-    assert!(conf.contains(r#""width": 560"#), "F1 compact initial width");
     assert!(
-        conf.contains(r#""height": 660"#),
-        "F1 compact initial height"
+        conf.contains(r#""width": 360"#),
+        "F1 compact initial width — round 4a: the reading width"
+    );
+    assert!(
+        conf.contains(r#""height": 585"#),
+        "F1 compact initial height — round 4a: the wizard-step-1 literal"
     );
 }
 
-/// Item 10b (E.1): the compact screens carry the card-fills-window rule
-/// (page padding on the spacing scale, stretch, no centered-card-void).
+/// Item 10b (E.1) as amended by round 4a: the compact screens carry the
+/// uniform 28px content padding on the SCREEN (the window is the card, so
+/// the screen owns the padding the card used to), stretch, no void.
 #[test]
 fn compact_card_fills_window() {
     let css = ui_file("style.css");
@@ -354,11 +397,51 @@ fn compact_card_fills_window() {
         .expect("compact screen rule");
     let block = &css[sel..css[sel..].find('}').unwrap() + sel];
     assert!(
-        block.contains("padding: var(--sp-x20)"),
-        "page padding 20px"
+        block.contains("padding: var(--sp-x28)"),
+        "round 4a page padding 28px"
     );
     assert!(block.contains("align-items: stretch"), "no vertical void");
     assert!(css.contains("#scr-erase .card, #scr-wiped .card { width: 100%;"));
+}
+
+/// Round 4a (F2 as REVISED at census review): NO container chrome survives on
+/// ANY pre-main screen — neutral or danger. The chrome-stripping rule must
+/// zero background, border, radius and padding, and must RE-HOME the flex
+/// column the .card provided.
+#[test]
+fn pre_main_screens_have_no_card_chrome() {
+    let css = ui_file("style.css");
+    let sel = css
+        .rfind("#scr-wizard-vault .card, #scr-wizard-identity .card, #scr-unlock .card")
+        .expect("round-4a chrome-strip rule");
+    let block = &css[sel..css[sel..].find('}').unwrap() + sel];
+    for needle in [
+        "background: none",
+        "border: none",
+        "border-radius: 0",
+        "padding: 0",
+        "flex-direction: column",
+    ] {
+        assert!(block.contains(needle), "chrome strip must set `{needle}`");
+    }
+}
+
+/// Round 4a: the SETTINGS destroy ceremony is NOT a pre-main screen and keeps
+/// its card. The E.4 `.ceremony-card` rule therefore survives intact — the
+/// pre-main strip is ID-scoped and must never be widened to the bare class.
+#[test]
+fn settings_ceremony_card_survives_the_strip() {
+    let css = ui_file("style.css");
+    let c = css.find(".ceremony-card {").expect(".ceremony-card rule");
+    let cblock = &css[c..css[c..].find('}').unwrap() + c];
+    assert!(cblock.contains("var(--danger-border)"), "E.4 border kept");
+    assert!(cblock.contains("var(--bg)"), "E.4 bg kept");
+    let html = ui_file("index.html");
+    let vault = &html[html.find(r#"id="pane-vault""#).expect("pane-vault")..];
+    assert!(
+        vault.contains("ceremony-card"),
+        "settings keeps its ceremony"
+    );
 }
 
 /// Item 11a (E.6): "Delete vault?" as the danger link; the old wording
@@ -472,5 +555,83 @@ fn design_authority_self_consistent() {
     assert!(
         spec.contains("[E.3]") && d.contains("[E.1]"),
         "amendments cite E.x"
+    );
+}
+
+/// Round 4a (F4): the verification code can no longer clip silently. The
+/// below-floor escape is a `.verify-code.wrapped` modifier that MUST sit
+/// AFTER the base `.verify-code` block — both to win the cascade and because
+/// the frozen needle in design_round2.rs slices from the FIRST `.verify-code`
+/// to the next `}` and requires `white-space: nowrap` inside it.
+#[test]
+fn verify_code_never_clips_silently() {
+    let css = ui_file("style.css");
+    let base = css.find(".verify-code {").expect(".verify-code base rule");
+    let wrapped = css
+        .find(".verify-code.wrapped")
+        .expect("round-4a wrapped modifier");
+    assert!(
+        wrapped > base,
+        "the .wrapped override must FOLLOW the base block or the frozen \
+         design_round2 needle stops reading the base rule"
+    );
+    let wblock = &css[wrapped..css[wrapped..].find('}').unwrap() + wrapped];
+    assert!(wblock.contains("white-space: normal"), "wrap released");
+    assert!(wblock.contains("overflow: visible"), "clip released");
+    // The base block keeps the frozen properties untouched.
+    let bblock = &css[base..css[base..].find('}').unwrap() + base];
+    assert!(bblock.contains("white-space: nowrap"), "base stays nowrap");
+
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"el.classList.add("wrapped")"#),
+        "fitCode must apply the wrap at the floor"
+    );
+    assert!(
+        js.contains(r#"el.classList.remove("wrapped")"#),
+        "fitCode must re-measure from a clean slate so it can grow back"
+    );
+    // The resize refit — absent from the entire ui/ tree before this lane.
+    assert!(
+        js.contains(r#"window.addEventListener("resize""#),
+        "the code must refit on resize"
+    );
+    for id in ["identity-code", "settings-code"] {
+        assert!(js.contains(id), "resize refit covers `{id}`");
+    }
+}
+
+/// Round 4a (item D): the destroy-vault ceremony REPLACES its trigger button
+/// rather than sitting below it, and every collapse path restores it. The
+/// gates themselves are behavior-frozen — passphrase, typed phrase, and the
+/// tokened core call are asserted untouched here so a restyle cannot weaken
+/// them.
+#[test]
+fn destroy_ceremony_replaces_its_trigger() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"byId("btn-destroy-open").classList.add("hidden")"#),
+        "opening the ceremony hides the trigger"
+    );
+    assert!(
+        js.contains(r#"byId("btn-destroy-open").classList.remove("hidden")"#),
+        "cancel restores the trigger"
+    );
+    assert!(
+        js.contains(r#"if (dopen) dopen.classList.remove("hidden")"#),
+        "a state transition also restores the trigger"
+    );
+    // Gates unchanged.
+    assert!(
+        js.contains(r#"if (phrase !== "destroy my vault")"#),
+        "typed gate"
+    );
+    assert!(
+        js.contains(r#"invoke("destroy_vault""#),
+        "tokened core call"
+    );
+    assert!(
+        js.contains("confirmPhrase: phrase"),
+        "phrase rides the call"
     );
 }

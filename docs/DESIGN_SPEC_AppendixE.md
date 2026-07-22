@@ -6,18 +6,53 @@ disagree, E governs — it is the newer decision.
 
 ## E.1 — Window sizing (item 10) — REPLACES the "one window" assumption
 
-The app runs in TWO window modes; the window is resized on state transition:
+The app runs in ONE window mode PER PRE-MAIN SURFACE plus the full mode; the
+window is resized on state transition:
 
 | Screen                         | Window size (approx) | Menu bar |
 |--------------------------------|----------------------|----------|
-| Wizard step 1 / step 2 (S0/S1) | 560 x 660, centered  | HIDDEN   |
-| Unlock (S1/S2 gate)            | 460 x 420, centered  | HIDDEN   |
-| Erase everything               | 460 x 420, centered  | HIDDEN   |
+| Wizard step 1 (S0)             | 360 x 585, centered  | HIDDEN   |
+| Wizard step 2 (S1)             | 360 x 625, centered  | HIDDEN   |
+| Unlock (S1/S2 gate)            | 360 x 255, centered  | HIDDEN   |
+| Erase everything               | 360 x 275, centered  | HIDDEN   |
+| Vault erased (wiped notice)    | 360 x 220, centered  | HIDDEN   |
 | Main window + Settings (S2)    | full/default size    | VISIBLE  |
 
+**[E.1] AMENDED round 4a (D601/F1).** Round 3 gave five pre-main surfaces TWO
+shared sizes, which is what produced the dead space it forbade: whichever
+screen was shorter than its class got the surplus. Each pre-main surface now
+carries its OWN size, and the wiped notice is named in the table for the first
+time.
+
+**360px is the READING WIDTH** — the operator's chosen measure, found by
+hand-resizing the identity window until the copy composed correctly. The
+earlier 560/460 widths let body text run too long. **Width and height are
+COUPLED:** at 360 the copy wraps into more lines, so every height above is
+MEASURED AT 360 AND IS NOT VALID AT ANY OTHER WIDTH — changing the width
+invalidates all five heights.
+
+The heights were measured headlessly in WebKit2 4.1 (the same engine tauri
+uses on Linux) against the real `ui/index.html`, with `fitCode`'s shrink/wrap
+replicated so the verification code's rendered size is included; each is the
+natural content height plus the 28px top and bottom padding, rounded up to the
+next multiple of 5 so a sub-pixel difference cannot clip the last element.
+The erase window is sized to the TALLER of its two states (form 273,
+countdown 253), since one window serves both without a resize.
+
+The compact minimum is a single floor (360 x 200) rather than "minimum ==
+initial", so the pre-main windows stay resizable. Re-picking a height when
+copy changes is an accepted one-line follow-up — but it must be re-measured
+at 360, not estimated.
+
 Rules:
-- The card FILLS its compact window (page padding 20-24px), no vertical void,
-  no centered-card-in-a-void.
+- **[E.1] AMENDED round 4a: the WINDOW IS THE CARD.** No container chrome on
+  any pre-main screen — see [E.4]. The SCREEN carries the uniform 28px content
+  padding, content sits directly on `var(--bg)`, and the window is sized so
+  the content ends at that padding. The round-3 formulation ("the card FILLS
+  its compact window (page padding 20-24px), no vertical void, no
+  centered-card-in-a-void") was satisfiable by STRETCHING the card, which kept
+  the void and merely moved it inside the card; sizing the window per surface
+  is what actually removes it.
 - Keyboard shortcuts and the right-click context menu remain available on
   compact screens (paste must still work without the menu bar).
 - Resizing happens on the state transition, not per-render.
@@ -44,8 +79,20 @@ Rules:
 
 ## E.4 — Ceremony rules (items 3, 4, 5)
 
-Both destructive surfaces (Settings > Destroy vault, and the Erase everything
-screen) share ONE treatment:
+**[E.4] AMENDED round 4a (D601/F2 as revised at census review).** The shared
+ceremony treatment below now applies to the SETTINGS destroy ceremony ONLY.
+On the PRE-MAIN screens — Erase everything, and the wiped notice — ALL
+container chrome is removed with every other pre-main card: no background, no
+border (including the red one), no radius, no card padding. **Danger on those
+screens is carried by the RED TEXT alone** — the `.ceremony-head` /
+`.link-danger` colors and the danger copy, all unchanged. This supersedes the
+round-3 rule that the red ceremony chrome appears on BOTH destructive
+surfaces; it now appears on the Settings one only. No token value changes:
+this is the deletion of a border rule, not a recolor.
+
+Both destructive surfaces still share the ceremony's STRUCTURE and its gates
+(typed phrase, passphrase where required, the quoted-phrase rendering). The
+card treatment below is the Settings rendering:
 
 ```html
 <div class="ceremony-card">        <!-- bg #1D1D1F, border 1px #8A3A3A, radius 12, padding 20px 22px -->
