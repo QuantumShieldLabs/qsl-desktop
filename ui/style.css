@@ -84,6 +84,7 @@
   --sp-x14: 14px;
   --sp-x20: 20px;
   --sp-x22: 22px;
+  --sp-x28: 28px;
 
   /* §1 radius: 8px controls, 12px cards */
   --radius: 12px;
@@ -105,12 +106,33 @@ body {
    edge */
 .screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 #scr-main.screen, #scr-settings.screen { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; }
-/* E.1 (item 10b): compact windows — the card FILLS the window (page
-   padding 20-24px), no vertical void, no centered-card-in-a-void */
+/* E.1 (item 10b), as amended by round 4a: the WINDOW IS THE CARD. Each
+   pre-main surface now carries its own window size (one WindowMode variant
+   per surface), so the screen itself owns the uniform 28px content padding
+   and there is no container left to leave a void inside. */
 #scr-wizard-vault.screen, #scr-wizard-identity.screen, #scr-unlock.screen,
-#scr-erase.screen, #scr-wiped.screen { padding: var(--sp-x20); align-items: stretch; }
+#scr-erase.screen, #scr-wiped.screen { padding: var(--sp-x28); align-items: stretch; }
 #scr-wizard-vault .card, #scr-wizard-identity .card, #scr-unlock .card,
 #scr-erase .card, #scr-wiped .card { width: 100%; overflow-y: auto; }
+/* Round 4a (F2 as REVISED by the operator at census review): ALL container
+   chrome is removed from EVERY pre-main screen — background, border, radius
+   and padding — INCLUDING the danger chrome. This supersedes the readback
+   ruling that kept the danger border: the erase and wiped screens are flat
+   too. Danger is carried by the RED TEXT alone (the .ceremony-head and
+   .link-danger colors, deliberately untouched below).
+   The ID-scoped selectors outrank the bare .ceremony-card/.danger-card rules
+   on specificity, so those rules survive intact for the SETTINGS destroy
+   ceremony (#pane-vault), which is NOT a pre-main screen and keeps its card.
+   The flex column .card provided (the old style.css:128) is RE-HOMED here so
+   no screen loses the layout the chrome removal is blamed for. */
+#scr-wizard-vault .card, #scr-wizard-identity .card, #scr-unlock .card,
+#scr-erase .card, #scr-wiped .card {
+  background: none; border: none; border-radius: 0; padding: 0;
+  display: flex; flex-direction: column; gap: var(--sp-3);
+}
+/* The erase screen's children carry the E.4 explicit margins, so it keeps
+   gap 0 — re-homing a 12px gap there would double every spacing. */
+#scr-erase .card { gap: 0; }
 
 :focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 1px; }
 
@@ -235,8 +257,15 @@ button.full { width: 100%; }
 .req.ok { color: var(--ok); }
 .req.ok::before { content: "✓ "; }
 
-/* §4: the verification code — one line, never wraps, shrink-to-fit
-   (item 5; shared by wizard step 2 and the Identity pane) */
+/* §4: the verification code — one line by default, shrink-to-fit from 17px
+   down to an 11px floor (item 5; shared by wizard step 2 and the Identity
+   pane). Round 4a (F4) corrects what the old comment claimed: the CSS alone
+   does NOT shrink to fit, and below the floor it used to CLIP silently
+   because of the overflow rule. It no longer can — the wrap modifier defined
+   immediately below is applied by fitCode() once the floor is reached.
+   NOTE: this comment must not name that modifier's selector, because the
+   frozen needle in design_round2.rs slices from the FIRST ".verify-code" in
+   the file and naming it here would move the slice off the base rule. */
 .verify-code {
   font-size: var(--fs-mono); font-weight: var(--fw-mid);
   letter-spacing: 1.5px; white-space: nowrap; overflow: hidden;
@@ -244,6 +273,19 @@ button.full { width: 100%; }
   padding: var(--sp-x13); background: var(--bg-inset);
   border: 1px solid var(--border); border-radius: var(--radius-small);
   -webkit-user-select: text; user-select: text;
+}
+/* Round 4a (F4): the below-floor behavior. NEVER a silent clip. Once
+   fitCode() has shrunk to the 11px floor and the code STILL overflows, it
+   adds .wrapped, which lets the code break to a second line at a group
+   boundary (the format is QSCF-XXXX-XXXX-…, so anywhere-break is safe and
+   lands on a hyphen) and releases the overflow clip. Ordering is
+   LOAD-BEARING: this rule must stay AFTER the .verify-code block above, both
+   so it wins the cascade and so the frozen needle in design_round2.rs — which
+   slices from the FIRST ".verify-code" to the next "}" and requires
+   `white-space: nowrap` inside it — keeps reading the base block unchanged. */
+.verify-code.wrapped {
+  white-space: normal; overflow: visible; overflow-wrap: anywhere;
+  word-break: break-word; text-align: center;
 }
 .code-caption { text-align: center; }
 /* E.7 (item 8): the Settings code box matches the wizard's proportions */

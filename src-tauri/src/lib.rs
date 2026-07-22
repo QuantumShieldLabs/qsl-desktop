@@ -35,36 +35,86 @@ struct MenuHandles {
     lock_now: MenuItem<tauri::Wry>,
 }
 
-/// Item 10 (D598/E.1): the two window modes. The window is resized on the
-/// MODE transition (not per-render); compact modes hide the menu bar, the
-/// full mode shows it. Presentation state only — no core call.
+/// Item 10 (D598/E.1) as amended by round 4a (D601/F1): ONE MODE PER PRE-MAIN
+/// SURFACE. The window is still resized on the MODE transition (not
+/// per-render) through the same single shared path; compact modes hide the
+/// menu bar, the full mode shows it. Presentation state only — no core call.
+///
+/// The round-3 table poured FIVE screens with visibly different content
+/// heights into TWO sizes, and whichever screen was shorter than its class
+/// got the surplus as dead space — measured at Phase 1 as 153px (23.2% of the
+/// window) on wizard step 1 and 164px (39.0%) on unlock. Each surface now
+/// carries its own height so the content ends at the padding.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum WindowMode {
-    /// Wizard steps 1-2: 560x660, centered, menu hidden.
-    CompactWizard,
-    /// Unlock / Erase / the wiped notice (all locked-state gate screens;
-    /// E.1 lists unlock and erase — the wiped notice, reachable only FROM
-    /// unlock, inherits the same compact class): 460x420, centered, menu
-    /// hidden.
-    CompactGate,
+    /// Wizard step 1, "Create your vault" — the tallest pre-main surface.
+    WizardVault,
+    /// Wizard step 2, "Your identity" — taller than step 1 by the
+    /// verification code block and its explanatory copy.
+    WizardIdentity,
+    /// Unlock — the daily front door, and the shortest of the gates.
+    Unlock,
+    /// Erase everything — sized to the TALLER of its two states (the typed
+    /// -phrase form and the 30-second countdown panel), since one window
+    /// serves both without a resize between them.
+    Erase,
+    /// The wiped notice, reachable only from a failed-unlock wipe.
+    Wiped,
     /// Main window + Settings: 1024x700 (min 800x600 restored), menu
-    /// visible.
+    /// visible. Unchanged by this lane.
     Full,
 }
 
 pub fn mode_for_surface(surface: &str) -> WindowMode {
     match surface {
-        "scr-wizard-vault" | "scr-wizard-identity" => WindowMode::CompactWizard,
-        "scr-unlock" | "scr-erase" | "scr-wiped" => WindowMode::CompactGate,
+        "scr-wizard-vault" => WindowMode::WizardVault,
+        "scr-wizard-identity" => WindowMode::WizardIdentity,
+        "scr-unlock" => WindowMode::Unlock,
+        "scr-erase" => WindowMode::Erase,
+        "scr-wiped" => WindowMode::Wiped,
         _ => WindowMode::Full, // scr-main, scr-settings
     }
 }
 
 /// (size, min-size, menu-visible) per mode — the E.1 window table.
+///
+/// The compact minimum is a single modest floor rather than "min == size" as
+/// round 3 had it: F4's acceptance requires the verification code to stay
+/// legible at every size the window can take, DEMONSTRATED SMALL, and a
+/// window whose minimum equals its initial size cannot be dragged smaller at
+/// all. The floor is what makes the wrap remedy observable.
+///
+/// It must sit at or below the SHORTEST pre-main window (the wiped notice at
+/// 210) — a floor above it would be silently re-imposed by `set_min_size`
+/// and the window would never take the size this table asks for.
+pub const COMPACT_MIN: (f64, f64) = (360.0, 200.0);
+
+/// The operator's chosen reading width for every pre-main surface, found by
+/// hand-resizing the identity window until the copy composed correctly. Width
+/// and height are COUPLED: narrowing to 360 wraps the body copy into more
+/// lines, so these heights are MEASURED AT THIS WIDTH and are not valid at any
+/// other. Changing this constant invalidates every height below.
+pub const PRE_MAIN_WIDTH: f64 = 360.0;
+
 pub fn window_mode_spec(mode: WindowMode) -> ((f64, f64), (f64, f64), bool) {
+    // Heights measured headlessly at a 360px viewport in WebKit2 4.1 — the
+    // same engine tauri uses on Linux — against the real ui/index.html, with
+    // fitCode's shrink/wrap replicated so the verification code's rendered
+    // size is included. Each is the natural content height plus the screen's
+    // 28px top and bottom padding, rounded up to the next multiple of 5 so a
+    // sub-pixel difference cannot clip the last element or trip the card's
+    // overflow scrollbar. Measured -> landed: wizard-1 583->585,
+    // wizard-2 620->625 (the operator's independent hand measurement was 621),
+    // unlock 250->255, erase 273->275, wiped 217->220.
     match mode {
-        WindowMode::CompactWizard => ((560.0, 660.0), (560.0, 660.0), false),
-        WindowMode::CompactGate => ((460.0, 420.0), (460.0, 420.0), false),
+        WindowMode::WizardVault => ((PRE_MAIN_WIDTH, 585.0), COMPACT_MIN, false),
+        WindowMode::WizardIdentity => ((PRE_MAIN_WIDTH, 625.0), COMPACT_MIN, false),
+        WindowMode::Unlock => ((PRE_MAIN_WIDTH, 255.0), COMPACT_MIN, false),
+        // Sized to the TALLER of its two states: the typed-phrase form
+        // measured 273 and the countdown panel 253, and one window serves
+        // both without a resize between them.
+        WindowMode::Erase => ((PRE_MAIN_WIDTH, 275.0), COMPACT_MIN, false),
+        WindowMode::Wiped => ((PRE_MAIN_WIDTH, 220.0), COMPACT_MIN, false),
         WindowMode::Full => ((1024.0, 700.0), (800.0, 600.0), true),
     }
 }

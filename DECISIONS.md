@@ -337,3 +337,111 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     docs/DESIGN_SPEC.md + docs/DESIGN_SPEC_AppendixD.md +
     docs/DESIGN_SPEC_AppendixE.md (the three-file living design
     authority).
+
+- **ID:** D-0006
+  - **Status:** Accepted
+  - **Date:** 2026-07-22
+  - **Decision:** Land GUI ROUND 4a — pre-main screen chrome — per spine
+    directive D601 (QSL-DIR-2026-07-22-601, approved+amended, sha256
+    `2d80a72a…`, 966 lines; spine decision D-1291; lane NA-0665).
+    Presentation and window-sizing behavior ONLY: no security property,
+    no crypto, no vault internal, no protocol surface, no core call.
+    `src-tauri/src/commands.rs` and `src-tauri/src/gateway.rs` are
+    BYTE-ABSENT from the diff, as are `settings.rs`, `design_round2.rs`,
+    `design_system.rs`, `Cargo.toml` and `Cargo.lock` (zero dependency
+    motion). Visual authority: the operator's reference markup
+    `01-pre-main-screens.html` (sha256 `316f8613…`, 148 l) for LAYOUT AND
+    STRUCTURE ONLY — **never for color**. `qsl-tokens.css` (sha256
+    `b9edb8f9…`, 353 l) is CONTEXT ONLY and is on a different palette than
+    the build ships; the `#22262c` / `#16181c` values in the lane intent
+    were handed in error and appear nowhere in the repository. NO TOKEN
+    VALUE CHANGED: `--bg: #1D1D1F` and `--bg-raised: #252528` stand, and
+    `design_round2.rs` is untouched (F3, STOP-class).
+    **THE F2 OVERRIDE, RECORDED EXPLICITLY BECAUSE THE RULING CHANGED
+    MID-LANE:** F2 as ruled at readback kept the E.4 red ceremony chrome
+    on the destructive pre-main screens and stripped the neutral outer
+    `.card` only. The operator REVISED that at census review: strip ALL
+    card chrome from all five pre-main screens INCLUDING the danger
+    border, with RED TEXT as the sole danger signal. This decision
+    records the revision, not the readback ruling, and the build
+    implements the revision. WHAT LANDED: (A) all five pre-main screens
+    (wizard 1, wizard 2, unlock, erase, wiped) lose background, border,
+    radius and card padding; the screen carries a uniform 28px content
+    padding (`--sp-x28`, a new SPACING token — no color token added or
+    changed) and content sits directly on `var(--bg)`. The flex column
+    the `.card` provided is RE-HOMED onto the same element rather than
+    lost. The strip is ID-SCOPED, so the bare `.ceremony-card` rule
+    survives intact and the SETTINGS destroy ceremony (`#pane-vault`)
+    keeps its card — it is not a pre-main screen. (B) F1 per-surface
+    window LITERALS: `WindowMode` goes from three variants to SIX, one
+    per pre-main surface plus `Full`, on the same single shared path —
+    `apply_window_mode`, the changed-guard and the NA-0662 deferred-show
+    sequence are untouched. **360px is the READING WIDTH**, shared by all
+    five pre-main surfaces — the operator's chosen measure, found by
+    hand-resizing the identity window until the copy composed correctly;
+    the round-3 560/460 widths let body text run too long. WIDTH AND
+    HEIGHT ARE COUPLED: at 360 the copy wraps into more lines, so the
+    heights are MEASURED AT 360 AND ARE NOT VALID AT ANY OTHER WIDTH.
+    The table is WizardVault 360x585, WizardIdentity 360x625, Unlock
+    360x255, Erase 360x275 (sized to the TALLER of its form 273 and
+    countdown 253 states), Wiped 360x220, Full 1024x700. The heights were
+    MEASURED headlessly in WebKit2 4.1 — the same engine tauri uses on
+    Linux — against the real `ui/index.html`, with `fitCode`'s
+    shrink/wrap replicated so the verification code's rendered size is
+    included; each is the natural content height plus the 28px top and
+    bottom padding, rounded up to the next multiple of 5 so a sub-pixel
+    difference cannot clip the last element or trip the card's overflow
+    scrollbar (measured → landed: 583→585, 620→625, 250→255, 273→275,
+    217→220). INDEPENDENT CORROBORATION: the operator hand-measured the
+    identity window at 360 wide as needing 621; the headless measurement
+    returned 620, a 1px agreement that confirms the measurement viewport
+    matches the real window. An earlier DERIVED (unmeasured) table —
+    560x500 / 560x520 / 460x250 / 460x280 / 460x210 — was replaced by
+    this measured one after operator visual review found the wide
+    literals let text run long and CLIPPED the wizard screens' bottom
+    content. The compact minimum is a single floor (360x200, at-or-below
+    the shortest window so `set_min_size` cannot re-impose it) instead of
+    "minimum == initial", so the pre-main windows stay resizable.
+    `tauri.conf.json` windows[0] initial size — `width: 560→360` and
+    `height: 660→585`, the wizard-1 literal — are the ONLY keys touched. (C) F4 — the
+    verification code can no longer clip silently: `fitCode` still
+    shrinks 17px→11px, but at the floor it now adds `.verify-code.wrapped`
+    (`white-space: normal; overflow: visible; overflow-wrap: anywhere`)
+    so the code WRAPS at a group boundary — the operator's ruled
+    preference — instead of being cut off by `overflow: hidden`; and a
+    debounced `resize` listener refits BOTH call sites, where before this
+    lane `ui/` contained ZERO resize listeners of any kind and a code
+    fitted at render was never refitted. The `.wrapped` rule is placed
+    AFTER the base block: ordering is load-bearing, because the frozen
+    needle in `design_round2.rs` slices from the FIRST `.verify-code` to
+    the next `}` and requires `white-space: nowrap` inside it — the base
+    block keeps it, so no frozen assertion breaks and the flagged
+    horizontal-scroll fallback was NOT needed. (D) the Settings
+    destroy-vault ceremony REPLACES its trigger button rather than
+    sitting below it; Cancel restores it, and so does any state
+    transition via `clearCeremonyState`. Behavior only — the passphrase,
+    typed-phrase and tokened-core-call gates are byte-unchanged.
+    APPENDIX E amended minimally, each edit citing its section: [E.1]
+    (the size table, the wiped notice named for the first time, the
+    compact floor, and the WINDOW-IS-THE-CARD rule replacing a round-3
+    formulation that was satisfiable by stretching the card — which kept
+    the void and merely moved it inside) and [E.4] (the ceremony card
+    treatment now applies to the SETTINGS surface only; red text carries
+    danger on the pre-main screens). MEASURED AT PHASE 1 on main
+    `8db2b2a5`, before any edit, and what justified the sizing work:
+    trailing void 153px = 23.2% of the wizard-step-1 window and 164px =
+    39.0% of the unlock window, with per-screen `xwininfo` geometry
+    confirming the round-3 table was real (560x660 / 460x420).
+    FINDING C2 SETTLED EMPIRICALLY at the same time: there is NO white
+    menu strip on the pre-main screens at `8db2b2a5` — the top rows
+    measure exactly RGB(29,29,31) = `--bg` — so the operator's uploaded
+    screenshots predate NA-0662 and are superseded. Work item C (the
+    native menubar's color) stays DROPPED: it is a Tao/GTK widget
+    outside the DOM that no frontend change can reach; theming or hiding
+    it is platform-specific work owned by the eventual Appearance-pane /
+    dark-frame story, NOT by any frontend lane.
+  - **References:** spine D601 (the directive, as approved+amended);
+    spine D-1291 (the lane closeout); D-0005 (the round-3 pass this
+    builds on); docs/DESIGN_SPEC.md + docs/DESIGN_SPEC_AppendixD.md +
+    docs/DESIGN_SPEC_AppendixE.md (the three-file living design
+    authority, Appendix E amended here at [E.1] and [E.4]).

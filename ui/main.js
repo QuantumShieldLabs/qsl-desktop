@@ -51,6 +51,11 @@ function clearCeremonyState() {
   }
   const flow = byId("destroy-flow");
   if (flow) flow.classList.add("hidden");
+  // Item D (round 4a): the ceremony REPLACES its trigger, so collapsing it
+  // anywhere must put the trigger back — including on a state transition,
+  // not only on Cancel.
+  const dopen = byId("btn-destroy-open");
+  if (dopen) dopen.classList.remove("hidden");
   const derr = byId("destroy-error");
   if (derr) derr.textContent = "";
   // Item 11b (E.5): a running erase countdown dies on ANY state
@@ -60,6 +65,8 @@ function clearCeremonyState() {
 }
 function resetDestroyFlow() {
   byId("destroy-flow").classList.add("hidden");
+  // Item D (round 4a): Cancel restores the trigger the ceremony replaced.
+  byId("btn-destroy-open").classList.remove("hidden");
   byId("destroy-pass").value = "";
   byId("destroy-phrase").value = "";
   byId("destroy-error").textContent = "";
@@ -213,13 +220,40 @@ byId("btn-vault-create").addEventListener("click", async () => {
 // Item 5 (§4): the verification code renders on ONE line, never wrapping —
 // start at the mono token size and shrink to fit. Shared by both surfaces.
 function fitCode(el) {
+  if (!el) return;
+  // Round 4a (F4): re-measure from a clean slate every time — this now runs
+  // on resize too, so a code shrunk at one width must be able to grow back.
+  el.classList.remove("wrapped");
   el.style.fontSize = "";
   let px = 17;
   while (el.scrollWidth > el.clientWidth && px > 11) {
     px -= 1;
     el.style.fontSize = px + "px";
   }
+  // At the floor and STILL overflowing: the old code clipped here, silently,
+  // because .verify-code is `overflow: hidden`. Wrap to a second line at a
+  // group boundary instead — the operator's ruled preference, and the code
+  // stays fully legible at 11px rather than disappearing off the edge.
+  if (el.scrollWidth > el.clientWidth) {
+    el.classList.add("wrapped");
+  }
 }
+// Round 4a (F4): the window is resizable (no `resizable` key in
+// tauri.conf.json, so it defaults true) and BEFORE this lane there was not a
+// single resize listener in ui/ — a code fitted at render was never refitted,
+// so any drag narrower clipped it. Refit both call sites on resize, debounced
+// to one pass per frame-ish so a drag does not thrash the layout.
+let codeFitTimer = null;
+window.addEventListener("resize", () => {
+  if (codeFitTimer) clearTimeout(codeFitTimer);
+  codeFitTimer = setTimeout(() => {
+    codeFitTimer = null;
+    for (const id of ["identity-code", "settings-code"]) {
+      const el = byId(id);
+      if (el && el.textContent) fitCode(el);
+    }
+  }, 60);
+});
 async function showIdentityStep() {
   const errEl = byId("identity-error");
   errEl.textContent = "";
@@ -574,6 +608,12 @@ byId("btn-autolock-save").addEventListener("click", async () => {
 // destroy).
 byId("btn-destroy-open").addEventListener("click", () => {
   byId("destroy-flow").classList.remove("hidden");
+  // Item D (round 4a): the ceremony REPLACES its trigger rather than sitting
+  // below it — one destructive affordance on screen at a time. Cancel (and
+  // any state transition, via clearCeremonyState) puts it back. Behavior
+  // only: the passphrase + typed-phrase gates and the tokened core call are
+  // byte-untouched below.
+  byId("btn-destroy-open").classList.add("hidden");
   byId("destroy-pass").value = "";
   byId("destroy-phrase").value = "";
   byId("destroy-error").textContent = "";
