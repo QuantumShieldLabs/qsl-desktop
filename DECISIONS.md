@@ -445,3 +445,39 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     builds on); docs/DESIGN_SPEC.md + docs/DESIGN_SPEC_AppendixD.md +
     docs/DESIGN_SPEC_AppendixE.md (the three-file living design
     authority, Appendix E amended here at [E.1] and [E.4]).
+
+- **ID:** D-0007
+  - **Status:** Accepted
+  - **Date:** 2026-07-24
+  - **Decision:** GATE 1 of GUI slice B (server connectivity) — bump the
+    qsc pin ONLY, proved before any pane code exists — per spine directive
+    D609 (QSL-DIR-2026-07-24-609, approved, sha256 `eb6f9da0…`, 678 lines;
+    spine lane NA-0673; GATE-1 result class GUI_SLICE_B_PIN_BUMP_PASS).
+    `src-tauri/Cargo.toml` qsc git `rev` `81143dcd` → `ab5041cd`
+    (`ab5041cdc8e1d1f8a311303160060a4d708eb48d`) and `Cargo.lock`; NOTHING
+    ELSE. No pane, no commands, no `settings.rs`, no claim-surface edits,
+    no Appendix F — all GATE 2. The bump crosses NA-0663's TLS-trust
+    surface, so it introduces the D599-sanctioned native-roots union: the
+    lock gains exactly FIVE crates — `rustls-native-certs` 0.8.4,
+    `openssl-probe` 0.2.1 (Linux verifier), `security-framework` 3.7.0 +
+    `security-framework-sys` 2.17.0 (macOS), `schannel` 0.1.29 (Windows) —
+    and the `qsc` + `quantumshield_refimpl` rev lines move to `ab5041cd`;
+    the 32 other resolved deps and all 12 RustCrypto pins are UNCHANGED (no
+    cargo-1.95 resolver drift manifested; verified against a before/after
+    `Cargo.lock` diff). rustls stays on the ring backend
+    (`default-features=false`) — `aws-lc-rs` is ABSENT from the lock, the
+    precise failure GATE 1 exists to catch.
+  - **Rationale:** GUI slice B's Server pane calls qsc's server-info
+    consumer and the token/CA trio, which do not exist at the slice-A pin
+    `81143dcd` (it predates NA-0663 / NA-0670 / NA-0672). Proving the pin
+    bump ALONE — the native-roots union compiles, no aws-lc-rs, no pin
+    drift, the suite green — before any pane code means a lock-alignment
+    failure surfaces here, not while debugging a UI. This PR changes
+    `Cargo.lock` and the build, so the `rust` CI gate actually runs and its
+    green carries the evidence (the opposite of a docs_only PR).
+  - **References:** spine D609 (the directive); spine lane NA-0673, GATE 1;
+    spine D599 (the qsc client TLS-trust surface, the sanctioned
+    native-roots transitive set, and the aws-lc-rs trap ruling); the qsc
+    server-info consumer + token/CA trio landed at spine NA-0672 (rev
+    `ab5041cd`); D-0006 (the round-4a pass this builds on). GATE 2 (the
+    pane) and GATE 3 (the spine closeout) follow under D609.
