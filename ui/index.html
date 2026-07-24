@@ -114,10 +114,10 @@
       <p class="welcome-title">Welcome to QuantumShield Chat</p>
       <p class="welcome-sub">Add a contact to start your first conversation.</p>
       <button id="btn-add-contact" class="primary">Add your first contact</button>
-      <p id="stub-note" class="hint stub-gap hidden">Adding contacts arrives in a future update — this build is the serverless skeleton.</p>
+      <p id="stub-note" class="hint stub-gap hidden">Adding contacts arrives in a future update.</p>
     </main>
   </div>
-  <footer id="status-line" class="status-line">No server configured — server setup arrives in a future update.</footer>
+  <footer id="status-line" class="status-line">No server configured.</footer>
 </section>
 
 <section id="scr-settings" class="screen hidden">
@@ -159,7 +159,37 @@
       </div>
       <div id="pane-server" class="pane hidden">
         <h2>Server</h2>
-        <p class="muted">Server configuration arrives in a future update (the next slice). This build makes no network connections at all.</p>
+        <p class="muted">The relay carries your encrypted messages. It can't read them.</p>
+        <div class="server-form" style="max-width:470px;display:flex;flex-direction:column;gap:var(--sp-3);">
+          <span class="field-label">Relay address</span>
+          <input type="text" id="relay-url" class="full mono" autocomplete="off" spellcheck="false" placeholder="https://relay.example.net" aria-label="Relay address">
+          <div id="relay-url-error" class="error"></div>
+
+          <span class="field-label">Access token</span>
+          <input type="password" id="relay-token" class="full" autocomplete="off" aria-label="Access token">
+          <p class="hint">Required only if the operator set one. Stored in your vault, not in settings.</p>
+          <div class="ctlrow"><button id="btn-relay-token-set" class="secondary">Set token</button><button id="btn-relay-token-clear" class="secondary">Clear</button></div>
+          <p id="relay-token-status" class="hint"></p>
+
+          <details class="tech" id="relay-ca">
+            <summary>Certificate authority (optional)</summary>
+            <p class="hint">If the operator runs their own certificate authority, add their CA certificate file so this app can verify the connection. The file's path is read at connection time; it is stored in your vault.</p>
+            <span class="field-label">CA certificate file path</span>
+            <input type="text" id="relay-ca-path" class="full mono" autocomplete="off" spellcheck="false" placeholder="/path/to/ca.pem" aria-label="CA certificate file path">
+            <div id="relay-ca-error" class="error"></div>
+            <div class="ctlrow"><button id="btn-relay-ca-set" class="secondary">Set CA file</button><button id="btn-relay-ca-clear" class="secondary">Clear</button></div>
+            <p id="relay-ca-status" class="hint"></p>
+          </details>
+
+          <div class="ctlrow"><button id="btn-relay-test" class="primary">Test connection</button><button id="btn-relay-save" class="secondary">Save</button></div>
+
+          <div id="relay-results" class="hidden" style="border-top:1px solid var(--border);padding-top:var(--sp-3);display:flex;flex-direction:column;gap:var(--sp-2);">
+            <div id="relay-status" class="status-banner status-neutral"><i class="icon"></i><span class="status-text"></span></div>
+            <p id="relay-detail" class="hint" style="margin:0;"></p>
+            <div id="relay-doc" style="display:flex;flex-direction:column;gap:var(--sp-1);"></div>
+            <p id="relay-saved-note" class="hint hidden" style="margin:0;color:var(--accent-text);">Not saved yet.</p>
+          </div>
+        </div>
       </div>
       <div id="pane-vault" class="pane hidden">
         <h2>Vault and Security</h2>

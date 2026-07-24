@@ -419,11 +419,19 @@ byId("btn-erase-cancel").addEventListener("click", () => showUnlockScreen(unlock
 byId("btn-wiped-restart").addEventListener("click", () => route());
 
 // ---- main window ----------------------------------------------------------
-function enterMain() {
+async function enterMain() {
   show("scr-main");
-  // slice A: exactly one honest status; no capability data exists to go stale.
-  byId("status-line").textContent =
-    "No server configured — server setup arrives in a future update.";
+  // Slice B (D609 R4): the footer reflects the ACTUAL relay config, not a
+  // "future update" claim that is now false. It shows the configured endpoint,
+  // or points at Settings when none is set.
+  try {
+    const cfg = await invoke("relay_config_get");
+    byId("status-line").textContent = cfg.relay_url
+      ? `Relay: ${cfg.relay_url}`
+      : "No server configured — add one in Settings › Server.";
+  } catch (_) {
+    byId("status-line").textContent = "No server configured — add one in Settings › Server.";
+  }
 }
 byId("btn-add-contact").addEventListener("click", () => {
   byId("stub-note").classList.remove("hidden"); // honest stub (lane 2 lands the flow)
@@ -438,10 +446,14 @@ async function openSettings(pane) {
   selectPane(pane);
   await refreshIdentityPane();
   await refreshVaultPane();
+  await refreshServerPane();
   const info = await invoke("app_info");
   byId("about-name").textContent = `${info.display_name} (qsl-desktop ${info.version})`;
+  // Slice B (D609 R4): the "no network connections" clause is retired — the app
+  // now reaches a relay — but the surviving TRUE clause STAYS: no
+  // security-assurance claims. Only the network clause changed.
   byId("about-text").textContent =
-    `Slice ${info.slice}. This build makes no network connections and no security-assurance claims.`;
+    `Slice ${info.slice}. This build makes no security-assurance claims.`;
 }
 byId("btn-settings").addEventListener("click", () => openSettings("identity"));
 byId("btn-rail-chats").addEventListener("click", () => enterMain());
@@ -640,6 +652,261 @@ byId("btn-destroy").addEventListener("click", async () => {
   } catch (e) {
     err.textContent = "Destroy refused: " + e;
   }
+});
+
+// ---- the Server pane (slice B: server connectivity) ----------------------
+// R1: every relay_* command runs qsc through the backend serial blocking gate;
+// this file NEVER constructs an HTTP client and NEVER classifies a probe — it
+// renders the pre-classified outcome the backend returns.
+//
+// R7 COLOUR: the results reuse the shipped status-banner component with only
+// `neutral` (connected) and `accent` (needs attention). RED (status-danger) is
+// RESERVED for the vault-danger surfaces (DESIGN_SPEC §2), so a connection
+// FAILURE is accent, not red — the message text carries the severity. The
+// mockup's red "bad" treatment is deliberately NOT copied (a mockup colour is
+// a STOP).
+let savedRelayUrl = "";
+
+function clearServerResults() {
+  byId("relay-results").classList.add("hidden");
+  byId("relay-detail").textContent = "";
+  byId("relay-doc").innerHTML = "";
+  byId("relay-saved-note").classList.add("hidden");
+  byId("btn-relay-save").classList.remove("primary");
+  byId("btn-relay-save").classList.add("secondary");
+}
+
+function humanBytes(n) {
+  if (!n) return "—";
+  if (n >= 1048576) { const v = n / 1048576; return (Number.isInteger(v) ? v : v.toFixed(1)) + " MB"; }
+  if (n >= 1024) return Math.round(n / 1024) + " KB";
+  return n + " bytes";
+}
+function humanDuration(secs) {
+  if (!secs) return "—";
+  if (secs >= 86400) { const d = Math.round(secs / 86400); return d + " day" + (d === 1 ? "" : "s"); }
+  if (secs >= 3600) { const h = Math.round(secs / 3600); return h + " hour" + (h === 1 ? "" : "s"); }
+  const m = Math.round(secs / 60); return m + " minute" + (m === 1 ? "" : "s");
+}
+function docRow(label, value) {
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;gap:var(--sp-3);";
+  const l = document.createElement("span");
+  l.className = "hint"; l.style.cssText = "min-width:130px;color:var(--fg-muted);";
+  l.textContent = label;
+  const v = document.createElement("span");
+  v.className = "hint"; v.style.color = "var(--fg-secondary)";
+  v.textContent = value;
+  row.appendChild(l); row.appendChild(v);
+  return row;
+}
+
+// "Not saved yet" (results state 8): after a good test whose URL isn't the
+// saved one. NO auto-save on a successful test — Save is a separate commitment;
+// it takes the accent (primary) treatment while there are unsaved changes.
+function showNotSavedIfDirty() {
+  const urlNow = byId("relay-url").value.trim();
+  const dirty = urlNow !== "" && urlNow !== savedRelayUrl;
+  byId("relay-saved-note").classList.toggle("hidden", !dirty);
+  byId("btn-relay-save").classList.toggle("primary", dirty);
+  byId("btn-relay-save").classList.toggle("secondary", !dirty);
+}
+
+// Results states 1-7 — the probe outcome (already classified by qsc).
+function renderServerOutcome(res) {
+  const status = byId("relay-status");
+  const detail = byId("relay-detail");
+  const doc = byId("relay-doc");
+  byId("relay-results").classList.remove("hidden");
+  detail.textContent = "";
+  doc.innerHTML = "";
+  byId("relay-saved-note").classList.add("hidden");
+  switch (res.kind) {
+    case "reachable": {
+      setBanner(status, "neutral", "Connected");
+      const bearer = res.auth_mode === "bearer";
+      detail.textContent = bearer
+        ? "Token required — accepted. Certificate trusted."
+        : "Open relay — anyone who can reach this address can use it. No access token needed. You still need an invite from someone to exchange messages.";
+      const d = res.doc;
+      if (d.name) doc.appendChild(docRow("Relay name", d.name));
+      doc.appendChild(docRow("Certificate", "Trusted"));
+      doc.appendChild(docRow("Access", bearer ? "Token required — accepted" : "Open — no token needed"));
+      if (d.retention_ttl_secs) doc.appendChild(docRow("Message retention", humanDuration(d.retention_ttl_secs)));
+      if (d.max_body_bytes) doc.appendChild(docRow("Max message size", humanBytes(d.max_body_bytes)));
+      if (d.version) doc.appendChild(docRow("Server version", d.version));
+      break;
+    }
+    case "auth_required":
+      // The relay's 401 is byte-identical for both; the CLIENT distinguishes by
+      // whether IT sent a token — a LOCAL observation, never a server verdict.
+      setBanner(status, "accent", res.token_was_sent ? "Token rejected" : "This relay requires an access token");
+      detail.textContent = res.token_was_sent
+        ? "The relay requires an access token and didn't accept the one this app sent. Check it with the operator."
+        : "This app sent no token, and the relay requires one. Ask the operator for one, set it above, and test again.";
+      break;
+    case "cert_not_trusted":
+      setBanner(status, "accent", "Certificate not trusted");
+      detail.textContent =
+        "This server presented a certificate your computer doesn't recognise. That's expected if the operator runs their own certificate authority — and it's also what an interception attack looks like. Ask the operator for their CA certificate and add it above, or install it on this computer.";
+      break;
+    case "unreachable":
+      setBanner(status, "accent", "Couldn't reach the server");
+      detail.textContent =
+        "Nothing answered at that address. Check the address, and check you're on the same network or VPN as the relay.";
+      break;
+    case "not_a_qsl_relay":
+      setBanner(status, "accent", "Not a QSL relay");
+      detail.textContent = "Something answered, but it isn't a QSL relay. Check the address.";
+      break;
+  }
+  showNotSavedIfDirty();
+}
+
+// R2 — Test's Err channel: LOCAL config problems, no request was formed.
+// (11) malformed address -> INLINE field validation, never a card.
+// (12) unreadable configured CA -> its OWN line, EXPLICITLY NOT cert-not-trusted
+//      (that means TLS refused a READABLE cert; this is a local file problem).
+// (13) client build failure / other -> a generic line.
+const RELAY_ENDPOINT_CODES = ["relay_endpoint_missing", "relay_endpoint_invalid_host", "relay_endpoint_invalid_scheme", "relay_endpoint_invalid"];
+const RELAY_CA_CODES = ["relay_ca_file_missing", "relay_ca_file_unreadable", "relay_ca_file_invalid"];
+function renderServerError(codeStr) {
+  if (RELAY_ENDPOINT_CODES.some((c) => codeStr.includes(c))) {
+    byId("relay-url").classList.add("invalid");
+    byId("relay-url-error").textContent = "Enter a valid relay address, e.g. https://relay.example.net";
+    clearServerResults();
+    return;
+  }
+  byId("relay-results").classList.remove("hidden");
+  byId("relay-doc").innerHTML = "";
+  byId("relay-saved-note").classList.add("hidden");
+  if (RELAY_CA_CODES.some((c) => codeStr.includes(c))) {
+    setBanner(byId("relay-status"), "accent", "Certificate authority file couldn't be read");
+    byId("relay-detail").textContent =
+      "The certificate authority file you configured couldn't be read. Check the path under “Certificate authority” above — this is a local file problem, not a problem with the server's certificate.";
+  } else {
+    setBanner(byId("relay-status"), "accent", "Couldn't start the connection test");
+    byId("relay-detail").textContent = "The connection test couldn't be started (" + codeStr + ").";
+  }
+}
+
+async function refreshRelayTokenStatus() {
+  try {
+    const s = await invoke("relay_token_show");
+    byId("relay-token-status").textContent = s.configured
+      ? "A token is set — leave blank to keep it, or enter a new one to replace it."
+      : "No token set.";
+  } catch (_) { byId("relay-token-status").textContent = ""; }
+}
+async function refreshRelayCaStatus() {
+  try {
+    const s = await invoke("relay_ca_file_show");
+    byId("relay-ca-status").textContent = s.configured
+      ? "CA certificate file set (" + (s.path_hash || "configured") + ")."
+      : "No CA file set — the app uses your computer's trusted certificates.";
+  } catch (_) { byId("relay-ca-status").textContent = ""; }
+}
+async function refreshServerPane() {
+  try {
+    const cfg = await invoke("relay_config_get");
+    savedRelayUrl = cfg.relay_url || "";
+    byId("relay-url").value = savedRelayUrl;
+  } catch (_) { savedRelayUrl = ""; }
+  byId("relay-token").value = "";
+  byId("relay-url-error").textContent = "";
+  byId("relay-ca-error").textContent = "";
+  byId("relay-url").classList.remove("invalid");
+  clearServerResults();
+  await refreshRelayTokenStatus();
+  await refreshRelayCaStatus();
+}
+
+// Editing any field after a test CLEARS the results (state 10) — asserting
+// "Connected" for a configuration that no longer exists is a false claim.
+for (const fid of ["relay-url", "relay-token", "relay-ca-path"]) {
+  byId(fid).addEventListener("input", () => {
+    if (fid === "relay-url") { byId("relay-url").classList.remove("invalid"); byId("relay-url-error").textContent = ""; }
+    if (fid === "relay-ca-path") byId("relay-ca-error").textContent = "";
+    clearServerResults();
+  });
+}
+
+byId("btn-relay-test").addEventListener("click", async () => {
+  const url = byId("relay-url").value.trim();
+  byId("relay-url-error").textContent = "";
+  byId("relay-url").classList.remove("invalid");
+  try {
+    renderServerOutcome(await invoke("relay_test", { url }));
+  } catch (e) {
+    renderServerError(String(e));
+  }
+});
+
+byId("btn-relay-save").addEventListener("click", async () => {
+  const url = byId("relay-url").value.trim();
+  byId("relay-url-error").textContent = "";
+  try {
+    await invoke("relay_config_set", { url });
+    const cfg = await invoke("relay_config_get");
+    savedRelayUrl = cfg.relay_url || "";
+    byId("relay-url").value = savedRelayUrl;
+    byId("relay-saved-note").classList.add("hidden");
+    byId("btn-relay-save").classList.remove("primary");
+    byId("btn-relay-save").classList.add("secondary");
+    acknowledge(byId("btn-relay-save"), "✓ Saved");
+  } catch (_) {
+    byId("relay-url").classList.add("invalid");
+    byId("relay-url-error").textContent = "Enter a valid relay address, e.g. https://relay.example.net";
+  }
+});
+
+byId("btn-relay-token-set").addEventListener("click", async () => {
+  byId("relay-token-status").textContent = "";
+  try {
+    await invoke("relay_token_set", { token: byId("relay-token").value });
+    byId("relay-token").value = "";
+    await refreshRelayTokenStatus();
+    acknowledge(byId("btn-relay-token-set"), "✓ Set");
+    clearServerResults();
+  } catch (e) {
+    byId("relay-token-status").textContent = mapErr(e, { relay_token_missing: "Enter a token first." });
+  }
+});
+byId("btn-relay-token-clear").addEventListener("click", async () => {
+  try {
+    await invoke("relay_token_clear");
+    byId("relay-token").value = "";
+    await refreshRelayTokenStatus();
+    acknowledge(byId("btn-relay-token-clear"), "✓ Cleared");
+    clearServerResults();
+  } catch (e) { byId("relay-token-status").textContent = String(e); }
+});
+
+byId("btn-relay-ca-set").addEventListener("click", async () => {
+  byId("relay-ca-error").textContent = "";
+  try {
+    await invoke("relay_ca_file_set", { path: byId("relay-ca-path").value.trim() });
+    byId("relay-ca-path").value = "";
+    await refreshRelayCaStatus();
+    acknowledge(byId("btn-relay-ca-set"), "✓ Set");
+    clearServerResults();
+  } catch (e) {
+    byId("relay-ca-error").textContent = mapErr(e, {
+      relay_ca_file_missing: "No file at that path.",
+      relay_ca_file_unreadable: "That file can't be read.",
+      relay_ca_file_invalid: "That doesn't look like a certificate file.",
+    });
+  }
+});
+byId("btn-relay-ca-clear").addEventListener("click", async () => {
+  byId("relay-ca-error").textContent = "";
+  try {
+    await invoke("relay_ca_file_clear");
+    byId("relay-ca-path").value = "";
+    await refreshRelayCaStatus();
+    acknowledge(byId("btn-relay-ca-clear"), "✓ Cleared");
+    clearServerResults();
+  } catch (e) { byId("relay-ca-error").textContent = String(e); }
 });
 
 // ---- idle autolock (ON by default at 60 min, adjustable; 0 = NEVER

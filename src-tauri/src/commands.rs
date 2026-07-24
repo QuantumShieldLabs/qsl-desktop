@@ -231,13 +231,12 @@ pub fn settings_set(
     autolock_minutes: u32,
     self_alias: String,
 ) -> Result<(), String> {
-    settings::save(
-        &st.data_dir,
-        &AppSettings {
-            autolock_minutes,
-            self_alias: self_alias.trim().to_string(),
-        },
-    )
+    // Load-mutate-save so the slice-B relay_url (and any future key) survives an
+    // autolock/alias save — settings_set owns ONLY these two fields.
+    let mut s = settings::load(&st.data_dir);
+    s.autolock_minutes = autolock_minutes;
+    s.self_alias = self_alias.trim().to_string();
+    settings::save(&st.data_dir, &s)
 }
 
 #[tauri::command]
@@ -312,6 +311,205 @@ pub fn app_info() -> AppInfoDto {
     AppInfoDto {
         display_name: APP_DISPLAY_NAME,
         version: env!("CARGO_PKG_VERSION"),
-        slice: "A (serverless skeleton; server connectivity arrives in a future update)",
+        slice: "B (server connectivity: point the app at a relay and test the connection)",
     }
+}
+
+// ===========================================================================
+// GUI slice B — server connectivity (D609 GATE 2).
+//
+// Thin forwarders onto the qsc surface NA-0672 shipped. ⚠ R1: EVERY qsc call
+// runs inside `st.gw.call(...)` on the serial blocking gate — qsc's blocking
+// HTTP client PANICS if constructed in an async context, which is exactly what
+// the gate exists to prevent. NONE of these construct an HTTP client or touch
+// `relay_server_info_from_parts`: the probe is called WHOLE, and the already-
+// classified outcome is mapped to a serde DTO here (rendering, not re-
+// classifying) — the relay taxonomy lives in qsc and is re-derived nowhere.
+// ===========================================================================
+
+/// The flattened server-info document rendered by the pane's "Connected"
+/// state — mirrors `qsc::transport::ServerInfoDoc` minus `auth_mode` (carried
+/// on the outcome). The pane renders the REAL fields; the mockup values are
+/// placeholders.
+#[derive(Serialize)]
+pub struct ServerInfoDocDto {
+    pub name: String,
+    pub version: String,
+    pub api: Vec<String>,
+    pub max_body_bytes: u64,
+    pub max_queue_depth: u64,
+    pub retention_ttl_secs: u64,
+    pub directory_mode: String,
+    pub attachments_service_url: Option<String>,
+    pub kt_mode: String,
+    pub min_client_version: Option<String>,
+}
+
+/// A 1:1 rendering of `qsc::transport::RelayServerInfoOutcome` for the FE —
+/// NOT a re-classification (R1). `auth_mode` is "open" | "bearer".
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RelayTestDto {
+    // `doc` is boxed so the Reachable variant is not far larger than the
+    // others (clippy::large_enum_variant); serde serializes Box<T> transparently.
+    Reachable {
+        auth_mode: String,
+        doc: Box<ServerInfoDocDto>,
+    },
+    AuthRequired {
+        token_was_sent: bool,
+    },
+    NotAQslRelay,
+    CertNotTrusted,
+    Unreachable,
+}
+
+#[derive(Serialize)]
+pub struct RelayConfigDto {
+    pub relay_url: String,
+}
+
+/// Token presence ONLY — a bare bool (FLAG-3: a token is secret, no hash).
+#[derive(Serialize)]
+pub struct RelayTokenStatusDto {
+    pub configured: bool,
+}
+
+/// CA-file presence + a redacted path hash — the path is PUBLIC material, so a
+/// hash is acceptable (the deliberate asymmetry with the bare-bool token).
+#[derive(Serialize)]
+pub struct RelayCaStatusDto {
+    pub configured: bool,
+    pub path_hash: Option<String>,
+}
+
+fn relay_auth_mode_str(m: qsc::transport::RelayAuthMode) -> &'static str {
+    match m {
+        qsc::transport::RelayAuthMode::Open => "open",
+        qsc::transport::RelayAuthMode::Bearer => "bearer",
+    }
+}
+
+fn relay_test_dto(outcome: qsc::transport::RelayServerInfoOutcome) -> RelayTestDto {
+    use qsc::transport::RelayServerInfoOutcome as O;
+    match outcome {
+        O::Reachable { auth_mode, doc } => RelayTestDto::Reachable {
+            auth_mode: relay_auth_mode_str(auth_mode).to_string(),
+            doc: Box::new(ServerInfoDocDto {
+                name: doc.name,
+                version: doc.version,
+                api: doc.api,
+                max_body_bytes: doc.max_body_bytes,
+                max_queue_depth: doc.max_queue_depth,
+                retention_ttl_secs: doc.retention_ttl_secs,
+                directory_mode: doc.directory_mode,
+                attachments_service_url: doc.attachments_service_url,
+                kt_mode: doc.kt_mode,
+                min_client_version: doc.min_client_version,
+            }),
+        },
+        O::AuthRequired { token_was_sent } => RelayTestDto::AuthRequired { token_was_sent },
+        O::NotAQslRelay => RelayTestDto::NotAQslRelay,
+        O::CertNotTrusted => RelayTestDto::CertNotTrusted,
+        O::Unreachable => RelayTestDto::Unreachable,
+    }
+}
+
+/// Read the persisted relay endpoint (NON-SECRET; from settings.json).
+#[tauri::command]
+pub fn relay_config_get(st: State<'_, AppState>) -> RelayConfigDto {
+    RelayConfigDto {
+        relay_url: settings::load(&st.data_dir).relay_url,
+    }
+}
+
+/// Persist the relay endpoint (URL ONLY; token + CA live in the qsc vault).
+/// Validates with `normalize_relay_endpoint`; on a malformed address returns
+/// the code for INLINE field validation (R2a) — never a results card, since no
+/// probe was attempted. Stores the normalized form (what the probe uses).
+#[tauri::command]
+pub fn relay_config_set(st: State<'_, AppState>, url: String) -> Result<(), String> {
+    let normalized =
+        qsc::adversarial::route::normalize_relay_endpoint(&url).map_err(|c| c.to_string())?;
+    let mut s = settings::load(&st.data_dir);
+    s.relay_url = normalized;
+    settings::save(&st.data_dir, &s)
+}
+
+/// Probe `GET {url}/v1/server-info` through the serial blocking gate (R1) and
+/// return the pre-classified outcome. `Err` carries a LOCAL-config code
+/// (`relay_endpoint_*` for a bad address, `relay_ca_file_*` for an unreadable
+/// configured CA, `relay_server_info_failed` for a client build failure); the
+/// FE maps it per R2 — the CA-file case is its OWN line, NOT CertNotTrusted.
+#[tauri::command]
+pub async fn relay_test(st: State<'_, AppState>, url: String) -> Result<RelayTestDto, String> {
+    let outcome = st
+        .gw
+        .call(move || qsc::transport::relay_server_info(&url))
+        .await;
+    match outcome {
+        Ok(o) => Ok(relay_test_dto(o)),
+        Err(code) => Err(code.to_string()),
+    }
+}
+
+/// Set the relay bearer token — into the qsc vault via the trio, NEVER
+/// `vault::secret_set` directly. Empty is rejected by qsc.
+#[tauri::command]
+pub async fn relay_token_set(st: State<'_, AppState>, token: String) -> Result<(), String> {
+    st.gw
+        .call(move || qsc::transport::relay_token_set(&token).map_err(|c| c.to_string()))
+        .await
+}
+
+#[tauri::command]
+pub async fn relay_token_clear(st: State<'_, AppState>) -> Result<(), String> {
+    st.gw
+        .call(|| qsc::transport::relay_token_clear().map_err(|c| c.to_string()))
+        .await
+}
+
+/// Presence ONLY — the bare bool (FLAG-3: no hash of a secret).
+#[tauri::command]
+pub async fn relay_token_show(st: State<'_, AppState>) -> Result<RelayTokenStatusDto, String> {
+    Ok(st
+        .gw
+        .call(|| RelayTokenStatusDto {
+            configured: qsc::transport::relay_token_show().configured,
+        })
+        .await)
+}
+
+/// Set the operator CA-file path — into the qsc vault via the trio. qsc
+/// validates the file exists (`relay_ca_file_missing`).
+#[tauri::command]
+pub async fn relay_ca_file_set(st: State<'_, AppState>, path: String) -> Result<(), String> {
+    st.gw
+        .call(move || qsc::transport::relay_ca_file_set(&path).map_err(|c| c.to_string()))
+        .await
+}
+
+#[tauri::command]
+pub async fn relay_ca_file_clear(st: State<'_, AppState>) -> Result<(), String> {
+    st.gw
+        .call(|| qsc::transport::relay_ca_file_clear().map_err(|c| c.to_string()))
+        .await
+}
+
+/// CA-file presence + redacted path hash (the path is public; the deliberate
+/// asymmetry with the bare-bool token). ⚠ Resolves through `vault::secret_get`
+/// and fails CLOSED when locked → a locked vault reads configured=false, not
+/// "unknown" (Appendix F.7). Safe ONLY because Settings is unlock-gated.
+#[tauri::command]
+pub async fn relay_ca_file_show(st: State<'_, AppState>) -> Result<RelayCaStatusDto, String> {
+    Ok(st
+        .gw
+        .call(|| {
+            let s = qsc::transport::relay_ca_file_show();
+            RelayCaStatusDto {
+                configured: s.configured,
+                path_hash: s.path_hash,
+            }
+        })
+        .await)
 }

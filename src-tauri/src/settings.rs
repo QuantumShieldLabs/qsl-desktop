@@ -22,6 +22,18 @@ pub struct AppSettings {
     /// keeps the slice-A key set exactly.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub self_alias: String,
+    /// The relay endpoint the Server pane points at (slice B). NON-SECRET by
+    /// ruling: a public address, not a credential — the bearer token and the
+    /// CA-file path live in the qsc vault, never here (D609 R6). Empty is
+    /// OMITTED so an unconfigured profile keeps the prior key set exactly,
+    /// the same `self_alias` pattern. Added to the allowlist test
+    /// deliberately. The `deny_unknown_fields` downgrade property is
+    /// KNOWINGLY untouched (D609 R6): a slice-B file carrying `relay_url`
+    /// fails to parse on a slice-A reader and falls back to the default —
+    /// a pre-existing class (`self_alias` already carries it), and
+    /// downgrades are not a supported path.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub relay_url: String,
 }
 
 impl Default for AppSettings {
@@ -29,6 +41,7 @@ impl Default for AppSettings {
         AppSettings {
             autolock_minutes: AUTOLOCK_DEFAULT_MINUTES,
             self_alias: String::new(),
+            relay_url: String::new(),
         }
     }
 }
@@ -91,6 +104,26 @@ mod tests {
         let v = serde_json::to_value(&with_alias).unwrap();
         let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, vec!["autolock_minutes", "self_alias"]);
+
+        // The D609 slice-B relay endpoint: NON-SECRET (a public address), added
+        // to the allowlist deliberately. OMITTED while empty (skip_serializing_if),
+        // so an unconfigured profile keeps the prior key set; present exactly once
+        // when set. NOTE: `to_value` builds a serde_json::Map (BTreeMap), so the
+        // key ORDER here is ALPHABETICAL, not struct-declaration order (the file
+        // written by `to_vec_pretty(&AppSettings)` uses declaration order); this
+        // test pins the key SET, which is what "non-secret by construction" needs.
+        let mut with_relay = AppSettings::default();
+        with_relay.relay_url = "https://relay.example".to_string();
+        let v = serde_json::to_value(&with_relay).unwrap();
+        let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec!["autolock_minutes", "relay_url"]);
+
+        let mut both = AppSettings::default();
+        both.self_alias = "Vic".to_string();
+        both.relay_url = "https://relay.example".to_string();
+        let v = serde_json::to_value(&both).unwrap();
+        let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec!["autolock_minutes", "relay_url", "self_alias"]);
     }
 
     /// An alias-bearing file from this version loads on a reader that also
