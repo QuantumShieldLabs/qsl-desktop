@@ -248,8 +248,10 @@ pub fn run() {
                 .name(Some(commands::APP_DISPLAY_NAME.to_string()))
                 .version(Some(env!("CARGO_PKG_VERSION").to_string()))
                 .comments(Some(
-                    "This build makes no network connections and no security-assurance claims."
-                        .to_string(),
+                    // Slice B (D609 R4): the app now reaches a relay, so the
+                    // "no network connections" clause is retired — but the
+                    // surviving true clause STAYS: no security-assurance claims.
+                    "This build makes no security-assurance claims.".to_string(),
                 ))
                 .build();
             let help = SubmenuBuilder::new(app, "Help")
@@ -326,6 +328,17 @@ pub fn run() {
             commands::marker_stats,
             commands::core_busy,
             commands::app_info,
+            // slice B (D609 GATE 2): server connectivity — thin forwarders onto
+            // the qsc surface, every qsc call through the serial blocking gate.
+            commands::relay_config_get,
+            commands::relay_config_set,
+            commands::relay_test,
+            commands::relay_token_set,
+            commands::relay_token_clear,
+            commands::relay_token_show,
+            commands::relay_ca_file_set,
+            commands::relay_ca_file_clear,
+            commands::relay_ca_file_show,
             ui_surface_changed,
         ])
         .run(tauri::generate_context!())

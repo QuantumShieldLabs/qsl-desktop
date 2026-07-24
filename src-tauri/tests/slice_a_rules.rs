@@ -108,19 +108,27 @@ fn rule_c_no_raw_global_symbols_in_src() {
     }
 }
 
-/// Slice-A boundary: ZERO networking code. Source-scan over src/ and ui/.
+/// R1 boundary (D609 slice B): the desktop crate builds NO networking client of
+/// its own — ALL networking goes through the `qsc` dependency, on the serial
+/// blocking gate. qsc owns `reqwest`; the desktop must never construct its own
+/// HTTP client (an out-of-gate client is the async-construction panic the gate
+/// exists to prevent). Slice A additionally forbade URL-scheme literals; slice
+/// B legitimately carries relay-URL placeholders and example addresses, so that
+/// part is RETIRED — the surviving, meaningful invariant is "no direct client
+/// here." Source-scan over src/ and ui/.
 #[test]
-fn zero_networking_in_src_and_ui() {
+fn desktop_builds_no_networking_client_of_its_own() {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let roots = [manifest.join("src"), manifest.join("../ui")];
-    let forbidden = ["reqwest", "hyper", "http://", "https://", "ws://", "wss://"];
+    let forbidden = ["reqwest", "hyper"];
     for root in roots {
         for entry in walk(&root) {
             let text = fs::read_to_string(&entry).unwrap();
             for f in forbidden {
                 assert!(
                     !text.contains(f),
-                    "networking token `{f}` found in {}",
+                    "the desktop crate must build no HTTP client of its own (R1); \
+                     networking token `{f}` found in {} — route it through qsc",
                     entry.display()
                 );
             }

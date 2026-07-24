@@ -481,3 +481,69 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     server-info consumer + token/CA trio landed at spine NA-0672 (rev
     `ab5041cd`); D-0006 (the round-4a pass this builds on). GATE 2 (the
     pane) and GATE 3 (the spine closeout) follow under D609.
+
+- **ID:** D-0008
+  - **Status:** Accepted
+  - **Date:** 2026-07-24
+  - **Decision:** Land GATE 2 of GUI slice B — the Server pane — per spine
+    directive D609 (QSL-DIR-2026-07-24-609, approved, sha256 `eb6f9da0…`,
+    678 lines; spine lane NA-0673; result class
+    GUI_SLICE_B_SERVER_PANE_PASS). `#pane-server` becomes the full pane:
+    relay-address + access-token + CA inputs, Test/Save, a results panel.
+    Backend: thin `relay_*` Tauri commands forwarding onto the qsc surface
+    NA-0672 shipped, EVERY qsc call through the serial blocking gate
+    (`gateway.rs`) — the pane constructs NO HTTP client and never touches
+    `relay_server_info_from_parts` (R1: an out-of-gate fetch is a runtime
+    panic). `settings.rs` gains `relay_url` (the `self_alias` pattern —
+    serde default + skip-when-empty; the allowlist test extended to it; the
+    `deny_unknown_fields` downgrade property KNOWINGLY untouched, R6). The
+    Test button maps qsc's PRE-CLASSIFIED outcome to the 13 results states
+    (R3): 7 probe outcomes + the "Not saved yet" save-state + idle +
+    clear-on-edit + the 3 `Err`-channel states. R2 `Err` mapping: a bad
+    address → INLINE field validation (never a card); an unreadable
+    configured CA → its OWN line, EXPLICITLY NOT CertNotTrusted (R2b); a
+    client build failure → a generic line. The two 401 messages are LOCAL
+    observations, never server verdicts (R3). No connect-anyway control
+    (R8). The five-surface claim-discipline sweep (R4): About in-app
+    (`ui/main.js` + the `commands.rs` slice string), About native menu
+    (`lib.rs`), footer (`index.html` + `main.js`), welcome stub
+    (`index.html`) — the two COMPOUND surfaces edited surgically, the
+    surviving true clauses kept ("no security-assurance claims"; "Adding
+    contacts arrives in a future update"). Appendix F
+    (`docs/DESIGN_SPEC_AppendixF.md`) is the new design authority for the
+    pane.
+  - **Design calls recorded (see Appendix F):** (a) R7 — the results reuse
+    the shipped §2 status-banner component with only `neutral`/`accent`;
+    RED (`status-danger`) is RESERVED for the vault-danger surfaces
+    (DESIGN_SPEC §2), so a connection FAILURE is `accent` (attention), not
+    red — the message carries the severity. The mockup's red "bad" / amber
+    "warn" coding is deliberately NOT copied (reading a mockup colour is a
+    STOP). (b) "Save persists ONLY the URL" (directive) → the token and CA
+    commit through their OWN Set/Clear controls (the vault trios), not Save;
+    the probe reads them from the vault, so they must be committed to be
+    exercised.
+  - **Scope + two necessary deviations, recorded:** touched `ui/index.html`,
+    `ui/main.js`, `src-tauri/src/commands.rs`, `src-tauri/src/settings.rs`,
+    `src-tauri/src/lib.rs`, `src-tauri/tests/server_pane.rs` (new, additive),
+    `src-tauri/tests/slice_a_rules.rs` + `slice_a_flows.rs` (the slice-A
+    "zero networking" invariant slice B necessarily breaks — see below),
+    `docs/DESIGN_SPEC_AppendixF.md` (new), `DECISIONS.md`. `gateway.rs`,
+    `design_round2.rs`, `design_system.rs` BYTE-UNCHANGED (STOP-class); no
+    dependency motion (the pin bump was GATE 1). **(i)** The directive's
+    GATE-2 MAY-touch names `lib.rs` "About menu comment ONLY", but the 9 new
+    Tauri commands MUST be registered in `generate_handler` (also in
+    `lib.rs`) or they cannot be invoked — an unavoidable structural
+    consequence of adding commands, not a discretionary expansion. **(ii)**
+    `ui/style.css` was NOT in the GATE-2 MAY-touch list; the pane's few
+    structural needs (the 470px form cap, the results layout) were met with
+    inline styles in `index.html` (colours are shipped tokens only, no
+    mockup hex) rather than editing `style.css`, to stay within scope.
+    **(iii)** the slice-A `zero_networking_in_src_and_ui` test asserted an
+    invariant slice B is defined to break; it was REFINED (not deleted) to
+    the surviving, meaningful R1 invariant — the desktop crate builds no
+    `reqwest`/`hyper` client of its own; all networking goes through qsc.
+  - **References:** spine D609 (the directive, R1–R8); spine lane NA-0673,
+    GATE 2; the qsc server-info consumer + token/CA trios at spine NA-0672
+    (rev `ab5041cd`, pinned in D-0007); D-0007 (the GATE-1 pin bump this
+    builds on); docs/DESIGN_SPEC_AppendixF.md (the pane's design authority).
+    GATE 3 (the spine governance closeout) follows.

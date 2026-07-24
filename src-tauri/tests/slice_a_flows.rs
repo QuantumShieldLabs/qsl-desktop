@@ -50,15 +50,17 @@ fn c_prime_deferred_path_to_honest_disconnected() {
     let code = qsc::identity::format_verification_code_from_fingerprint(&fp);
     assert!(!code.is_empty());
 
-    // relaunch resolves S2; slice A has no server configuration surface —
-    // the main window's only honest state is "no server configured".
+    // relaunch resolves S2. Slice B adds a Server pane, but this flow never
+    // configures a relay — so the profile still carries ONLY the autolock key
+    // (relay_url is omitted while empty), and the footer's honest state is
+    // "no server configured".
     assert_eq!(resolve_launch_state(tmp.path()), LaunchState::S2);
     let v = serde_json::to_value(settings::load(tmp.path())).unwrap();
     let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
     assert_eq!(
         keys,
         vec!["autolock_minutes"],
-        "no server key may exist in slice A"
+        "an unconfigured profile carries no relay key"
     );
     lock(None);
 }
