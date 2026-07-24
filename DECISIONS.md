@@ -547,3 +547,28 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     (rev `ab5041cd`, pinned in D-0007); D-0007 (the GATE-1 pin bump this
     builds on); docs/DESIGN_SPEC_AppendixF.md (the pane's design authority).
     GATE 3 (the spine governance closeout) follows.
+
+- **ID:** D-0009
+  - **Status:** Accepted
+  - **Date:** 2026-07-24
+  - **Decision:** Amend `docs/DESIGN_SPEC_AppendixF.md` to record the RATIFIED
+    REASONING for the two GATE-2 design calls (operator, 2026-07-24), so a
+    future lane cannot re-open them. (a) [F.1-BANNER] gains the REASON red is
+    not used for connection results: §2 reserves red for irreversible
+    vault-loss (armed erasure, autolock-0, the destroy ceremony); a relay you
+    cannot reach is an INCONVENIENCE, not a danger; if failures rendered in the
+    same red, the palette would stop meaning anything and red on the destroy
+    ceremony would carry no more weight than a typo'd hostname; severity belongs
+    to the MESSAGE; declining the mockup's red is R7 working (the mockup is the
+    layout authority, not the palette). (b) [F.1-COMMIT] is reframed as a
+    RULING-REFINEMENT, not a deviation: "Save persists only the URL" left the
+    token with nowhere to commit, so own Set/Clear controls via the vault trios
+    is the only shape consistent with both standing rulings. Doc-only (Appendix
+    F + this log); no code, no test, no behaviour change.
+  - **Rationale:** The reasoning arrived at ratification, AFTER GATE 2 (D-0008)
+    merged, so it could not ride that PR. Recording WHY — not merely the
+    decision — is what stops a later lane re-litigating the palette or the
+    commit model.
+  - **References:** spine D609 (R7, the design authority); D-0008 (GATE 2, which
+    landed Appendix F and made the two design calls); DESIGN_SPEC §2 (the red
+    reservation this reason cites).

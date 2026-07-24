@@ -47,6 +47,17 @@ MESSAGE carries the severity. Connected uses `status-neutral` (calm, verified).
 The mockup's red "bad" / amber "warn" coding is deliberately not reproduced;
 copying it would be reading a mockup colour.
 
+**THE REASON (ratified 2026-07-24) — recorded so a future lane cannot re-open
+it.** §2 reserves red for VAULT DANGER: irreversible-loss states — armed
+erasure, autolock-0, the destroy ceremony. A relay you cannot reach is an
+INCONVENIENCE: nothing is lost, nothing is at risk; you fix the address and
+retry. If "certificate not trusted" rendered in the same red as "this will
+erase your vault," the palette would stop meaning anything — the user learns
+red is merely "something's off," and red on the destroy ceremony then carries no
+more weight than a typo'd hostname. Severity belongs to the message, not the
+colour. Declining to copy the mockup's red is R7 working as intended: the mockup
+is the LAYOUT authority; its palette is not.
+
 **[F.1-COMMIT] Save persists ONLY the relay URL; the token and CA commit
 through their own controls.** The URL is NON-SECRET and lives in
 `settings.json` (added to the allowlist test deliberately, D609 R6). The bearer
@@ -58,6 +69,13 @@ a test can exercise them; each therefore has its own Set/Clear, and "Save"
 governs the URL alone. (The mockup drew the token as a bare input; the
 directive's "Save persists ONLY the URL" governs, so the token gained explicit
 controls.)
+
+This is a RULING-REFINEMENT, not a deviation (ratified 2026-07-24). "Save
+persists only the URL" was correct — secrets belong in the vault, never in
+`settings.json` — but on its own it left the token with nowhere to be
+committed. Own Set/Clear controls via the vault trios is the ONLY shape
+consistent with BOTH standing rulings ("URL to settings, secrets to the vault"),
+and it matches the CA disclosure's existing shape.
 
 ## F.2 — The results states (the full enumeration)
 
