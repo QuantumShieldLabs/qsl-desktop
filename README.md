@@ -12,14 +12,23 @@ Desktop client (GUI) for the QSL protocol — in development, pre-release.
 - v1 targets Linux only (roadmap decision D-A / locked decision L9); macOS
   is the first post-skeleton platform lane, Windows sits at a later horizon.
 
-## Status: slice A — the serverless skeleton
-This build contains the local vault/identity/unlock lifecycle only:
+## Status: local lifecycle + server configuration; no messaging
+This build contains the local vault/identity/unlock lifecycle —
 onboarding (create vault, identity display), the unlock screen with its
-escalating-delay protection display, idle autolock, the empty main window,
-and the Vault & Security settings. **Server connectivity is not yet
-included** — this build makes no network connections at all; the
-server-configuration surface arrives in the next slice. There is no
-messaging functionality and no release.
+escalating-delay protection display, idle autolock, and the Vault &
+Security settings — plus the Settings › Server pane, where a relay
+address, an access token, and a CA certificate file are configured. One
+**Save** commits the pane; **Test connection** saves first and then
+reports what the relay actually answered. (That commit model is a
+revision of the pane's first version, which committed each field through
+its own button.)
+
+**The app opens a network connection only when you press Test
+connection.** Nothing connects at launch, in the background, or on a
+timer.
+
+There is still **no messaging** — no sending, no receiving, no
+contacts — and no release.
 
 No security, privacy, or availability claims are made for anything in this
 repository beyond factual feature description; the app's status line shows
