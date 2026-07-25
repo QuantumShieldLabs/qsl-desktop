@@ -1,0 +1,63 @@
+# cargo-audit configuration for qsl-desktop.
+#
+# The CI job runs `cargo audit --deny warnings`, so ANY advisory fails the build
+# unless it is waived here BY ID. There are no blanket waivers: dropping
+# `--deny warnings` would accept every FUTURE unmaintained or unsound crate
+# silently, which is the opposite of what this file is for.
+#
+# Every entry below is a deliberate risk acceptance with a date. When this list
+# is next reviewed, an ID that no longer appears in `cargo audit` output should
+# be DELETED from it — a waiver that outlives its finding is how a waiver list
+# becomes a permanent blindfold.
+#
+# Reviewed: 2026-07-25 (NA-0677). Next review owed: at the next qsl-desktop
+# dependency bump, or 2026-10-25, whichever comes first. See the improvement
+# ledger entry filed at this lane's closeout.
+
+[advisories]
+ignore = [
+    # ---------------------------------------------------------------------
+    # ⚠ NOT "unmaintained" — an UNSOUNDNESS advisory, waived deliberately and
+    # separately so it is visible rather than buried in the list below.
+    #
+    # RUSTSEC-2024-0429: unsoundness in the `Iterator` and `DoubleEndedIterator`
+    # impls for `glib::VariantStrIter`.
+    #
+    # WHAT IS BEING ACCEPTED: glib 0.18.5 reaches this crate transitively through
+    # tauri -> tauri-runtime-wry -> wry -> webkit2gtk -> glib. `qsl-desktop` does
+    # not call `VariantStrIter` and does not use glib's Variant API directly; the
+    # exposure is whatever the Tauri/WebKitGTK stack does internally. There is no
+    # fixed release available on the 0.18 line that Tauri v2 pins, so the choice
+    # is to waive it or to stop shipping a Linux desktop client.
+    #
+    # This is a real acceptance of a real unsoundness, stated in a sentence a
+    # reader can disagree with. It is NOT a housekeeping entry.
+    "RUSTSEC-2024-0429",
+
+    # ---------------------------------------------------------------------
+    # The gtk-rs GTK3 binding family: unmaintained, carried by every Tauri-v2-on-
+    # Linux application. Tauri v2 pins the 0.18 line; there is no maintained
+    # successor to move to without leaving the Tauri stack.
+    "RUSTSEC-2024-0411", # gdkwayland-sys
+    "RUSTSEC-2024-0412", # gdk
+    "RUSTSEC-2024-0413", # atk
+    "RUSTSEC-2024-0414", # gdkx11-sys
+    "RUSTSEC-2024-0415", # gtk
+    "RUSTSEC-2024-0416", # atk-sys
+    "RUSTSEC-2024-0417", # gdkx11
+    "RUSTSEC-2024-0418", # gdk-sys
+    "RUSTSEC-2024-0419", # gtk3-macros
+    "RUSTSEC-2024-0420", # gtk-sys
+
+    # ---------------------------------------------------------------------
+    # ⚠ These six are NOT part of the GTK3 family, despite being described that
+    # way in an earlier lane record. They are separate transitive dependencies
+    # and are listed separately so the next reader is not misled by a tidy but
+    # wrong grouping.
+    "RUSTSEC-2024-0370", # proc-macro-error — unmaintained; build-time only
+    "RUSTSEC-2025-0075", # unic-char-range   — unmaintained
+    "RUSTSEC-2025-0080", # unic-common       — unmaintained
+    "RUSTSEC-2025-0081", # unic-char-property— unmaintained
+    "RUSTSEC-2025-0098", # unic-ucd-version  — unmaintained
+    "RUSTSEC-2025-0100", # unic-ucd-ident    — unmaintained
+]

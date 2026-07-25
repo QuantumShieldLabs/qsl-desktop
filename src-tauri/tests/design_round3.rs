@@ -97,8 +97,10 @@ fn autolock_default_sixty_and_zero_valid() {
     assert_eq!(AUTOLOCK_DEFAULT_MINUTES, 60);
     assert_eq!(AppSettings::default().autolock_minutes, 60);
     let dir = tempfile::tempdir().unwrap();
-    let mut s = AppSettings::default();
-    s.autolock_minutes = 0;
+    let mut s = AppSettings {
+        autolock_minutes: 0,
+        ..Default::default()
+    };
     settings::save(dir.path(), &s).expect("0 must be accepted (E.3)");
     assert_eq!(settings::load(dir.path()).autolock_minutes, 0);
     s.autolock_minutes = 100_000;
