@@ -231,6 +231,8 @@ def main() -> int:
     args = ap.parse_args()
 
     hits: list[tuple[str, int, str, str]] = []
+    files_seen = 0
+    lines_seen = 0
 
     if args.mode == "tree":
         for path in _tracked_files():
@@ -241,25 +243,53 @@ def main() -> int:
                 continue
             if _BINARY_HINT in raw:
                 continue
+            files_seen += 1
             for lineno, line in enumerate(
                 raw.decode("utf-8", "replace").splitlines(), start=1
             ):
+                lines_seen += 1
                 for cls in _scan_line(line, tier1=True, tier2b=False):
                     hits.append((path, lineno, cls, line))
         tier = "tier1"
     else:
         pairs = _staged_lines() if args.mode == "staged" else _added_lines(args.base)
+        files_seen = len({path for path, _ in pairs})
+        lines_seen = len(pairs)
         for path, line in pairs:
             for cls in _scan_line(line, tier1=True, tier2b=True):
                 hits.append((path, 0, cls, line))
         tier = "added-line"
 
+    # Report WHAT WAS EXAMINED, not merely that nothing was found. A scan that
+    # inspected zero lines prints "clean" just as loudly as one that inspected
+    # thousands, and a green that cannot be distinguished from a no-op is the
+    # exact defect this gate was built to answer. The counts make a vacuous pass
+    # visible in the CI log.
+    scope = f"{files_seen} files, {lines_seen} lines examined"
+
     if hits:
         _report(hits, tier)
+        print(f"infra-literal-scan: FAILED ({args.mode}; {scope})", file=sys.stderr)
         _fail_message()
         return 1
 
-    print(f"infra-literal-scan: clean ({args.mode})")
+    # Refuse an empty input in the modes where empty means BROKEN, and only
+    # those. In `tree` mode zero files means the checkout or `git ls-files` is
+    # wrong; in `diff` mode zero added lines against a base almost always means
+    # the base ref was not fetched, which is how a CI gate silently becomes a
+    # no-op. In `staged` mode, by contrast, an empty added-line set is perfectly
+    # legitimate -- a deletion-only or rename-only commit has no added lines --
+    # and refusing there would block honest commits from the pre-commit hook.
+    if lines_seen == 0 and args.mode in ("tree", "diff"):
+        print(
+            f"infra-literal-scan: NOTHING EXAMINED ({args.mode}) -- refusing to "
+            "report a pass over an empty input. In diff mode this usually means "
+            "the base ref was not fetched.",
+            file=sys.stderr,
+        )
+        return 2
+
+    print(f"infra-literal-scan: clean ({args.mode}; {scope})")
     return 0
 
 
