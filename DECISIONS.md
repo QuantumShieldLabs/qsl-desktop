@@ -694,3 +694,59 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     spine ENG-0073 (superseded) and ENG-0072 (the seat-identity fix that ran
     as this lane's setup step). The live operator acceptance flight is OWED
     and is the evidence for the interaction model; CI green is not.
+
+- **ID:** D-0011
+  - **Status:** Accepted
+  - **Date:** 2026-07-25
+  - **Decision:** Fix three defects in the D-0010 Server pane, **all three found
+    by the operator's live acceptance flight and none by the 70-test suite**,
+    and add a regression pin for each. (a) **The dirty helper claimed "not
+    saved" about settings that were saved.** `renderDirty()` ran inside
+    `refreshServerState()`, i.e. BEFORE the R-B5 echo wrote the normalized URL
+    back into the field; when normalization changed the string the field still
+    held the raw text while `savedRelayUrl` held the normalized one, so the pane
+    read as dirty. The echo then corrected the field and nothing re-evaluated
+    the helper. Fixed by calling `renderDirty()` AFTER the echo in both commit
+    handlers. (b) **A stale "Testing…" banner persisted under the inline
+    address error.** The failed-commit path did `await refreshServerState()`
+    BEFORE clearing the results panel; that call reaches `relay_token_show` /
+    `relay_ca_file_show`, both of which run on the process-wide SERIAL blocking
+    gate, so a probe still in flight against a dead address parked the await
+    for the whole TCP timeout and the clear never ran. Fixed by extracting
+    `handleFailedCommit()`, whose inline branch clears FIRST and awaits
+    NOTHING. (c) **State 14 opened with a raw error code** — `mapErr` falls
+    through to `String(e)` when a code has no mapping, and that was
+    concatenated onto the front of the sentence, yielding "vault_write_failed
+    The access token wasn't saved…". Fixed so prose leads and the code stays in
+    parentheses at the end, matching the other four commit-failure messages.
+  - **Rationale:** (b) is the substantive one and it was a reasoning error, not
+    a typo: C2(b) requires re-reading live state after a **partial** commit,
+    because something landed. R-B2 guarantees a validation failure persists
+    **nothing** — so that branch has nothing to re-read, and applying the
+    obligation to a branch it does not cover is what put a gated call in the
+    way. The visible symptom was the pane asserting a test was running when
+    none had been attempted, on the exact surface whose purpose is to never
+    describe a state that isn't real. (a) is the same class one layer down: an
+    ordering assumption ("refreshServerState re-renders everything") that held
+    only while the typed and normalized forms happened to match. (c) is
+    cosmetic but lands in the one message a user reaches ONLY after something
+    has already gone wrong, which is the worst moment to show an internal
+    identifier where a sentence belongs. **No design ruling changed** —
+    Appendix F already specified the correct behaviour in all three cases;
+    these were deviations from it, so the spec needs no revision.
+  - **On the tests:** all three defects sat behind 70 passing assertions. (a)
+    is invisible unless the typed address differs from its normalized form —
+    `https://192` expanding to `https://0.0.0.192` under WHATWG IPv4 shorthand
+    is what exposed it. (b) needs a *slow* probe still holding the serial gate
+    when the next action starts, i.e. real network latency plus an impatient
+    human. Neither is reachable by a socket-free structural test, which is
+    precisely the argument for the live flight: **CI green was never the
+    acceptance, and here is the proof.** The three new pins were verified as a
+    POSITIVE CONTROL — run against the merged (defective) `main`, exactly the
+    three fail and the other ten pass; against the fix, all thirteen pass. A
+    pin that also passes on the buggy code documents nothing.
+  - **References:** D-0010 (the pane these defects are in); spine D610
+    (R-B2, R-B5, R-E5, R-F2, and C2(b) — the obligation misapplied in (b));
+    `docs/DESIGN_SPEC_AppendixF.md` F.2b (the dirty helper), F.2c (in-flight),
+    F.2 state 11 and state 14; the flight evidence in
+    `/srv/qbuild/evidence/NA-0674/flight/`.

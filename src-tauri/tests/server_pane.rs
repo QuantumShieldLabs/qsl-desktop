@@ -224,6 +224,102 @@ fn the_commit_order_is_fixed_and_settings_validation_gates_the_vault() {
 }
 
 #[test]
+fn dirty_helper_is_re_evaluated_after_the_normalized_echo() {
+    // REGRESSION (D-0011, found by the NA-0674 acceptance flight).
+    // renderDirty() ran inside refreshServerState(), i.e. BEFORE the R-B5 echo
+    // wrote the normalized URL back into the field. When normalization changed
+    // the string -- `https://192` -> `https://0.0.0.192`, a trailing slash, an
+    // uppercase host -- the field still held the RAW text while savedRelayUrl
+    // held the normalized one, so the pane read as dirty and the helper claimed
+    // "Settings changed — not saved." about settings that HAD just been saved.
+    // The echo then fixed the field, but nothing re-evaluated the helper.
+    //
+    // Pin the ORDER in both commit handlers: the echo, then renderDirty().
+    let js = ui("main.js");
+    for (handler, label) in [
+        (r#"byId("btn-relay-test").addEventListener"#, "Test"),
+        (r#"byId("btn-relay-save").addEventListener"#, "Save"),
+    ] {
+        let body = js.split(handler).nth(1).expect("handler must exist");
+        let echo = body
+            .find(r#"byId("relay-url").value = savedRelayUrl"#)
+            .unwrap_or_else(|| panic!("{label}: the R-B5 echo must exist"));
+        let dirty = body
+            .find("renderDirty();")
+            .unwrap_or_else(|| panic!("{label}: renderDirty must be called after a commit"));
+        assert!(
+            dirty > echo,
+            "{label}: renderDirty() must run AFTER the R-B5 echo, or the dirty \
+             helper reports 'not saved' for settings that were just saved"
+        );
+    }
+}
+
+#[test]
+fn the_inline_validation_path_awaits_nothing_before_clearing() {
+    // REGRESSION (D-0011, found by the NA-0674 acceptance flight).
+    // The failed-commit path did `await refreshServerState()` BEFORE clearing
+    // the results panel. refreshServerState() reaches relay_token_show /
+    // relay_ca_file_show, and BOTH run on the process-wide SERIAL blocking
+    // gate -- so a probe still in flight against a dead address parked the
+    // await for the whole TCP timeout, the clear never ran, and a stale
+    // "Testing…" banner sat under the new inline error, claiming a test was
+    // running when none had been attempted.
+    //
+    // It was also wrong on principle: C2(b) requires re-reading after a PARTIAL
+    // commit because something landed. R-B2 guarantees a validation failure
+    // persists NOTHING, so this branch has nothing to re-read.
+    let js = ui("main.js");
+    let handler = js
+        .split("function handleFailedCommit(")
+        .nth(1)
+        .expect("the shared failed-commit handler must exist");
+    let inline_branch = handler
+        .split("if (fail.inline) {")
+        .nth(1)
+        .and_then(|s| s.split("return;").next())
+        .expect("the inline branch must exist");
+    assert!(
+        inline_branch.contains("clearServerResults()"),
+        "the inline branch must clear the results panel"
+    );
+    assert!(
+        !inline_branch.contains("refreshServerState"),
+        "the inline branch must NOT re-read live state: nothing persisted (R-B2), \
+         and the read is gated -- it can park behind an in-flight probe"
+    );
+    assert!(
+        !inline_branch.contains("await"),
+        "the inline branch must await NOTHING before the panel is cleared"
+    );
+}
+
+#[test]
+fn commit_failure_prose_never_opens_with_a_raw_error_code() {
+    // REGRESSION (D-0011, found by the NA-0674 acceptance flight).
+    // mapErr() falls through to String(e) when a code has no mapping, and the
+    // result was concatenated onto the front of a sentence -- so state 14 read
+    // "vault_write_failed The access token wasn't saved...". State 14 is only
+    // ever reached AFTER something has gone wrong; leading with an internal
+    // identifier is the worst moment for it. A friendly sentence leads; the
+    // code stays, in parentheses, at the end.
+    let js = ui("main.js");
+    let commit = js
+        .split("async function commitServerSettings()")
+        .nth(1)
+        .and_then(|s| s.split("function handleFailedCommit").next())
+        .expect("the unified commit must exist");
+    assert!(
+        !commit.contains("mapErr(e, { relay_token_missing"),
+        "the token-set failure must not lead its message with mapErr's raw-code fallback"
+    );
+    assert!(
+        commit.contains(r#""The access token couldn't be saved to your vault (""#),
+        "the token-set failure must lead with prose and carry the code in parentheses"
+    );
+}
+
+#[test]
 fn no_secret_is_written_outside_the_qsc_vault_trios() {
     // Unchanged boundary, re-pinned because the commit path moved: the token
     // and the CA path go to the vault through the qsc trios, the URL goes to

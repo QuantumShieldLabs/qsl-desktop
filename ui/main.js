@@ -698,6 +698,23 @@ function tokenDirty() { return byId("relay-token").value !== "" || tokenPendingR
 function caDirty() { return byId("relay-ca-path").value.trim() !== "" || caPendingRemoval; }
 function serverDirty() { return urlDirty() || tokenDirty() || caDirty(); }
 
+// ⚠ ORDERING: after a commit this MUST run AFTER the R-B5 echo has written the
+// normalized URL back into the field — never before it. Found by the NA-0674
+// acceptance flight; see D-0011.
+//
+// `refreshServerState()` calls this internally, and the commit handlers used to
+// rely on that call alone. But it fires while the input still holds the user's
+// RAW text, and `savedRelayUrl` has by then been updated to the NORMALIZED
+// form. When normalization changes the string — IPv4 shorthand (`https://192`
+// -> `https://0.0.0.192`), a trailing slash, an uppercase host, a redundant
+// default port — the two differ, the pane reads as dirty, and the helper says
+// "Settings changed — not saved." about settings that WERE just saved. The
+// echo then corrected the field but nothing re-evaluated the helper, so the
+// false claim stood until the next keystroke.
+//
+// Type an address in its already-canonical form and the bug is invisible,
+// which is exactly why 70 passing tests missed it and a human typing a
+// shorthand IP found it in minutes.
 function renderDirty() {
   byId("relay-dirty").classList.toggle("hidden", !serverDirty());
 }
@@ -871,7 +888,19 @@ async function commitServerSettings() {
     try {
       await invoke("relay_token_set", { token: byId("relay-token").value });
     } catch (e) {
-      return { part: "vault", message: mapErr(e, { relay_token_missing: "Enter a token first." }) + " The access token wasn't saved to your vault, nothing after it was saved, and no connection test was run.", inline: false };
+      // A FRIENDLY SENTENCE LEADS; the raw code survives in parentheses at the
+      // end, matching the other four commit-failure messages. `mapErr` falls
+      // through to the BARE error code when it has no mapping, and that was
+      // being concatenated straight onto prose — so state 14 opened with a
+      // naked `vault_write_failed`. State 14 is the one message a user only
+      // ever reaches after something has already gone wrong, which is the
+      // worst possible moment to show them an internal identifier where a
+      // sentence belongs. Found by the NA-0674 flight; see D-0011.
+      const code = String(e);
+      const lead = code.includes("relay_token_missing")
+        ? "Enter a token first."
+        : "The access token couldn't be saved to your vault (" + code + ").";
+      return { part: "vault", message: lead + " Nothing after it was saved, and no connection test was run.", inline: false };
     }
   }
 
@@ -897,6 +926,42 @@ async function commitServerSettings() {
     }
   }
   return null;
+}
+
+// Both buttons take the SAME path out of a failed commit, and the two branches
+// are not symmetric. Found by the NA-0674 acceptance flight; see D-0011.
+//
+// ⚠ THE INLINE BRANCH MUST NOT AWAIT ANYTHING BEFORE CLEARING THE PANEL.
+// This originally read `await refreshServerState()` FIRST, then cleared. Two
+// mistakes in one line:
+//
+//   1. `refreshServerState()` reaches `relay_token_show` / `relay_ca_file_show`,
+//      and BOTH run through the process-wide SERIAL blocking gate. A probe
+//      still in flight against a dead address holds that gate for the whole TCP
+//      timeout, so the await parked, the clear never ran, and the panel sat
+//      showing a stale "Testing…" banner UNDERNEATH the new inline error —
+//      telling the user a test was running when none had been attempted.
+//   2. The re-read does not belong on this branch AT ALL. C2(b) requires
+//      re-reading live state after a PARTIAL commit, because something landed.
+//      R-B2 guarantees a validation failure persists NOTHING, so there is
+//      nothing to re-read. Applying the obligation to a branch it does not
+//      cover is what put a gated call in the way.
+//
+// The partial-commit branch is the opposite: it renders FIRST (so the failure
+// is on screen immediately) and re-reads AFTER, because there the state really
+// did change under the pane.
+function handleFailedCommit(fail) {
+  if (fail.inline) {
+    // State 11 already rendered inline, under the field. Nothing persisted.
+    clearServerResults();
+    renderDirty();
+    return;
+  }
+  renderCommitFailure(fail);
+  // C2(b): a partial commit DID land — the helper lines must stop describing
+  // state it already changed. Safe to await here: the commit has finished, so
+  // the gate is free.
+  void refreshServerState();
 }
 
 // NEW state 14 (R-F2): a commit that failed. Accent, sibling of state 13,
@@ -1095,8 +1160,7 @@ byId("btn-relay-test").addEventListener("click", async () => {
     if (serverDirty()) {
       const fail = await commitServerSettings();
       if (fail) {
-        await refreshServerState();
-        if (fail.inline) clearServerResults(); else renderCommitFailure(fail);
+        handleFailedCommit(fail);
         return; // R-B2/R-B1: the probe does NOT run on a failed commit.
       }
       committed = true;
@@ -1104,6 +1168,7 @@ byId("btn-relay-test").addEventListener("click", async () => {
       byId("relay-ca-path").value = "";
       await refreshServerState();
       byId("relay-url").value = savedRelayUrl; // R-B5: the NORMALIZED form.
+      renderDirty(); // MUST follow the echo — see renderDirty()'s ORDERING note.
     }
     renderServerOutcome(await invoke("relay_test", { url: savedRelayUrl }), committed);
   } catch (e) {
@@ -1126,14 +1191,14 @@ byId("btn-relay-save").addEventListener("click", async () => {
   try {
     const fail = await commitServerSettings();
     if (fail) {
-      await refreshServerState();
-      if (fail.inline) clearServerResults(); else renderCommitFailure(fail);
+      handleFailedCommit(fail);
       return;
     }
     byId("relay-token").value = "";
     byId("relay-ca-path").value = "";
     await refreshServerState();
     byId("relay-url").value = savedRelayUrl; // R-B5
+    renderDirty(); // MUST follow the echo — see renderDirty()'s ORDERING note.
     clearServerResults();
     acknowledge(byId("btn-relay-save"), "✓ Saved");
   } finally {
