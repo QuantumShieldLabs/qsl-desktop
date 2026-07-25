@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<!--
+  Reference markup for the NA-0674 Server pane redesign — Appendix B of the
+  operator-approved lane intent, the no-token state. Spine directive D610;
+  qsl-desktop D-0010.
+
+  LAYOUT AND STRUCTURE ONLY. Colour comes from the shipped design tokens
+  ([F.1-COLOUR], docs/DESIGN_SPEC_AppendixF.md); this file's palette is NOT
+  binding, and reading a hex out of it into the build is a STOP.
+
+  DELTA FROM THE INTENT APPENDIX (D610 F3R, operator-ruled 2026-07-25).
+  This repository is PUBLIC and the captured markup used a private host as its
+  illustrative example, so exactly two values were replaced with the
+  placeholders the shipped pane already uses:
+    the relay address    ->  https://relay.example.net
+    the CA file path     ->  /path/to/ca.pem
+  Nothing else differs. The originals are deliberately NOT reproduced here —
+  restating them in the record would republish exactly what the substitution
+  removes. They are recoverable from the intent, whose sha is pinned in D610.
+
+  Source appendix sha256, as extracted from the intent BEFORE the two
+  substitutions: 61e50e8a34a580c9f4f46f7986113a64635c57a4493222f862a8700ea87db1fe
+
+  Known, sanctioned divergences from the SHIPPED pane, recorded so this file is
+  not misread as a defect report — see D-0010 and Appendix F:
+    * the summary reads "(optional)"; the shipped pane uses R-D3's wording
+    * the CA path input is drawn populated; the app cannot know the stored path
+      (relay_ca_file_show returns configured + path_hash only)
+    * the dirty helper and a results block are drawn together; that state is
+      unreachable by construction (F1R)
+    * section padding is 30px; the shipped pane uses --sp-6 (32px) per F2R
+    * the <title> still says "06D" — left exactly as captured
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 06D — Server pane (clean preview)</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --bg-inset:#1A1A1C;
+  --fg:#E8E8EA; --muted:#9A9AA0; --border:#3A3A3E;
+  --accent-text:#8FBAF0; --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF;
+  --gap-field:10px; --sect-pad:30px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:32px}
+.frame{max-width:760px;margin:0 auto;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;padding:28px 32px}
+h2{margin:0 0 6px;font-size:20px}
+.muted{color:var(--muted);margin:0 0 18px}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+.field-label{color:var(--muted);font-size:12.5px;display:block;margin-bottom:6px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+input[type=text],input[type=password]{width:100%;max-width:470px;background:var(--bg-inset);
+  color:var(--fg);border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13.5px}
+input::placeholder{color:#6B6B72}
+button{font:inherit;font-size:13.5px;padding:8px 16px;border-radius:6px;cursor:pointer;
+  background:transparent;color:var(--fg);border:1px solid var(--border)}
+button.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-fill-text);font-weight:500}
+.ctlrow{display:flex;gap:10px;align-items:center}
+details summary{cursor:pointer;color:var(--accent-text);font-size:14px;list-style:revert}
+a.rm{color:var(--accent-text);font-size:12.5px;text-decoration:underline;cursor:pointer}
+.status-banner{display:flex;align-items:center;gap:10px;background:var(--bg-raised);
+  border:1px solid var(--border);border-radius:6px;padding:12px 14px;max-width:470px}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 16px;font-size:13px;max-width:470px}
+.kv .k{color:var(--muted)}
+.helper-accent{color:var(--accent-text);font-size:12.5px;margin:8px 0 0}
+.section{padding:var(--sect-pad) 0}
+.section:first-of-type{padding-top:8px}
+.section + .section{border-top:1px solid var(--border)}
+.section .stack{display:flex;flex-direction:column;gap:var(--gap-field);max-width:470px}
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <h2>Server</h2>
+  <p class="muted">The relay carries your encrypted messages. It can't read them.</p>
+
+  <div class="section">
+    <div class="stack">
+      <div>
+        <span class="field-label">Relay address</span>
+        <input type="text" class="mono" value="https://relay.example.net">
+      </div>
+      <div style="margin-top:8px">
+        <span class="field-label">Access token</span>
+        <input type="password" placeholder="" value="">
+        <p class="hint" style="margin-top:6px">Required only if the operator set one. Stored in your vault, not in settings.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <details>
+      <summary>Certificate authority (optional)</summary>
+      <div class="stack" style="margin-top:12px">
+        <p class="hint">If the operator runs their own certificate authority, add their CA certificate file so this app can verify the connection. The file's path is read at connection time; it is stored in your vault.</p>
+        <div>
+          <span class="field-label">CA certificate file path</span>
+          <input type="text" class="mono" value="/path/to/ca.pem">
+        </div>
+        <p class="hint">CA certificate file set (8e5853f2) — <a class="rm">remove it</a>.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="section">
+    <div class="ctlrow">
+      <button class="primary">Test connection</button><button>Save</button>
+    </div>
+    <p class="helper-accent">Settings changed — not saved.</p>
+
+    <div class="stack" style="margin-top:18px">
+      <div class="status-banner">🛡&nbsp; Connected</div>
+      <p class="hint">Open relay — anyone who can reach this address can use it. No access token needed. You still need an invite from someone to exchange messages.</p>
+      <div class="kv">
+        <span class="k">Certificate</span><span>Trusted</span>
+        <span class="k">Access</span><span>Open — no token needed</span>
+        <span class="k">Message retention</span><span>7 days</span>
+        <span class="k">Max message size</span><span>1 MB</span>
+        <span class="k">Server version</span><span>0.1.0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

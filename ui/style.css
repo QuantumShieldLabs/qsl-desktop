@@ -453,3 +453,32 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 .pane h3.danger-h { color: var(--danger-text); }
 .pane label { max-width: 320px; }
 .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+/* ---- the Server pane (D610 / NA-0674 redesign) ------------------------- */
+/* R-D1: three sections in a 470px form column, hairlines BETWEEN them only.
+   The adjacent-sibling rule means the hairline count follows the section
+   count -- three sections, two rules, and adding a fourth section cannot
+   accidentally leave a trailing rule at the bottom of the pane. */
+.server-form { max-width: 470px; }
+.srv-sect { padding: var(--sp-6) 0; }
+/* F2R (operator-ruled): the mockup's 30px has no nearest --sp step -- it sits
+   exactly between --sp-x28 (28px) and --sp-6 (32px). --sp-6 was ruled: a
+   canonical scale step rather than an escape-hatch value, and erring larger
+   keeps the sections distinct at 470px. The 2px is a sanctioned deviation. */
+.srv-sect:first-child { padding-top: var(--sp-2); }
+.srv-sect + .srv-sect { border-top: 1px solid var(--border); }
+.srv-stack { display: flex; flex-direction: column; gap: var(--sp-4); }
+details.tech[open] .srv-stack { margin-top: var(--sp-3); }
+.srv-results { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-4); }
+
+/* R-E5: the dirty helper. Accent, NEVER red -- an unsaved change is
+   inconvenience-class, and red is reserved for vault danger (DESIGN_SPEC §2,
+   [F.1-BANNER]). The message carries the severity, not the colour. */
+.helper-accent { color: var(--accent-text); font-size: var(--fs-hint); }
+
+/* R-A1/R-E1/R-E4: "remove it" replaces the per-field Clear BUTTONS. Prose
+   links, one per field, inside the line that describes the field's state --
+   so the control cannot be confused with its neighbour the way two adjacent
+   buttons both labelled "Clear" were (ENG-0073, from the NA-0673 flight). */
+a.rm { color: var(--accent-text); font-size: var(--fs-hint); text-decoration: underline; cursor: pointer; }
+a.rm:hover { color: var(--fg); }
