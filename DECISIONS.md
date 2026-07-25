@@ -796,3 +796,78 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     lines; census corrections C1–C4, flags A1/A2 both ruled YES) and spine
     NA-0675; D-0007/D-0008 (the pane), D-0010/D-0011 (its redesign), D-0005 (the
     autolock supersession); `/srv/qbuild/evidence/NA-0675/`.
+
+- **ID:** D-0014
+  - **Status:** Accepted
+  - **Date:** 2026-07-25
+  - **Decision:** Land the operator-infrastructure literal gate, the advisories
+    gate, and `--all-targets` clippy in this repository, per spine **D613**
+    (NA-0677). **⚠ The intent this lane came from said "port the spine's
+    public-safety job". There was nothing to port:** that job scans for private
+    keys and cloud tokens and has never contained an address, path or host
+    pattern — which is exactly why it ran green on every pull request that
+    published a private LAN address. The failure was the pattern set, not the
+    scan's scope. `scripts/ci/infra_literal_scan.py` is that missing pattern set,
+    adapted from the operator-side scanner whose class vocabulary it keeps
+    (provenance recorded in the file header and the workflow).
+  - **Two tiers, and one deliberately absent.** TIER 1 (network-identifying
+    literals and personal identity) is scanned over the **whole tracked tree** and
+    fails on any hit. TIER 2b (low-frequency private names) is scanned over
+    **added lines only**, so pre-existing occurrences are left alone and every new
+    one fails. TIER 2a (the build-root and home paths) is **not scanned at all**:
+    the governance convention cites directives and lane intents by absolute path,
+    so those literals are added by roughly 60% of governance commits and a gate on
+    them would be switched off within a week.
+  - **The private names are stored as salted SHA-256 digests, not as text.** This
+    file and the scanner are public. A pattern file spelling the names out would
+    republish exactly what the sanitize lane removed — and the Tier-1 whole-tree
+    scan would then **hit its own pattern file**, so the gate would fail itself on
+    the day it landed. That was verified, not assumed. Structural classes
+    (RFC-1918 address forms, a mail-provider domain, the tailnet-hostname form)
+    keep literal regexes, because they describe a shape rather than a name.
+  - **⚠ Anchoring: no naked word boundaries, and the first design was rejected by
+    its own control.** `\b` does not match inside `HOST_NAME` — the underscore is
+    a word character and kills the boundary — which is the exact case the previous
+    lane was blind to. Raw substring matching fixes that but fires on every
+    identifier that merely *spans* a camelCase seam: a 7-character host name sits
+    inside `setServerBusy` and `commitServerSettings`, and the first control run
+    buried the real hit under 11 false positives from this repository's own UI
+    code. **Matching is therefore TOKEN-WISE**, splitting on non-alphanumeric
+    characters *and* camelCase transitions, so `HOST_NAME`, `SOME_NAME_THING` and
+    `name-lan-relay` all hit while `setServerBusy` does not. Residual, stated
+    rather than hidden: a name written with no delimiter and no case change is one
+    token and will not match.
+  - **Advisories: `cargo audit --deny warnings` with every waived ID named
+    individually** in `.cargo/audit.toml` — **no blanket waivers**, because
+    dropping `--deny warnings` would accept every future unmaintained or unsound
+    crate silently. **`RUSTSEC-2024-0429` is dispositioned separately and
+    explicitly as an UNSOUNDNESS waiver, not an unmaintained one** — an earlier
+    lane record described all 17 findings as "the gtk3 unmaintained family", which
+    is wrong twice: six are not GTK bindings at all, and that one is an
+    unsoundness in `glib::VariantStrIter` reaching this crate through
+    tauri → wry → webkit2gtk. Waiving it is a real risk acceptance and is written
+    as a sentence a reader can disagree with. A dated re-check is owed.
+  - **Clippy `--all-targets`** replaces the lib+bin-only invocation, with the five
+    findings it exposes fixed in the same commit (the flag and the fix must land
+    together or the PR is red by construction). All five were
+    `field_reassign_with_default` in test code; no production code changed.
+  - **⚠ These two jobs are ADVISORY, not blocking.** This repository requires
+    exactly one status context, `rust`. `public-safety` and `advisories` run and
+    report on every PR but **cannot block a merge** until the operator adds them
+    to the required set — a branch-protection change, which is the operator's act.
+    Green is not the same as blocking and this decision does not claim otherwise.
+  - **A pre-commit call site** (`scripts/hooks/pre-commit`, opt-in via
+    `git config core.hooksPath scripts/hooks`) runs the **same** instrument over
+    the staged set. The pattern set is not forked. It is a convenience that saves
+    a round trip; **CI is the enforcement**, since hooks are not cloned.
+  - **Every control was run RED first.** The embedded-literal control forced the
+    matcher redesign above; the Tier-1 control caught an invalid test of its own
+    (an unstaged seed is not tracked, so `--mode tree` correctly did not see it);
+    the waiver control confirmed the gate still fails on an unwaived advisory.
+    Evidence: `/srv/qbuild/evidence/NA-0677/gate_positive_control.txt`.
+  - **Goals:** G4. Tests 73 pass / 1 ignored; fmt, `clippy --all-targets` and
+    `cargo audit --deny warnings` all clean.
+  - **References:** spine D613 (APPROVED 2026-07-25, amended after Lane B, sha256
+    `22b3b509…5927655e62f39499`, 407 lines) and spine NA-0677; NA-0676/D-1307 (the
+    sanitize that made a whole-tree tier adoptable, and whose closeout found the
+    anchoring gap); D-0012 (the claim lane that preceded this one).

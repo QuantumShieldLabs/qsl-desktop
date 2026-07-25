@@ -78,9 +78,11 @@ mod tests {
     #[test]
     fn roundtrip_and_zero_accepted() {
         let dir = tempfile::tempdir().unwrap();
-        let mut s = AppSettings::default();
-        s.autolock_minutes = 30;
-        s.self_alias = "Vic".to_string();
+        let mut s = AppSettings {
+            autolock_minutes: 30,
+            self_alias: "Vic".to_string(),
+            ..Default::default()
+        };
         save(dir.path(), &s).unwrap();
         assert_eq!(load(dir.path()), s);
         s.autolock_minutes = 0;
@@ -99,8 +101,10 @@ mod tests {
         let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, vec!["autolock_minutes"]);
 
-        let mut with_alias = AppSettings::default();
-        with_alias.self_alias = "Vic".to_string();
+        let with_alias = AppSettings {
+            self_alias: "Vic".to_string(),
+            ..Default::default()
+        };
         let v = serde_json::to_value(&with_alias).unwrap();
         let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, vec!["autolock_minutes", "self_alias"]);
@@ -112,15 +116,19 @@ mod tests {
         // key ORDER here is ALPHABETICAL, not struct-declaration order (the file
         // written by `to_vec_pretty(&AppSettings)` uses declaration order); this
         // test pins the key SET, which is what "non-secret by construction" needs.
-        let mut with_relay = AppSettings::default();
-        with_relay.relay_url = "https://relay.example".to_string();
+        let with_relay = AppSettings {
+            relay_url: "https://relay.example".to_string(),
+            ..Default::default()
+        };
         let v = serde_json::to_value(&with_relay).unwrap();
         let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, vec!["autolock_minutes", "relay_url"]);
 
-        let mut both = AppSettings::default();
-        both.self_alias = "Vic".to_string();
-        both.relay_url = "https://relay.example".to_string();
+        let both = AppSettings {
+            self_alias: "Vic".to_string(),
+            relay_url: "https://relay.example".to_string(),
+            ..Default::default()
+        };
         let v = serde_json::to_value(&both).unwrap();
         let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, vec!["autolock_minutes", "relay_url", "self_alias"]);
