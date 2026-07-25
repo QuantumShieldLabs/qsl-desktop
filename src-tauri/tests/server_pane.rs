@@ -421,6 +421,16 @@ fn claim_discipline_five_surfaces_swept() {
         "app_info slice string still says serverless skeleton"
     );
 
+    // A2 (D611): the README is a claim surface too. The stale sentence survived
+    // NA-0673 and NA-0674 because this block covered the app and not the page
+    // about the app. repo_file() panics if the path does not resolve, so this
+    // cannot silently pass by reading nothing.
+    let readme = repo_file("README.md");
+    assert!(
+        !readme.contains("makes no network connections at all"),
+        "README status section still says makes no network connections at all"
+    );
+
     // surviving TRUE clauses KEPT (the two compound surfaces)
     assert!(
         html.contains("Adding contacts arrives in a future update"),

@@ -750,3 +750,49 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     `docs/DESIGN_SPEC_AppendixF.md` F.2b (the dirty helper), F.2c (in-flight),
     F.2 state 11 and state 14; the flight evidence in
     `/srv/qbuild/evidence/NA-0674/flight/`.
+
+- **ID:** D-0012
+  - **Status:** Accepted
+  - **Date:** 2026-07-25
+  - **Decision:** Correct the README's status section, which still told readers
+    this build "makes no network connections at all" — false since D-0007/D-0008
+    shipped the Server pane and D-0010/D-0011 redesigned it. The replacement
+    states the shipped boundary and nothing beyond it: the local
+    vault/identity/unlock lifecycle **and** the Settings › Server pane (relay
+    address, access token, CA certificate file) with one Save committing the
+    pane and Test connection saving first, then **"the app opens a network
+    connection only when you press Test connection"**, and finally what is still
+    absent — **no messaging** (no sending, no receiving, no contacts) and no
+    release. The claim-boundary paragraph beneath it is byte-unchanged. The
+    redesign is noted **by its behaviour** rather than by lane number: this is a
+    public page, and a reader who has never heard of NA-0674 learns more from
+    "Save commits the pane; Test saves first" than from an identifier (Director
+    ruling, 2026-07-25).
+  - **The claim was proven before it was written.** `grep -c 'invoke("relay_test"'
+    ui/main.js` == 1, and that single call site sits inside the Test-connection
+    handler; every other frontend `invoke` is local. The sentence follows the
+    measurement.
+  - **Anti-regression pin added** to `server_pane.rs`'s
+    `claim_discipline_five_surfaces_swept`: `repo_file("README.md")` must not
+    contain "makes no network connections at all". **The stale sentence survived
+    two lanes that retired it everywhere else precisely because that block
+    covered the app surfaces and nothing covered the page about the app.**
+    `repo_file()` panics when a path does not resolve, so the pin cannot pass by
+    silently reading nothing. **Proved by positive control:** it FAILS against
+    the uncorrected README and passes after the correction
+    (`/srv/qbuild/evidence/NA-0675/a2_pin_positive_control.txt`) — a pin that has
+    never failed is not known to pin anything.
+  - **Deliberately NOT changed:** `src-tauri/src/**` is byte-untouched, and
+    `settings.rs`'s 60-minute idle-autolock default in particular. A review note
+    proposed reverting it to 15; the census found 60 is the **sanctioned** value,
+    having superseded 15 by the operator's own decision recorded at D-0005
+    ("autolock default 60 with 0 VALID meaning never-auto-lock … superseding the
+    15-minute default"). The live residue — the roadmap doc still saying "~15
+    min" — is already filed as spine WF-0024 and belongs to its own micro-lane.
+  - **Goals:** G4 (truthfulness of the published claim boundary). Tests 73 pass
+    / 1 ignored; fmt and clippy clean.
+  - **References:** spine D611 (APPROVED 2026-07-25, sha256
+    `e2087a656570e6f3d2d3ac88f603f701e056ff4452a89e20703a7f67418c5b78`, 240
+    lines; census corrections C1–C4, flags A1/A2 both ruled YES) and spine
+    NA-0675; D-0007/D-0008 (the pane), D-0010/D-0011 (its redesign), D-0005 (the
+    autolock supersession); `/srv/qbuild/evidence/NA-0675/`.
