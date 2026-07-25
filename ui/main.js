@@ -801,34 +801,37 @@ function setServerBusy(on, label) {
   setBanner(byId("relay-status"), "neutral", label);
 }
 
-// ⚠ THE COMMIT ORDER — and a DELIBERATE, FLAGGED DEVIATION FROM D610 C2.
+// ⚠ THE COMMIT ORDER — R-B1 AMENDED BY DIRECTOR RULING 2026-07-25.
 //
-// C2 ruled the order "validate the URL → token → CA → settings.json LAST",
-// on the premise that the URL (unlike the CA path) could be validated WITHOUT
-// writing. That premise is FALSE, and it was verified false here: the crate
-// exposes nine relay commands and NONE is validate-only. `relay_config_set`
-// runs `normalize_relay_endpoint` and then writes settings.json in the same
-// call, exactly as `relay_ca_file_set` validates by writing. Neither field can
-// be checked without committing it.
+// D610's C2 ruled the order "validate the URL → token → CA → settings.json
+// LAST", on the premise that the URL (unlike the CA path) could be validated
+// WITHOUT writing. That premise is FALSE, and it was verified false here: the
+// crate exposes nine relay commands and NONE is validate-only.
+// `relay_config_set` runs `normalize_relay_endpoint` and then writes
+// settings.json in the same call, exactly as `relay_ca_file_set` validates by
+// writing. Neither field can be checked without committing it.
 //
-// So C2's order cannot be implemented as written, and the two rulings it was
-// derived from now conflict:
+// That put two rulings in direct conflict:
 //   R-B1 wants vault writes first and settings.json LAST.
 //   R-B2 wants a malformed address to block the ENTIRE commit with NOTHING
 //        persisted — "on Save AND on Test."
 // Honouring R-B1's order means the vault writes land and THEN the bad address
 // is rejected, so something persisted: R-B2 broken. Honouring R-B2 means the
-// URL must be validated before any vault write, and since validating IS
-// writing, the URL commits first: R-B1's ordering inverted.
+// address must be validated before any vault write, and since validating IS
+// writing, the address commits first: R-B1's ordering inverted.
 //
-// R-B2 is implemented, because it is absolute ("nothing persists"), it is
-// stated for both buttons, and it is the one a user can actually observe.
-// R-B1's ordering carries no stated rationale, and R-B1 ALREADY concedes the
-// commit is not atomic ("any failure aborts the remainder"), so inverting the
-// order costs an ordering preference rather than a guarantee.
+// RULED: R-B2's guarantee GOVERNS; R-B1's vault-first ordering is AMENDED to
+// address-first. An absolute stated guarantee outranks unexplained write
+// ordering — R-B2 says what the user is promised and can observe, while
+// R-B1's ordering was a preference with no stated purpose, and R-B1 already
+// conceded the commit is not atomic.
 //
-// NOT resolved unilaterally: this is recorded in D-0010, in Appendix F, and
-// raised for the operator's ruling before merge.
+// THE ACCEPTED COST: if a vault write fails, the address is ALREADY saved.
+// That is acceptable because state 14 reports it HONESTLY (it names the failed
+// part and says the probe did not run) and because A RE-TEST HEALS IT — fix
+// the failing field, press Test again, and the commit completes from where it
+// stopped. A partial commit the user can see and finish is not the defect a
+// partial commit that hides would be. See D-0010 and Appendix F.
 //
 // Returns null on success, or {part, message, inline} on the first failure —
 // at which point the REMAINDER IS ABANDONED (R-B1) and the probe never runs.

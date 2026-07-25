@@ -179,18 +179,30 @@ explicitly. After any failed commit the pane **re-reads live state** and
 re-renders the helper lines, so it can never describe state a partial commit
 has already changed.
 
-> **⚠ RECORDED DEVIATION FROM D610 C2, raised for ruling (D-0010).** C2 ordered
-> "validate the URL → token → CA → `settings.json` LAST", on the premise that
-> the URL — unlike the CA path — could be validated without writing. **That
-> premise is false**, and was verified false during implementation: the crate
-> registers nine relay commands and none is validate-only. That leaves R-B1
-> ("vault writes first, settings.json last") and R-B2 ("nothing persists" on a
-> malformed address, on Save AND on Test) in direct conflict. **R-B2 is
-> implemented**, because it is absolute, is stated for both buttons, and is
-> the one a user can observe; R-B1's ordering carries no stated rationale and
-> R-B1 already concedes the commit is non-atomic, so inverting the order costs
-> a preference rather than a guarantee. The cost is real and stated: if a
-> vault write fails, the address has already been saved.
+> **⚠ R-B1 AMENDED — Director ruling 2026-07-25 (see D-0010).** D610's C2
+> ordered "validate the URL → token → CA → `settings.json` LAST", on the
+> premise that the URL — unlike the CA path — could be validated without
+> writing. **That premise is false**, and was verified false during
+> implementation: the crate registers nine relay commands and none is
+> validate-only. That left R-B1 ("vault writes first, settings.json last") and
+> R-B2 ("nothing persists" on a malformed address, on Save AND on Test) in
+> direct conflict — the address cannot be checked without being written, so
+> one of the two had to yield.
+>
+> **RULED: R-B2's guarantee governs; R-B1's vault-first ordering is amended to
+> address-first.** The reasoning, recorded because it generalises: *an
+> absolute stated guarantee outranks unexplained write ordering.* R-B2 says
+> what the user is promised and can observe; R-B1's ordering was a preference
+> with no stated purpose behind it, and R-B1 already conceded the commit is
+> non-atomic — so inverting it costs a preference, not a guarantee.
+>
+> **The accepted cost, stated so it is never a surprise:** if a vault write
+> fails, the address has already been saved. That is acceptable *because
+> state 14 reports it honestly* — it names the failed part and says the probe
+> did not run — *and because a re-test heals it*: fix the failing field, press
+> Test again, and the commit completes from where it stopped. A partial commit
+> the user can see and finish is not the same defect as a partial commit that
+> hides.
 
 **Removal is pending, not immediate.** "remove it" marks the field for
 deletion on the NEXT commit and marks the pane dirty; typing in the field

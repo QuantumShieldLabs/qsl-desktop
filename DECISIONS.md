@@ -626,22 +626,40 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     `07b0400076af8991127d745632512f707ac81bc2bfc7407bec71a8caec39c359`,
     `06e2-server-pane-no-token.html` sha256
     `184cdf3871a29240765c4c06c4fc21b3ce2fa1d336e793a180da41cfefd92836`.
-  - **⚠ Recorded deviation from directive D610 C2 — RAISED FOR RULING, not
-    settled here:** C2 fixed the commit order as "validate the URL → token →
-    CA → `settings.json` LAST", on the premise that the URL, unlike the CA
-    path, could be validated WITHOUT writing. **That premise is false.** The
-    app registers nine relay commands and none is validate-only:
-    `relay_config_set` runs `normalize_relay_endpoint` and writes in the same
-    call, exactly as `relay_ca_file_set` validates BY writing. That puts two
-    rulings in direct conflict — R-B1 wants settings.json written LAST, R-B2
-    wants a malformed address to persist NOTHING on either button. **R-B2 is
-    implemented** (address first), because it is absolute, is stated for both
-    buttons, and is the one a user can observe, while R-B1's ordering carries
-    no stated rationale and R-B1 already concedes the commit is non-atomic.
-    The cost is stated plainly rather than hidden: if a vault write fails, the
-    address has already been saved. State 14 names which part failed, the
-    remainder is abandoned, and the pane re-reads live state so it never
-    describes state a partial commit has already changed.
+  - **⚠ AMENDMENT TO R-B1 — Director ruling 2026-07-25, UPHELD as
+    implemented.** D610's **C2** fixed the commit order as "validate the URL →
+    token → CA → `settings.json` LAST", on the premise that the URL, unlike
+    the CA path, could be validated WITHOUT writing. **That premise is false**,
+    and was found false during implementation: the app registers nine relay
+    commands and none is validate-only — `relay_config_set` runs
+    `normalize_relay_endpoint` and writes in the same call, exactly as
+    `relay_ca_file_set` validates BY writing. Neither field can be checked
+    without committing it. That put two rulings in direct conflict: **R-B1**
+    wants vault writes first and `settings.json` LAST; **R-B2** wants a
+    malformed address to block the ENTIRE commit with NOTHING persisted, on
+    Save AND on Test. Honouring R-B1's order lands the vault writes before the
+    bad address is rejected (R-B2 broken); honouring R-B2 forces the address
+    to commit first (R-B1's ordering inverted).
+    **RULED (Director, 2026-07-25): R-B2's guarantee GOVERNS. R-B1's
+    vault-first ordering is AMENDED to address-first.** Rationale, as given:
+    *an absolute stated guarantee — nothing persists on validation failure —
+    outranks unexplained write ordering; and partial-commit-on-vault-failure
+    is acceptable because state 14 reports it honestly and a re-test heals
+    it.* The implementation stands unchanged; this entry records the amendment
+    rather than a deviation.
+    Consequences, recorded so they are not rediscovered: the commit is a
+    SEQUENCE, not a transaction; if a vault write fails the address has
+    ALREADY been saved; state 14 names which part failed; the remainder is
+    abandoned; the probe does not run; and the pane re-reads live state after
+    any failed commit so it never describes state a partial commit has already
+    changed. **The healing path is a re-test** — fix the failing field, press
+    Test again, and the commit completes from where it stopped.
+    **D610's C2 text is NOT rewritten.** The directive is sha-pinned in the
+    spine queue block (`6b8e8ac1…`), so amending it in place would break that
+    pin and quietly rewrite an approved document; the same mark-don't-rewrite
+    discipline this lane applies to Appendix F applies to the directive. C2
+    stands as approved and is superseded HERE, with the pointer recorded in
+    the spine closeout (D-1304/D-1305).
   - **Two further deviations, both small and both to avoid asserting something
     untrue:** (i) R-C1 specified the in-flight line as "Testing…" on BOTH
     paths; Save performs no probe, so the Save path reads "Saving…" — the
