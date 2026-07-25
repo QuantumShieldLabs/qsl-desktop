@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """Operator-infrastructure literal gate.
 
-Pattern provenance (D613 FLAG-C1, "provenance over reinvention"): adapted
-2026-07-25 from /srv/qbuild/tools/na0607-proof-tools/added_line_publication_scan.py,
-whose class vocabulary this keeps so old lane records and new CI output speak one
-language. That file is the historical source; THIS file is the source of truth.
+Pattern provenance ("provenance over reinvention"): adapted 2026-07-25 from the
+operator-side `added_line_publication_scan.py`, whose class vocabulary this keeps
+so old lane records and new CI output speak one language. That tool is the
+historical source; THIS file is the source of truth for the patterns.
+
+REVIEWABILITY: the name values below are salted digests; THE PLAINTEXT LIST IS
+OPERATOR-HELD, together with the procedure for regenerating these digests. What
+is reviewable here is the tier structure, the class labels and the structural
+regexes; what is deliberately not reviewable here is which names the digests
+stand for. That trade is the point of the next section.
 
 WHY THIS EXISTS
 ---------------
@@ -36,9 +42,12 @@ pattern file, so the gate would fail itself on the day it landed. The names are
 stored as salted SHA-256 digests: the gate still recognises them, and reading this
 file tells you nothing about what they are.
 
-The salt is public and constant. It exists so these digests are not a convenient
-target for a precomputed-hash lookup; it is not keeping a secret from anyone who
-already knows the name.
+The salt is present here because it has to be: the scanner hashes candidate tokens
+at scan time and cannot compare them against the stored digests without it. Its job
+is narrow and worth stating honestly -- it makes this list useless as a PRECOMPUTED
+rainbow-table target, and it is not, and cannot be, a secret from anyone who
+already knows a name. The protection that actually matters is that the names
+themselves are not in this tree.
 
 Structural classes keep literal regexes, because they describe a SHAPE rather than
 a name and disclose nothing: RFC-1918 address forms, a mail-provider domain, and

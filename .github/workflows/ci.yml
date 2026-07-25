@@ -37,9 +37,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      # Pattern provenance: adapted from
-      # /srv/qbuild/tools/na0607-proof-tools/added_line_publication_scan.py
-      # (2026-07-25). scripts/ci/infra_literal_scan.py is now the source of truth.
+      # Pattern provenance: adapted 2026-07-25 from the operator-side
+      # publication scanner; scripts/ci/infra_literal_scan.py is now the source
+      # of truth. The name values in it are salted digests -- the plaintext list
+      # is operator-held, along with how to regenerate them.
       #
       # The spine's existing public-safety gate scans for private keys and cloud
       # tokens only. It has never carried an address, path or host pattern, which
