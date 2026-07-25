@@ -572,3 +572,125 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
   - **References:** spine D609 (R7, the design authority); D-0008 (GATE 2, which
     landed Appendix F and made the two design calls); DESIGN_SPEC §2 (the red
     reservation this reason cites).
+
+- **ID:** D-0010
+  - **Status:** Accepted
+  - **Date:** 2026-07-25
+  - **Decision:** Redesign the Server pane's interaction model and layout,
+    REVERSING **[F.1-COMMIT]** (recorded in D-0008, reasoned in D-0009 — one
+    lane old). (a) **ONE unified Save commits everything**: the relay URL to
+    `settings.json`, the token and CA path to the qsc vault through the
+    EXISTING `relay_token_set/_clear` and `relay_ca_file_set/_clear` trios.
+    (b) **Test saves first**: on a dirty pane Test commits, then probes the
+    just-saved state; a clean pane's Test commits nothing. (c) The four
+    per-field **Set token / Clear / Set CA file / Clear buttons are REMOVED**,
+    replaced by per-field "remove it" prose links whose removal is PENDING
+    until the next commit and is cancelled by typing. (d) Layout becomes
+    **three sections** separated by exactly two hairlines at `var(--sp-6)`.
+    (e) Results **state 8 ("Not saved yet") is REMOVED** — its job folds into
+    a new dirty helper, "Settings changed — not saved." (accent, never red) —
+    and **state 14 ("Couldn't save settings") is ADDED**. (f) State 10's
+    trigger broadens from "any field edited" to "any change to what the app
+    will use." States 1-7, 9, 11, 12, 13 are UNCHANGED in trigger and wording.
+    UI + tests + docs only: no `src-tauri/src/**` change, no new backend
+    command, no qsc API change, no dependency motion, no colour or token
+    change.
+  - **Rationale:** The split commit model was locally coherent and globally a
+    trap. The probe reads the token FROM THE VAULT, so typing a new token and
+    pressing Test — the obvious gesture, and the one the layout invited —
+    probed the OLD token, and then reported that result TRUTHFULLY. That is
+    what made it dangerous: "Token rejected" for a token the user believed
+    they had just replaced is indistinguishable on screen from a genuinely bad
+    token. The model could have been patched with a warning ("press Set token
+    before testing"); **removing the trap beats warning about it**, because a
+    warning puts the burden on the user to remember an ordering the interface
+    itself created. "Secrets to the vault, URL to settings" is UNCHANGED and
+    still binds — only the user-facing commit surface unified. D-0009's
+    reasoning was correct for the affordances that existed when it was
+    written; it is marked superseded in Appendix F, not deleted, because a
+    reversal without the original reasoning reads as drift.
+  - **Operator rulings folded (2026-07-25):** **F1R** "remove it" also clears
+    the results block, so state 10's rule is one sentence and the reference
+    mockups' dirty-helper-plus-results composite is unreachable by
+    construction. **F2R** the hairline padding is `--sp-6` (32px): the
+    mockup's 30px sat exactly between `--sp-x28` and `--sp-6` with no nearer
+    step, and no new token was added; the 2px is a sanctioned deviation.
+    **F3R** the reference mockups commit SANITIZED — this repository is
+    PUBLIC and the captured markup used a private host as its illustrative
+    example, so exactly two values were replaced with the placeholders the
+    shipped pane already uses (`https://relay.example.net`, `/path/to/ca.pem`)
+    and nothing else differs. The originals are deliberately NOT restated in
+    the committed files or in this entry: restating them would republish
+    precisely what the substitution removes. Committed under `docs/mockups/`:
+    `06e-server-pane.html` sha256
+    `07b0400076af8991127d745632512f707ac81bc2bfc7407bec71a8caec39c359`,
+    `06e2-server-pane-no-token.html` sha256
+    `184cdf3871a29240765c4c06c4fc21b3ce2fa1d336e793a180da41cfefd92836`.
+  - **⚠ AMENDMENT TO R-B1 — Director ruling 2026-07-25, UPHELD as
+    implemented.** D610's **C2** fixed the commit order as "validate the URL →
+    token → CA → `settings.json` LAST", on the premise that the URL, unlike
+    the CA path, could be validated WITHOUT writing. **That premise is false**,
+    and was found false during implementation: the app registers nine relay
+    commands and none is validate-only — `relay_config_set` runs
+    `normalize_relay_endpoint` and writes in the same call, exactly as
+    `relay_ca_file_set` validates BY writing. Neither field can be checked
+    without committing it. That put two rulings in direct conflict: **R-B1**
+    wants vault writes first and `settings.json` LAST; **R-B2** wants a
+    malformed address to block the ENTIRE commit with NOTHING persisted, on
+    Save AND on Test. Honouring R-B1's order lands the vault writes before the
+    bad address is rejected (R-B2 broken); honouring R-B2 forces the address
+    to commit first (R-B1's ordering inverted).
+    **RULED (Director, 2026-07-25): R-B2's guarantee GOVERNS. R-B1's
+    vault-first ordering is AMENDED to address-first.** Rationale, as given:
+    *an absolute stated guarantee — nothing persists on validation failure —
+    outranks unexplained write ordering; and partial-commit-on-vault-failure
+    is acceptable because state 14 reports it honestly and a re-test heals
+    it.* The implementation stands unchanged; this entry records the amendment
+    rather than a deviation.
+    Consequences, recorded so they are not rediscovered: the commit is a
+    SEQUENCE, not a transaction; if a vault write fails the address has
+    ALREADY been saved; state 14 names which part failed; the remainder is
+    abandoned; the probe does not run; and the pane re-reads live state after
+    any failed commit so it never describes state a partial commit has already
+    changed. **The healing path is a re-test** — fix the failing field, press
+    Test again, and the commit completes from where it stopped.
+    **D610's C2 text is NOT rewritten.** The directive is sha-pinned in the
+    spine queue block (`6b8e8ac1…`), so amending it in place would break that
+    pin and quietly rewrite an approved document; the same mark-don't-rewrite
+    discipline this lane applies to Appendix F applies to the directive. C2
+    stands as approved and is superseded HERE, with the pointer recorded in
+    the spine closeout (D-1304/D-1305).
+  - **Two further deviations, both small and both to avoid asserting something
+    untrue:** (i) R-C1 specified the in-flight line as "Testing…" on BOTH
+    paths; Save performs no probe, so the Save path reads "Saving…" — the
+    mechanism R-C1 specifies (both buttons disabled, neutral treatment, no
+    re-entry) is implemented exactly. (ii) R-E6's optional "Settings saved."
+    is implemented as MANDATORY on the test-committed path: under
+    Test-saves-first the commit is otherwise silent, and a dirty helper merely
+    disappearing is absence-of-signal, not confirmation.
+  - **Census corrections carried from D610:** the CA path input renders EMPTY
+    even when a CA is set, because `relay_ca_file_show()` returns
+    `{configured, path_hash}` and the path is never retrievable — the mockups
+    draw it populated and the app genuinely cannot know that value (C3); the
+    disclosure summary uses R-D3's wording, not the mockups' "(optional)",
+    which predates the relabel (C4); the Server pane's frozen needles live in
+    `src-tauri/tests/server_pane.rs`, NOT `design_round3.rs` as the lane
+    intent's G3 stated — `server_pane.rs` pinned the four removed buttons and
+    was updated in the same commit as the markup, with NEGATIVE pins added so
+    their removal cannot silently regress (C5).
+  - **ENG-0073 is discharged by construction.** The finding (two adjacent
+    controls both labelled "Clear", mis-clicked twice during the NA-0673
+    acceptance flight, each time producing a plausible-looking wrong result
+    card) was superseded rather than fixed: the controls it describes no
+    longer exist. A removal affordance that lives inside the sentence
+    describing its own field cannot be confused with its neighbour.
+  - **References:** spine D610
+    (`QSL-DIR-2026-07-25-610_server_pane_redesign.md`, APPROVED 2026-07-25,
+    sha256 `6b8e8ac11d9375e53b8362335b812ce68fa4419f9655c16593392bd60a3516ed`)
+    and the operator-approved lane intent it was formalized from (sha256
+    `a3113bae67e4e9e1473c756720753773a3e5ab089075ead85a46a3c30addc42d`);
+    D-0008 (the pane this replaces) and D-0009 (the reasoning now marked
+    superseded); `docs/DESIGN_SPEC_AppendixF.md` [F.1-COMMIT-v2] and F.4-v2;
+    spine ENG-0073 (superseded) and ENG-0072 (the seat-identity fix that ran
+    as this lane's setup step). The live operator acceptance flight is OWED
+    and is the evidence for the interaction model; CI green is not.
