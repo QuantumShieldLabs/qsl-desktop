@@ -121,17 +121,52 @@ fn ceremony_one_line_instruction() {
     );
 }
 
-/// Item 7: the autolock helper is verbatim and restates no number.
+/// Item 7: the autolock helper.
+///
+/// ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (R-12). The helper used to sit on the
+/// Vault pane and describe the WIZARD's exemption — a screen the reader is not
+/// on and cannot act about. It moves to the wizard, where the exemption
+/// applies, and the pane's autolock state collapses to ONE line. Both halves
+/// are pinned here so neither can quietly vanish in the move.
 #[test]
 fn autolock_helper_verbatim() {
     let html = ui_file("index.html");
-    assert!(html.contains(
-        "On by default. Applies to the main window and settings; the setup wizard is exempt."
-    ));
+    assert!(
+        !html.contains(
+            "On by default. Applies to the main window and settings; the setup wizard is exempt."
+        ),
+        "the superseded pane-side helper must not survive the move"
+    );
     assert!(!html.contains("On by default (15"));
+    // The exemption note now lives on the wizard's identity step.
+    let wiz = &html[html
+        .find(r#"id="scr-wizard-identity""#)
+        .expect("wizard identity")..];
+    let wiz = &wiz[..wiz.find("</section>").expect("section end")];
+    assert!(
+        wiz.contains("Idle autolock does not run during setup"),
+        "the exemption note must land on the wizard, not merely disappear"
+    );
+    // The pane's autolock line states the 0 semantics in ONE line (the copy
+    // itself is rendered by JS and pinned in design_polish.rs).
+    let js = ui_file("main.js");
+    assert!(js.contains("0 = never."), "the one-line autolock copy");
 }
 
-/// Item 8: Arm carries the destructive tier; Disarm the secondary tier.
+/// Item 8: Arm carries the destructive tier; Disarm carries it too, with the
+/// outline modifier.
+///
+/// ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (F7, operator-ratified). Disarm was
+/// `secondary`; mockup 09 v2 draws it as a danger-outline control and the
+/// operator ruled that correct — it operates a destructive feature, and button
+/// TIERS are a separate ratified vocabulary that F1's chrome reservation does
+/// not govern.
+///
+/// ⚠ THE DANGER TIER TOKEN IS MANDATORY, outline is only a modifier. A bare
+/// `class="danger-outline"` scores ZERO tier tokens and fails
+/// `design_system::every_button_is_tiered_or_nav` — established by RUNNING that
+/// test against both spellings, not by reading it. Arm is UNCHANGED (F7a): the
+/// ruling named only Disarm.
 #[test]
 fn arm_destructive_disarm_secondary() {
     let html = ui_file("index.html");
@@ -145,8 +180,12 @@ fn arm_destructive_disarm_secondary() {
         .find(|t| t.contains("btn-wipe-disarm"))
         .expect("disarm button");
     assert!(
-        disarm.contains(r#"class="secondary""#),
-        "Disarm = secondary"
+        disarm.contains("danger danger-outline"),
+        "Disarm = danger tier + outline modifier (F7)"
+    );
+    assert!(
+        !disarm.contains(r#"class="danger-outline"#),
+        "NEVER a bare danger-outline — it scores zero tier tokens"
     );
 }
 
@@ -203,15 +242,26 @@ fn status_banner_component() {
         assert!(root.contains(color), "role color {color} must be a token");
     }
     let html = ui_file("index.html");
-    assert!(html.contains(r#"id="wipe-state" class="status-banner"#));
-    assert!(html.contains(r#"id="autolock-status" class="status-banner"#));
+    // ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (R-12). The two Vault-pane states
+    // were `status-banner` boxes; persistent state now renders as a QUIET
+    // STATUS LINE, and banners stay reserved for the Server pane's test
+    // RESULTS — an outcome the user asked for, not standing state.
+    // ⚠ The banner COMPONENT above is deliberately still asserted: it did not
+    // go away, it narrowed to one consumer. Deleting these assertions would
+    // unpin a component that is still shipping.
+    assert!(html.contains(r#"id="wipe-state" class="status-line-quiet"#));
+    assert!(html.contains(r#"id="autolock-status" class="status-line-quiet"#));
+    assert!(
+        !html.contains(r#"class="status-banner"#) || html.contains(r#"id="relay-status""#),
+        "the banner component survives only on the Server pane's results"
+    );
     let js = ui_file("main.js");
     for copy in [
         "Off — wrong attempts never erase the vault",
         "Armed — erases after ",
         "Locks after ",
     ] {
-        assert!(js.contains(copy), "banner copy `{copy}`");
+        assert!(js.contains(copy), "status copy `{copy}`");
     }
 }
 

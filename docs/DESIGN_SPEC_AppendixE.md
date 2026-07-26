@@ -9,7 +9,7 @@ disagree, E governs — it is the newer decision.
 The app runs in ONE window mode PER PRE-MAIN SURFACE plus the full mode; the
 window is resized on state transition:
 
-| Screen                         | Window size (approx) | Menu bar |
+| Screen                         | Window MINIMUM (see note) | Menu bar |
 |--------------------------------|----------------------|----------|
 | Wizard step 1 (S0)             | 360 x 585, centered  | HIDDEN   |
 | Wizard step 2 (S1)             | 360 x 625, centered  | HIDDEN   |
@@ -17,6 +17,20 @@ window is resized on state transition:
 | Erase everything               | 360 x 275, centered  | HIDDEN   |
 | Vault erased (wiped notice)    | 360 x 220, centered  | HIDDEN   |
 | Main window + Settings (S2)    | full/default size    | VISIBLE  |
+
+> ⚠ **[E.1] AMENDED AGAIN 2026-07-26 (NA-0680 / D615 / D-0016, R-14): THE
+> HEIGHTS BELOW ARE MINIMA, NOT FIXED SIZES.** The values are unchanged; what
+> changed is what they mean. Each was measured once, headlessly, against the
+> EMPTY state of that surface's conditional elements — so the unlock window's
+> 255 had no room for the "Locked after inactivity." line the autolock path
+> writes into `#unlock-feedback` after the surface change, and because the card
+> is `overflow-y: auto` the "Delete vault?" link fell below the fold. Wizard
+> step 1 carries the same latent defect via `#cli-notice`, and the erase screen
+> via `#erase-error`. The frontend now reports its measured content height on
+> the existing surface-change carrier, and the window takes
+> `max(table, measured + padding)` — so these values are the floor that
+> preserves the operator's chosen reading composition, and content taller than
+> the floor grows the window instead of clipping.
 
 **[E.1] AMENDED round 4a (D601/F1).** Round 3 gave five pre-main surfaces TWO
 shared sizes, which is what produced the dead space it forbade: whichever

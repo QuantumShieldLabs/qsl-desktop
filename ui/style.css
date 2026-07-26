@@ -271,6 +271,10 @@ button.full { width: 100%; }
 .error { color: var(--danger-text); font-size: var(--fs-body); }
 .feedback { font-size: var(--fs-hint); color: var(--fg-muted); }
 .feedback.reject { color: var(--danger-text); }
+/* R-14 (NA-0680): "Locked after inactivity." is the protection WORKING, not a
+   failure. It rendered in the same slot as the reject text and read as
+   red-adjacent; accent states plainly what happened without implying error. */
+.feedback.locked-notice { color: var(--accent-text); }
 
 /* §3: the two-row honest checklist (item 3) */
 .req-list { list-style: none; display: flex; flex-direction: column; gap: var(--sp-1); }
@@ -310,8 +314,10 @@ button.full { width: 100%; }
   word-break: break-word; text-align: center;
 }
 .code-caption { text-align: center; }
-/* E.7 (item 8): the Settings code box matches the wizard's proportions */
-#settings-code { max-width: 420px; margin: 0 auto; }
+/* R-4 (NA-0680, F2 as ruled): the code card is LEFT-aligned in the pane — the
+   `margin: 0 auto` that centred it is removed. The TEXT stays centred inside
+   the card, which is what mockup 07 draws: the card moves, not the code. */
+#settings-code { max-width: 470px; }
 .fingerprint {
   background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius-small);
   padding: var(--sp-3); font-size: var(--fs-hint); word-break: break-all;
@@ -475,6 +481,45 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 .pane h3.danger-h { color: var(--danger-text); }
 .pane label { max-width: 320px; }
 .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+/* ---- R-2/R-10 (NA-0680): the Identity + Vault & Security section idiom --
+   A NEW class mirroring `.srv-sect` below, NOT a rename of it. ⚠ The Server
+   pane is shipped with live acceptance evidence (NA-0674) and D615 §9 makes it
+   read-only for this lane, so its rules are untouched and this duplicates the
+   three declarations rather than refactoring both onto one. The duplication is
+   the deliberate cost of not disturbing shipped evidence.
+   The adjacent-sibling rule is the point: the hairline count FOLLOWS the
+   section count, so adding a fifth section cannot leave a trailing rule at the
+   bottom of the pane. */
+.pane-form { max-width: 520px; }
+.pane-sect { padding: var(--sp-6) 0; }
+.pane-sect:first-child { padding-top: var(--sp-2); }
+.pane-sect + .pane-sect { border-top: 1px solid var(--border); }
+
+/* R-12/F1: persistent state renders as a QUIET STATUS LINE, not a banner —
+   banners are reserved for the Server pane's test RESULTS, which are an
+   outcome the user just asked for, not standing state.
+   ⚠ F1 PRECISION: danger-class state carries danger TEXT (`.is-danger`), never
+   danger CHROME. Borders, fills and card backgrounds in the danger family stay
+   ABSOLUTE to the destroy ceremony — that reservation is refined here, not
+   reversed. The armed-erasure line is legible as dangerous because the words
+   and the colour say so, without a red box competing with the destroy card. */
+.status-line-quiet {
+  display: flex; align-items: center; gap: var(--sp-2);
+  color: var(--fg-muted); font-size: var(--fs-hint); margin: var(--sp-x10) 0 0 0;
+}
+.status-line-quiet .icon { display: flex; align-items: center; }
+.status-line-quiet svg { width: 14px; height: 14px; }
+.status-line-quiet.is-danger { color: var(--danger-text); }
+
+/* F7 (operator-ratified): the outline MODIFIER on the danger tier. The tier
+   token stays mandatory — `class="danger danger-outline"`, never a bare
+   `danger-outline`, which scores zero tier tokens and fails
+   `every_button_is_tiered_or_nav`. Proven by running that needle, not by
+   reading it. */
+button.danger.danger-outline {
+  background: transparent; border-color: var(--danger-border); color: var(--danger-text);
+}
 
 /* ---- the Server pane (D610 / NA-0674 redesign) ------------------------- */
 /* R-D1: three sections in a 470px form column, hairlines BETWEEN them only.

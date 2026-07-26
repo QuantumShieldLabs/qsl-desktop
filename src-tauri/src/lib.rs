@@ -121,16 +121,48 @@ pub fn window_mode_spec(mode: WindowMode) -> ((f64, f64), (f64, f64), bool) {
 
 struct WindowModeState(Mutex<Option<WindowMode>>);
 
+/// The last height actually applied, so a content re-measure that changes
+/// nothing does not call `set_size` on every keystroke.
+struct AppliedHeight(Mutex<Option<f64>>);
+
+/// R-14 (NA-0680): the height the window should take for `mode`, given the
+/// frontend's MEASURED content height.
+///
+/// ⚠ THE TABLE IS A FLOOR, NOT A FIXED SIZE. That is the whole ruling. Every
+/// pre-main height in `window_mode_spec` was measured once, headlessly,
+/// against the EMPTY state of that surface's conditional elements — so the
+/// unlock window (255) had no room for the "Locked after inactivity." line
+/// autolock writes into `#unlock-feedback`, the card is `overflow-y: auto`,
+/// and the "Delete vault?" link fell below the fold. Wizard step 1 has the
+/// same latent defect via `#cli-notice`, and the erase screen via
+/// `#erase-error`; they simply do not trip on every run.
+///
+/// Taking the max rather than the measurement keeps the operator's chosen
+/// reading composition (the widths and heights were found by hand-resizing
+/// until the copy composed correctly) while letting any surface grow to fit
+/// content it did not have when it was measured. It also means the literals in
+/// `window_mode_spec` and their frozen needle keep their values — only their
+/// MEANING changes, from "the size" to "the minimum".
+pub fn height_for(mode: WindowMode, measured_content: Option<f64>) -> f64 {
+    let ((_, table_h), _, _) = window_mode_spec(mode);
+    match measured_content {
+        Some(m) if m > table_h => m,
+        _ => table_h,
+    }
+}
+
 fn apply_window_mode(
     app: &tauri::AppHandle,
     w: &tauri::WebviewWindow<tauri::Wry>,
     mode: WindowMode,
+    measured_content: Option<f64>,
 ) {
     let (size, min, menu_visible) = window_mode_spec(mode);
+    let height = height_for(mode, measured_content);
     // E.1 order: set_min_size, then set_size, then center — the pinned
     // tauri 2 core window API only.
     let _ = w.set_min_size(Some(tauri::LogicalSize::new(min.0, min.1)));
-    let _ = w.set_size(tauri::LogicalSize::new(size.0, size.1));
+    let _ = w.set_size(tauri::LogicalSize::new(size.0, height));
     let _ = w.center();
     // Menu visibility by ATTACHMENT, not gtk-hide: tao's set_visible(true)
     // is gtk show_all() on Linux, which resurrects hidden child widgets —
@@ -157,8 +189,15 @@ fn apply_window_mode(
 /// sequence shows the still-hidden window only after the first report has
 /// sized it — no 1024x700 -> compact snap ever renders. Presentation state
 /// only — no core call, no persistence.
+/// ⚠ R-14: `content_height` is the frontend's MEASURED height for the active
+/// pre-main surface, and it arrives on EVERY sync — not only on a mode change.
+/// It has to: the autolock path calls `show("scr-unlock")` and writes
+/// "Locked after inactivity." into the feedback line AFTERWARDS, so a resize
+/// that fired only on the surface change would miss the very content that
+/// motivated this fix. `None` means "not a pre-main surface" (or not
+/// measurable), and the table governs alone.
 #[tauri::command]
-fn ui_surface_changed(app: tauri::AppHandle, surface: String) {
+fn ui_surface_changed(app: tauri::AppHandle, surface: String, content_height: Option<f64>) {
     let unlocked = surface == "scr-main" || surface == "scr-settings";
     if let Some(h) = app.try_state::<MenuHandles>() {
         let _ = h.settings.set_enabled(unlocked);
@@ -173,8 +212,22 @@ fn ui_surface_changed(app: tauri::AppHandle, surface: String) {
             *cur = Some(mode);
             changed
         };
+        let height = height_for(mode, content_height);
+        let height_changed = {
+            let st = app.state::<AppliedHeight>();
+            let mut cur = st.0.lock().unwrap_or_else(|p| p.into_inner());
+            let differs = *cur != Some(height);
+            *cur = Some(height);
+            differs
+        };
         if changed {
-            apply_window_mode(&app, &w, mode);
+            apply_window_mode(&app, &w, mode, content_height);
+        } else if height_changed && mode != WindowMode::Full {
+            // Same surface, taller content — grow to fit without re-centering
+            // or touching the menu. Guarded on an actual change so a re-measure
+            // that agrees with the last one issues no window call at all.
+            let ((width, _), _, _) = window_mode_spec(mode);
+            let _ = w.set_size(tauri::LogicalSize::new(width, height));
         }
         if !w.is_visible().unwrap_or(true) {
             let _ = w.show();
@@ -217,6 +270,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(app_state)
         .manage(WindowModeState(Mutex::new(None)))
+        .manage(AppliedHeight(Mutex::new(None)))
         .setup(|app| {
             // Item 15 (D597): the native menu — the pinned tauri 2 core
             // menu API only; WORKING entries only, nothing unbuilt.

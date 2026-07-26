@@ -138,26 +138,50 @@ fn autolock_zero_never_fire_guard() {
     );
 }
 
-/// Item 2c (E.3): the banner state machine — both copies VERBATIM; the 0
-/// state renders the danger banner (the recorded R2 extension).
+/// Item 2c (E.3): the autolock state machine — both copies VERBATIM; the 0
+/// state carries DANGER treatment, the >0 state does not.
+///
+/// ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (F1 — a REFINEMENT, not a reversal).
+/// ⚠ THE PROPERTY THIS TEST ENCODES IS UNCHANGED AND STILL HOLDS: value 0 gets
+/// danger treatment, value > 0 does not. What moved is the MECHANISM — the
+/// component is a quiet status LINE rather than a filled banner, so the
+/// assertions follow `renderAutolockState`/`setStatusLine` instead of
+/// `setBanner`. The operator ruled the red reservation REFINED, not reversed:
+/// danger TEXT is permitted on danger-class state, danger CHROME (borders,
+/// fills, card backgrounds) stays absolute to the destroy ceremony.
+///
+/// Deleting this test because its old selector disappeared would have silently
+/// unpinned the never-locks warning — the one autolock state that actually
+/// endangers the vault.
 #[test]
 fn autolock_banner_state_machine() {
     let js = ui_file("main.js");
     assert!(js.contains("Never locks — anyone with access to this device can open your vault"));
     assert!(js.contains("Locks after "));
     let f = js
-        .find("function renderAutolockBanner")
-        .expect("renderAutolockBanner");
+        .find("function renderAutolockState")
+        .expect("renderAutolockState");
     let body = &js[f..f + js[f..].find("\n}").unwrap()];
     assert!(
-        body.contains(r#"setBanner(el, "danger""#),
-        "value == 0 -> the danger banner"
+        body.contains(r#"setStatusLine(el, "danger""#),
+        "value == 0 -> danger treatment (now TEXT on a line, not a red box)"
     );
     assert!(
-        body.contains(r#"setBanner(el, "accent""#),
-        "value > 0 -> the accent banner"
+        body.contains(r#"setStatusLine(el, "neutral""#),
+        "value > 0 -> no danger treatment"
     );
     assert!(body.contains("minutes === 0"), "the 0 branch is explicit");
+    // F1's chrome half, asserted where it can actually be broken: the quiet
+    // line must not acquire a danger background or border.
+    let css = ui_file("style.css");
+    let start = css
+        .find(".status-line-quiet.is-danger")
+        .expect("danger line rule");
+    let block = &css[start..css[start..].find('}').unwrap() + start];
+    assert!(
+        !block.contains("background") && !block.contains("border"),
+        "danger CHROME is reserved for the destroy ceremony — the line gets TEXT only"
+    );
 }
 
 /// Item 3 (E.4): the danger phrases render quoted — the quotes are part of
@@ -250,35 +274,52 @@ fn arm_checkbox_hit_area() {
     );
 }
 
-/// Item 7 (E.3): the helper sits DIRECTLY under the autolock banner — the
-/// error surface is out of that slot (it renders at the validation
-/// placement above the banner).
+/// Item 7 (E.3): the autolock error renders AT THE FIELD, above the status.
+///
+/// ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (R-12). The helper this test tracked
+/// was the wizard-exemption sentence, which has MOVED to the wizard — so the
+/// "banner before helper" ordering it asserted no longer describes anything.
+/// The surviving property, and the one that mattered, is that the ERROR
+/// surface renders at the field rather than displacing the status line.
 #[test]
 fn helper_directly_under_banner() {
     let html = ui_file("index.html");
-    let banner = html.find(r#"id="autolock-status""#).expect("banner");
-    let helper = html.find("On by default.").expect("helper");
-    assert!(banner < helper, "banner before helper");
-    let between = &html[banner..helper];
-    assert!(
-        !between.contains("autolock-error"),
-        "no error surface between banner and helper"
-    );
+    let status = html.find(r#"id="autolock-status""#).expect("status line");
     let err = html.find(r#"id="autolock-error""#).expect("error surface");
     assert!(
-        err < banner,
-        "the error renders at the field, above the banner"
+        err < status,
+        "the error renders at the field, above the status line"
+    );
+    assert!(
+        !html.contains("On by default."),
+        "the superseded pane-side helper is gone (it moved to the wizard)"
     );
 }
 
-/// Item 8 (E.7): the Settings code box matches the wizard's proportions.
+/// Item 8 (E.7): the Settings code card is bounded — and LEFT-aligned.
+///
+/// ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (R-4 / F2). The card was centred with
+/// `margin: 0 auto`; the operator ruled the CARD moves left while the TEXT
+/// stays centred inside it, which is what mockup 07 draws. The bound survives
+/// at the mockup's 470px.
 #[test]
 fn settings_code_box_bounded() {
     let css = ui_file("style.css");
     let s = css.find("#settings-code {").expect("#settings-code rule");
     let block = &css[s..css[s..].find('}').unwrap() + s];
-    assert!(block.contains("max-width: 420px"));
-    assert!(block.contains("margin: 0 auto"));
+    assert!(block.contains("max-width: 470px"), "the card stays bounded");
+    assert!(
+        !block.contains("margin: 0 auto"),
+        "the card is LEFT-aligned — the centring margin is removed (F2)"
+    );
+    // The text inside the card is still centred: that is the base .verify-code
+    // rule, which this lane does not touch.
+    let v = css.find(".verify-code {").expect(".verify-code rule");
+    let vblock = &css[v..css[v..].find('}').unwrap() + v];
+    assert!(
+        vblock.contains("text-align: center"),
+        "the CODE stays centred inside the card — the card moved, not the text"
+    );
 }
 
 /// Item 9 (E.7): rail icons ~21px (svg + --fs-glyph move together);
@@ -532,7 +573,19 @@ fn countdown_gates_the_erase_commit() {
 fn design_authority_self_consistent() {
     let e = repo_file("docs/DESIGN_SPEC_AppendixE.md");
     assert!(e.starts_with("# Appendix E — Round-3 reference markup"));
-    assert!(e.contains("| Screen                         | Window size (approx) | Menu bar |"));
+    // ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (R-14). The table's header now
+    // reads "Window MINIMUM", because the heights became a FLOOR rather than a
+    // fixed size — the values are unchanged, their meaning is not. Pinning the
+    // new header keeps the table itself pinned; pinning the old one would have
+    // required the doc to keep saying something the code stopped doing.
+    assert!(
+        e.contains("| Screen                         | Window MINIMUM (see note) | Menu bar |"),
+        "the E.1 table must still exist, with the minima header"
+    );
+    assert!(
+        !e.contains("| Window size (approx) |"),
+        "the superseded fixed-size header must not survive"
+    );
     let spec = repo_file("docs/DESIGN_SPEC.md");
     let d = repo_file("docs/DESIGN_SPEC_AppendixD.md");
     for (name, text) in [("DESIGN_SPEC.md", &spec), ("AppendixD", &d)] {

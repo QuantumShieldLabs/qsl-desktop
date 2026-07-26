@@ -50,17 +50,45 @@ CSS:
 .status-neutral { background:#2A2A2E; border:none;
   color:#A8A8A8; font-weight:400; }   /* icon: shield-check */
 
-Usage:
-  ARMED    -> status-danger : "Armed — erases after {N} failed attempts"
-  OFF      -> status-neutral: "Off — wrong attempts never erase the vault"
-  AUTOLOCK (value > 0)  -> status-accent : "Locks after {N} minutes of
-    inactivity"; (value == 0) -> status-danger + warning icon, bold:
-    "Never locks — anyone with access to this device can open your
-    vault" [E.3]
-Red is RESERVED for the armed-erasure state and, by the round-3 operator
-decision, the autolock-0 danger banner, the quoted ceremony phrases, and
-the "Delete vault?" link [E.3–E.6]. Icons ~17px, inline SVG or
-the app's existing icon approach; outline style.
+⛔ SUPERSEDED 2026-07-26 by [P.3] below (NA-0680, D615, D-0016):
+  ~~Usage:
+    ARMED    -> status-danger : "Armed — erases after {N} failed attempts"
+    OFF      -> status-neutral: "Off — wrong attempts never erase the vault"
+    AUTOLOCK (value > 0)  -> status-accent : "Locks after {N} minutes of
+      inactivity"; (value == 0) -> status-danger + warning icon, bold:
+      "Never locks — anyone with access to this device can open your
+      vault" [E.3]~~
+
+**[P.3] BANNERS ARE FOR RESULTS; PERSISTENT STATE IS A QUIET LINE (R-12).**
+The banner component above is UNCHANGED and still ships — it narrowed to ONE
+consumer, the Server pane's connection-test results, which are an outcome the
+user just asked for. Standing state that is simply true renders as
+`.status-line-quiet`: icon + text, no box.
+
+  ARMED    -> quiet line, DANGER TEXT : "Armed — erases after {N} failed
+              attempts · {M} remaining"
+  OFF      -> quiet line, muted       : "Off — wrong attempts never erase the vault"
+  AUTOLOCK (value > 0) -> quiet line, muted : "Locks after {N} minutes of
+              inactivity. 0 = never."
+           (value == 0) -> quiet line, DANGER TEXT :
+              "Never locks — anyone with access to this device can open your vault"
+
+**[P.4] THE RED RESERVATION, REFINED — NOT REVERSED (D615 F1).** The
+distinction the earlier text lacked is **TEXT vs CHROME**:
+
+  - danger-coloured **TEXT** is ALLOWED on danger-class state (the armed
+    erasure line, the never-locks line, the ceremony phrases, the
+    "Delete vault?" link);
+  - danger-coloured **CHROME** — borders, fills, card backgrounds — is
+    ABSOLUTE to the destroy ceremony and appears NOWHERE else.
+
+So the armed state keeps its severity (the words and the colour carry it) while
+the destroy card stays the only red BOX on any surface. Button tiers are a
+SEPARATE ratified vocabulary (§1) that this reservation does not govern: Arm
+keeps the filled destructive tier and Disarm carries it with an outline
+modifier (`class="danger danger-outline"` — the tier token is mandatory).
+
+Icons ~17px, inline SVG or the app's existing icon approach; outline style.
 
 ## 3. Passphrase step (items 1-3, 10 — approved layout)
 
@@ -109,9 +137,11 @@ One line, always: font-size chosen so the full code + dashes fits the card
 at min window width WITHOUT wrapping (start at 17px mono, shrink to fit;
 white-space:nowrap; the format/characters are untouched). Centered, inside
 the existing bordered code box. Applies to wizard step 2 AND the Identity
-pane (shared style). In the Settings rendering the code box additionally
-gets max-width: 420px; margin: 0 auto — matching the wizard's
-proportions [E.7].
+pane (shared style). ⛔ SUPERSEDED 2026-07-26 (NA-0680, D615 R-4/F2): ~~In the Settings rendering
+the code box additionally gets max-width: 420px; margin: 0 auto — matching the
+wizard's proportions [E.7].~~ **[P.5]** The Settings code CARD is
+`max-width: 470px` and **LEFT-ALIGNED** (the centring margin is removed); the
+CODE stays centred inside it. The card moved, not the text.
 
 ## 5. Confirmation ceremony pattern (items 6, 13 — destroy AND erase)
 
@@ -155,19 +185,31 @@ provably-complete clear) so nothing typed survives into the next session.
   beside an empty required field already says it. ⚠ **Onboarding-only** (F4):
   Settings still accepts an empty name and falls back to "You", because
   profiles created before this gate existed have one.
-- Round 3 [E.1]: the app runs in TWO window modes, resized on state
-  transition — wizard 560x660, unlock/erase 460x420 (both centered, menu
-  bar HIDDEN, the card FILLS the compact window, page padding 20-24px);
-  main window + Settings full/default size with the menu bar VISIBLE.
+- Round 3 [E.1] as amended by round 4a and again by **[P.7]** (NA-0680, D615
+  R-14): one window mode per pre-main surface, menu bar hidden on all of them;
+  main window + Settings full/default with the menu bar VISIBLE. ⚠ **[P.7] THE
+  PER-SURFACE HEIGHTS ARE MINIMA, NOT FIXED SIZES.** Every one was measured
+  once, headlessly, against the EMPTY state of that surface's conditional
+  elements — so the unlock window had no room for the "Locked after inactivity."
+  line autolock writes into the feedback slot, and with `overflow-y: auto` on
+  the card the "Delete vault?" link fell below the fold. The frontend now
+  reports its measured content height on the existing surface-change carrier
+  and the window takes `max(table, measured + padding)`. The table VALUES are
+  unchanged; only their meaning is.
 - Round 3 [E.2]: number inputs carry no native spinner arrows, are ~64px
   wide, text centered, with VISIBLE validation (erase Limit 1-100;
   autolock 0-1440; invalid input blocked with an inline message + danger
   field border — never silently clamped or ignored).
 - Round 3 [E.3]: autolock default 60 minutes; 0 is VALID and means never
   auto-lock (the danger banner renders; the idle timer never fires).
-- Item 7: autolock helper = "On by default. Applies to the main window and
-  settings; the setup wizard is exempt." (no number restated); the helper
-  sits DIRECTLY under the autolock banner [E.3]
+- ⛔ SUPERSEDED 2026-07-26 (NA-0680, D615 R-12): ~~Item 7: autolock helper =
+  "On by default. Applies to the main window and settings; the setup wizard is
+  exempt." (no number restated); the helper sits DIRECTLY under the autolock
+  banner [E.3]~~
+- **[P.6]** The pane's autolock state is ONE quiet line stating the 0 semantics
+  inline. **The wizard-exemption note MOVES to the wizard**, where the exemption
+  applies — the pane was describing a screen the reader is not on and cannot act
+  about. The autolock ERROR still renders at the field, above the status line.
 - Item 8: Arm = destructive tier; Disarm = secondary tier (per §1)
 - Item 9: the duplicated "Off by default. A guest — or a child…" paragraph
   below the status banner is DELETED (the checkbox line carries the warning)

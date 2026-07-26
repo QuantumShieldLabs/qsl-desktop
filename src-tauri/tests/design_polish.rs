@@ -11,6 +11,7 @@
 //! GATE 1 rows only. The GATE-2 rows (Identity/Vault panes, content-driven
 //! window sizing, R-17/R-18) land with GATE 2.
 
+use qsl_desktop_app::{height_for, window_mode_spec, WindowMode};
 use std::fs;
 use std::path::Path;
 
@@ -26,6 +27,24 @@ fn ui_file(name: &str) -> String {
 fn manifest_file(name: &str) -> String {
     let p = Path::new(env!("CARGO_MANIFEST_DIR")).join(name);
     fs::read_to_string(&p).unwrap_or_else(|_| panic!("read {}", p.display()))
+}
+
+/// Strip `<!-- ... -->` blocks. Needles that ban a substring across a region
+/// MUST run on markup only: the comment documenting a ban contains the banned
+/// word, so an unstripped check fires on its own rationale. Learned three
+/// times in this lane.
+fn strip_html_comments(html: &str) -> String {
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+    while let Some(i) = rest.find("<!--") {
+        out.push_str(&rest[..i]);
+        rest = match rest[i..].find("-->") {
+            Some(j) => &rest[i + j + 3..],
+            None => "",
+        };
+    }
+    out.push_str(rest);
+    out
 }
 
 /// Slice `css` from `sel` to the next `}`.
@@ -288,4 +307,321 @@ fn self_alias_has_no_reader_outside_settings() {
         "commands.rs may reference self_alias exactly 3 times (the settings_set \
          parameter, its doc comment, and the assignment). A 4th is a new reader."
     );
+}
+
+// ===========================================================================
+// GATE 2 — Settings panes, content-driven window sizing, R-17/R-18.
+// ===========================================================================
+
+/// R-2/R-10: the Identity and Vault panes use the hairline section idiom, and
+/// the hairline count FOLLOWS the section count.
+///
+/// ⚠ MUST GO RED IF: the adjacent-sibling rule is replaced by a blanket
+/// `border-bottom`, which is the shape that leaves a trailing rule at the
+/// bottom of the pane the moment someone adds a section. Also red if
+/// `.srv-sect` is edited — the Server pane is shipped with live acceptance
+/// evidence and D615 §9 makes it read-only for this lane.
+#[test]
+fn panes_use_the_hairline_section_idiom() {
+    let css = ui_file("style.css");
+    assert!(
+        css.contains(".pane-sect + .pane-sect { border-top: 1px solid var(--border); }"),
+        "the hairline must come from the ADJACENT-SIBLING rule, so the count \
+         follows the section count"
+    );
+    let b = rule_block(&css, ".pane-sect {");
+    assert!(b.contains("padding: var(--sp-6)"), "--sp-6 section padding");
+
+    // ⚠ The Server pane's own rules are UNTOUCHED. Reusing the idiom in a new
+    // class is permitted; editing theirs is not.
+    assert!(
+        css.contains(".srv-sect + .srv-sect { border-top: 1px solid var(--border); }"),
+        "the Server pane's shipped rule must survive byte-intact"
+    );
+
+    let html = ui_file("index.html");
+    for pane in [r#"id="pane-identity""#, r#"id="pane-vault""#] {
+        let p = &html[html.find(pane).unwrap_or_else(|| panic!("{pane}"))..];
+        let p = &p[..p.find("</div>\n      <div id=\"pane-").unwrap_or(p.len())];
+        assert!(p.contains("pane-sect"), "{pane} uses the section idiom");
+    }
+}
+
+/// R-4: the verification code has ONE merged explainer and NO copy button.
+///
+/// ⚠ MUST GO RED IF: a copy button appears (the code is read aloud to a
+/// contact, not pasted — a copy affordance advertises a workflow that does not
+/// exist), or the explainer splits back into two stacked paragraphs.
+#[test]
+fn verification_code_has_one_explainer_and_no_copy_button() {
+    let html = ui_file("index.html");
+    let pane = &html[html.find(r#"id="pane-identity""#).expect("identity pane")..];
+    let pane = &pane[..pane.find(r#"id="pane-server""#).expect("next pane")];
+    // ⚠ Strip HTML comments before the substring ban. Caught by this assertion
+    // failing on its first run: the comment EXPLAINING that there is no copy
+    // button contains the word "copy". Third instance of this shape in the
+    // lane — a needle that bans a substring across a region must exclude the
+    // prose that documents the ban, or it fires on its own rationale.
+    let markup = strip_html_comments(pane);
+    assert!(
+        !markup.to_lowercase().contains("copy"),
+        "no copy button/affordance on the verification code"
+    );
+    assert!(
+        pane.contains(r#"id="settings-explainer""#),
+        "ONE merged explainer element"
+    );
+    assert!(
+        !pane.contains(r#"id="settings-purpose""#) && !pane.contains(r#"id="settings-pq""#),
+        "the two superseded stacked paragraphs are gone"
+    );
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(
+            r#"byId("settings-explainer").textContent = rec.purpose_line + " " + rec.pq_line"#
+        ),
+        "the merged explainer joins both lines"
+    );
+}
+
+/// R-11: the erase-after-N controls are CONTEXTUAL, and F7's tier holds.
+///
+/// ⚠ MUST GO RED IF: Disarm renders while the feature is off (it was a dead
+/// control — that is the defect), or the contextual toggle is done by DOM
+/// removal instead of `.hidden` (which would unpin the button tiers), or
+/// Disarm loses the mandatory `danger` tier token.
+#[test]
+fn erase_after_n_controls_are_contextual() {
+    let js = ui_file("main.js");
+    let f = js
+        .find("function renderWipeState")
+        .expect("renderWipeState");
+    let body = &js[f..f + js[f..].find("\n}").expect("fn end")];
+    assert!(
+        body.contains(r#"byId("btn-wipe-arm").classList.toggle("hidden", armed)"#),
+        "Arm hides while armed"
+    );
+    assert!(
+        body.contains(r#"byId("btn-wipe-disarm").classList.toggle("hidden", !armed)"#),
+        "Disarm hides while off — it was a dead control there"
+    );
+    let html = ui_file("index.html");
+    let disarm = html
+        .split("<button")
+        .find(|t| t.contains("btn-wipe-disarm"))
+        .expect("disarm");
+    assert!(
+        disarm.contains("danger danger-outline"),
+        "F7: the danger TIER TOKEN is mandatory, outline is the modifier"
+    );
+}
+
+/// R-11/R-15: the armed line states how many attempts REMAIN.
+///
+/// ⚠ MUST GO RED IF: the remaining count is dropped, or computed from
+/// something other than `wipe_after - failed_unlocks`, or allowed to go
+/// negative. R-15's Phase-0 finding is what makes this honest: the destroy
+/// pane never reaches this counter, so unlock attempts are the only thing
+/// that walks the vault toward erasure.
+#[test]
+fn armed_line_shows_remaining_attempts() {
+    let js = ui_file("main.js");
+    let f = js
+        .find("function remainingBeforeWipe")
+        .expect("remainingBeforeWipe");
+    let body = &js[f..f + js[f..].find("\n}").expect("fn end")];
+    assert!(
+        body.contains("s.wipe_after - s.failed_unlocks"),
+        "remaining is derived from the DTO already fetched — no new command"
+    );
+    assert!(
+        body.contains("Math.max(0,"),
+        "the count can never render negative"
+    );
+    assert!(
+        js.contains("` · ${left} remaining`"),
+        "the armed line states the remaining count"
+    );
+}
+
+/// F1: quiet status lines carry danger TEXT, never danger CHROME.
+///
+/// ⚠ MUST GO RED IF: a background, border or fill from the danger family is
+/// added to the status line. That is the exact edit the F1 refinement forbids,
+/// and it is an easy one to make while "restoring emphasis".
+#[test]
+fn status_lines_carry_danger_text_never_chrome() {
+    let css = ui_file("style.css");
+    let b = rule_block(&css, ".status-line-quiet.is-danger");
+    assert!(
+        b.contains("color: var(--danger-text)"),
+        "danger TEXT is allowed"
+    );
+    for banned in ["background", "border", "box-shadow"] {
+        assert!(
+            !b.contains(banned),
+            "danger CHROME (`{banned}`) is reserved for the destroy ceremony"
+        );
+    }
+}
+
+/// R-17: user-facing errors are mapped BY SITE and never open with a bare code.
+///
+/// ⚠ MUST GO RED IF: `vault_locked` is given a single global wording. In the
+/// DESTROY pane it means WRONG PASSPHRASE — Settings is unlock-gated, so the
+/// vault is demonstrably unlocked and "your vault is locked" would be FALSE at
+/// the one site the finding named as its example.
+#[test]
+fn errors_are_mapped_per_site_never_bare_codes() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"vault_locked: "That passphrase doesn't match. Nothing was destroyed.""#),
+        "the destroy site says WRONG PASSPHRASE, not `your vault is locked`"
+    );
+    assert!(
+        js.contains("function destroyErrorText"),
+        "a per-site mapper"
+    );
+    assert!(js.contains("function unlockErrorText"), "a per-site mapper");
+    // The fall-through always leads with a sentence; the code survives only in
+    // parentheses. This is the mechanism behind NA-0674's naked
+    // `vault_write_failed`.
+    let f = js.find("function plainError").expect("plainError");
+    let body = &js[f..f + js[f..].find("\n}").expect("fn end")];
+    assert!(
+        body.contains("return `${lead} (${s})`"),
+        "the fall-through leads with prose and parenthesises the code"
+    );
+    // No site may concatenate a raw error onto prose any more.
+    for banned in [
+        r#""Destroy refused: " + e"#,
+        r#""Unlock failed: " + e"#,
+        r#""Erase failed: " + e"#,
+        r#""Not saved: " + e"#,
+    ] {
+        assert!(
+            !js.contains(banned),
+            "raw-code concatenation survives: {banned}"
+        );
+    }
+}
+
+/// R-18: the Unlock button's re-enable is STATE-driven, and the countdown
+/// handle is nulled when a countdown ends.
+///
+/// ⚠ MUST GO RED IF: the handle stops being nulled at expiry, or the predicate
+/// goes back to comparing a className. That combination is the shipped defect:
+/// after one countdown the handle stayed truthy forever, so the re-enable
+/// depended entirely on the feedback element's class string — and the catch
+/// branch sets `"feedback reject"`, leaving Unlock PERMANENTLY DISABLED with a
+/// raw error above it.
+#[test]
+fn unlock_reenable_is_state_driven() {
+    let js = ui_file("main.js");
+    let f = js.find("function startCountdown").expect("startCountdown");
+    let body = &js[f..f + js[f..].find("\n}\n").expect("fn end")];
+    assert!(
+        body.contains("countdownTimer = null;"),
+        "the handle MUST be nulled when the countdown ends"
+    );
+    assert!(
+        js.contains("if (countdownTimer === null) btn.disabled = false;"),
+        "the re-enable asks about the countdown, not about a class string"
+    );
+    assert!(
+        !js.contains(r#"if (!countdownTimer || byId("unlock-feedback").className === "feedback")"#),
+        "the superseded className-coupled predicate must not survive"
+    );
+}
+
+/// R-14: the window table is a FLOOR, and the sync runs on the path that
+/// actually trips the defect.
+///
+/// ⚠ MUST GO RED IF: the sync is wired only to `show()`. The autolock path
+/// calls `show("scr-unlock")` and writes "Locked after inactivity." into the
+/// feedback line AFTERWARDS — a fix tested only on surface-change passes its
+/// own test and still clips "Delete vault?" below the fold. That is the
+/// hollow-proof shape the operator ruled against explicitly.
+#[test]
+fn window_height_syncs_on_the_autolock_path_not_just_surface_change() {
+    let js = ui_file("main.js");
+    assert!(js.contains("function syncWindowHeight"), "the sync helper");
+    assert!(
+        js.contains("contentHeight: measurePreMainHeight()"),
+        "the measurement rides the existing surface-change carrier"
+    );
+
+    // PATH (b), the one that matters: the autolock write must be FOLLOWED by a
+    // sync, in that order.
+    let write = js
+        .find(r#"byId("unlock-feedback").textContent = "Locked after inactivity.";"#)
+        .expect("the autolock feedback write");
+    let after = &js[write..];
+    let sync = after
+        .find("syncWindowHeight();")
+        .expect("a sync after the write");
+    let next_fn = after.find("\n}").unwrap_or(after.len());
+    assert!(
+        sync < next_fn,
+        "the autolock path MUST re-sync after writing the feedback line — \
+         syncing only at show() misses the very content R-14 exists for"
+    );
+
+    // And the measurement must include the screen's padding, or a surface will
+    // be sized to its content and clip at the edges.
+    let f = js
+        .find("function measurePreMainHeight")
+        .expect("the measurer");
+    let body = &js[f..f + js[f..].find("\n}").expect("fn end")];
+    assert!(
+        body.contains("card.scrollHeight") && body.contains("pad"),
+        "content height + the screen's own vertical padding"
+    );
+}
+
+/// R-14, tested as BEHAVIOUR rather than as text: `height_for` is a floor.
+///
+/// ⚠ MUST GO RED IF: the function starts returning the measurement
+/// unconditionally (which would let a short surface shrink below the
+/// operator's chosen reading composition — the round-4a work), or starts
+/// ignoring the measurement (which reinstates the clip this lane exists to
+/// fix). Both directions are asserted, because "take the max" is exactly the
+/// property and either half alone is wrong.
+#[test]
+fn window_height_table_is_a_floor_not_a_fixed_size() {
+    for mode in [
+        WindowMode::WizardVault,
+        WindowMode::WizardIdentity,
+        WindowMode::Unlock,
+        WindowMode::Erase,
+        WindowMode::Wiped,
+    ] {
+        let ((_, table), _, _) = window_mode_spec(mode);
+
+        // No measurement -> the table governs, exactly as before this lane.
+        assert_eq!(height_for(mode, None), table, "{mode:?}: no measurement");
+
+        // Content SHORTER than the table -> the table still governs. This is
+        // what keeps the operator's reading composition.
+        assert_eq!(
+            height_for(mode, Some(table - 40.0)),
+            table,
+            "{mode:?}: a short surface must NOT shrink below the floor"
+        );
+
+        // Content TALLER than the table -> the window grows. This is the fix.
+        assert_eq!(
+            height_for(mode, Some(table + 18.0)),
+            table + 18.0,
+            "{mode:?}: the window must grow to fit content the table never saw"
+        );
+    }
+
+    // The concrete R-14 case, stated in its own numbers: the unlock window is
+    // 255 measured against an EMPTY feedback line; one line of 12px/1.5 hint
+    // text is ~18px, and the card is `overflow-y: auto`, so at a fixed 255 the
+    // "Delete vault?" link fell below the fold.
+    let ((_, unlock), _, _) = window_mode_spec(WindowMode::Unlock);
+    assert_eq!(unlock, 255.0, "the floor is unchanged by this lane");
+    assert_eq!(height_for(WindowMode::Unlock, Some(273.0)), 273.0);
 }
