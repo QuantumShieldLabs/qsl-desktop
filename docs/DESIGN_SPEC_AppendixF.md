@@ -414,3 +414,45 @@ lie the moment any future lane exposes a Settings pane (or this status) in a
 locked state.** Any such lane must resolve the locked case to an explicit
 "unknown / locked" rendering, not to `configured = false`. Recorded here so the
 constraint travels with the design authority, not just the code.
+
+
+## F.8 — Plain-language error wordings, mapped BY SITE (NA-0680 / D615 R-17)
+
+> **ADDED 2026-07-26 (D-0016).** Appendix F previously covered only the Server
+> pane. This section extends it to the vault/unlock surfaces, because the same
+> defect class — a raw internal code reaching the user — was still live there.
+
+**⚠ THE RULE IS PER SITE, NOT PER CODE, AND `vault_locked` IS WHY.** A single
+code→text table would ship a FALSE sentence. In the **destroy** pane
+`vault_locked` is returned for a WRONG PASSPHRASE (`destroy_with_passphrase`
+validates by full decrypt, and `decrypt_payload` fails with that code) — and
+Settings is unlock-gated, so the vault is demonstrably UNLOCKED at that moment.
+Wording it as "your vault is locked — unlock it first" would state something
+untrue at the exact site the finding named as its example.
+
+| site | code | wording |
+|---|---|---|
+| Destroy ceremony | `vault_locked` | "That passphrase doesn't match. Nothing was destroyed." |
+| Destroy ceremony | `confirm_phrase_mismatch` | "The confirmation phrase doesn't match. Nothing was destroyed." |
+| Destroy ceremony | `vault_erase_failed` | "The vault file couldn't be erased. Nothing was destroyed — check the app's data folder is writable." |
+| Destroy ceremony | *(unmapped)* | "Your vault wasn't destroyed. (`code`)" |
+| Unlock | `vault_attempt_limit_io` | "This vault's protection settings couldn't be read, so the unlock was refused rather than attempted. Check the app's data folder is readable." |
+| Unlock | *(unmapped)* | "Your vault couldn't be unlocked. (`code`)" |
+| Erase-everything | `erase_refused_cli_dir` | "Nothing was erased — this app refused to touch the command-line tool's data folder." |
+| Erase-everything | *(unmapped)* | "Nothing was erased. (`code`)" |
+| Identity setup | *(unmapped)* | "Your identity couldn't be set up. (`code`)" |
+| Name save | *(unmapped)* | "Your name wasn't saved. (`code`)" |
+| Erase-after-N arm/disarm | *(unmapped)* | "That setting wasn't changed. (`code`)" |
+| Autolock save | *(unmapped)* | "The autolock setting wasn't saved. (`code`)" |
+| Vault creation | *(unmapped)* | "Your vault couldn't be created. (`code`)" |
+
+**THE FALL-THROUGH IS THE MECHANISM THAT FAILED BEFORE.** `mapErr` returned the
+BARE code when nothing matched, and callers concatenated it straight onto
+prose — which is how NA-0674's state 14 opened with a naked `vault_write_failed`.
+Every site now leads with a sentence and keeps the code in parentheses, where it
+is still useful in a bug report and no longer the first thing a user reads at
+the worst possible moment.
+
+**[F.8-STATUS] Status severity.** "Locked after inactivity." renders in ACCENT,
+not the reject/danger colour it shared a slot with: being locked by the idle
+timer is the protection working, not a failure.

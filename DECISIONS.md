@@ -925,3 +925,71 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     `clippy --all-targets -D warnings` both clean.
   - **References:** spine D615 and NA-0680; D-0010/D-0011 (the Server pane this lane must not
     touch); D-0014 (the CI gate whose positive-control discipline this lane reuses).
+
+- **ID:** D-0016
+  - **Date:** 2026-07-26
+  - **Lane:** NA-0680, directive **D615** (sha256 `32a15f3f9bb2542b2d9117d1ef72c8b6d158dc316c79bfc32c9bda7195de8e9c`, 399 lines) — **GATE 2 of 3**.
+  - **Decision:** the Identity and Vault & Security panes are re-landed per **R-2, R-4, R-5,
+    R-10–R-13**; window sizing becomes **content-driven** (R-14); errors get **per-site** plain
+    language (R-17); the guarded-unlock dead-field defect is fixed (R-18); and the armed state
+    shows the **remaining** attempt count (R-11/R-15).
+  - **⚠ F1 IS A REFINEMENT, NOT A REVERSAL, AND THE DISTINCTION IS TEXT vs CHROME.** Persistent
+    state moves from filled banners to quiet status lines; danger-coloured **text** is permitted
+    on danger-class state, while danger-coloured **chrome** (borders, fills, card backgrounds)
+    stays absolute to the destroy ceremony. `design_round3::autolock_banner_state_machine` was
+    **amended, not deleted**: the property it encodes — 0 gets danger treatment, >0 does not — is
+    unchanged and re-pinned against the status-line renderer. Deleting it because its old
+    selector disappeared would have silently unpinned the never-locks warning, which is the one
+    autolock state that actually endangers the vault. The banner component itself SURVIVES and is
+    still asserted: it narrowed to one consumer (the Server pane's results), it did not go away.
+  - **⚠ R-14 IS FIXED AS A CLASS.** Every pre-main window height was measured once, headlessly,
+    against the EMPTY state of that surface's conditional elements — the unlock window's 255 had
+    no room for the "Locked after inactivity." line, and with `overflow-y: auto` the
+    "Delete vault?" link fell below the fold. Wizard step 1 (`#cli-notice`) and the erase screen
+    (`#erase-error`) carry the same latent defect. **The table is now a FLOOR**: the frontend
+    reports its measured content height on the existing `ui_surface_changed` carrier and the
+    window takes `max(table, measured + padding)`. **No height literal changed** — `lib.rs`,
+    `design_round3.rs:322-331` and the `tauri.conf.json` 585 all keep their values; only their
+    meaning becomes "minimum", which is why the ruled fix is *less* invasive to the frozen
+    needles than three hand-measured bumps would have been.
+  - **⚠ THE ORDERING TRAP, AND WHY ITS TEST IS THE ONE THAT MATTERS.** The autolock path calls
+    `show("scr-unlock")` and writes the feedback line **afterwards**, so a sync wired only to the
+    surface change would miss the very content R-14 exists for — passing its own test while the
+    window still clips. The sync therefore runs at `show()`, **after any write to a conditional
+    element**, and on the existing resize listener; and the negative control **removes the sync
+    that follows the autolock write specifically** and observes RED.
+  - **R-17 maps BY SITE, not by code.** In the destroy pane `vault_locked` means WRONG
+    PASSPHRASE — Settings is unlock-gated, so the vault is demonstrably unlocked and the generic
+    locked-vault wording would have been FALSE at the one site the finding named as its example.
+    Recorded as Appendix **F.8**. `mapErr`'s bare fall-through — the mechanism behind NA-0674's
+    naked `vault_write_failed` — is replaced everywhere by a lead sentence with the code in
+    parentheses.
+  - **R-18's dead field was real but not where the ruling looked.** `countdownTimer` was cleared
+    but never nulled at natural expiry, so after the first countdown of a session the re-enable
+    predicate fell through to comparing the feedback element's class string — and the `catch`
+    branch sets `"feedback reject"`, leaving Unlock **permanently disabled** with a raw error
+    above it. The handle is now nulled and the predicate is state-driven.
+  - **F7 as ratified:** Disarm is `class="danger danger-outline"` — **the danger tier token is
+    mandatory and outline is only a modifier.** A bare `danger-outline` scores ZERO tier tokens
+    and fails `design_system::every_button_is_tiered_or_nav`, established by RUNNING that test
+    against both spellings rather than reading it. **F7a: Arm is unchanged.**
+  - **⚠ The Server pane is untouched.** `.pane-sect` is a NEW class mirroring `.srv-sect`'s
+    idiom; the Server pane's own rules are asserted byte-intact by `design_polish.rs`. The
+    duplicated declarations are the deliberate cost of not disturbing NA-0674's shipped
+    acceptance evidence.
+  - **⚠ Seventeen negative controls across the two gates** (8 in GATE 1, 9 here), each breaking
+    the pinned property, observing RED, reverting, and observing GREEN. **Three caught defects in
+    the NEEDLES rather than the code** — all three the same shape: a substring ban applied too
+    widely. A blanket `box-shadow` ban fired on the active-nav bar; a bare `"Your identity"` ban
+    fired on the mockup's own subtitle; and a `"copy"` ban fired on **the comment explaining that
+    there is no copy button**. The third produced a shared `strip_html_comments` helper, because
+    a needle that bans a substring across a region must exclude the prose documenting the ban.
+  - **Filed, not fixed (operator-ruled):** **ENG-0075** — `cargo test -q` in the desktop CI hides
+    WHICH tests ran, so a deleted test file can stay green at a lower total nobody compares. It
+    rides a CI/tooling lane. Filed in the GATE-3 spine closeout.
+  - **R-16 is untouched by design.** No redirect code exists; the redirect is implemented and does
+    cover Settings, and the operator's live rig reproduction decides its disposition.
+  - **Goals:** G1. Tests 88 pass / 1 ignored / 0 fail; `cargo fmt --check` and
+    `clippy --all-targets -D warnings` clean.
+  - **References:** D-0015 (GATE 1); spine D615/NA-0680; D-0010/D-0011 (the Server pane this lane
+    must not touch); Appendix F.8 (the new wordings); Appendix E [E.1] (sizes → minima).

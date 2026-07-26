@@ -192,7 +192,13 @@ fn appendix_a_copy_verbatim() {
         ">Destroy vault</h3>",
         "Type <code>destroy my vault</code> to confirm",
         ">Destroy permanently</button>",
-        "What should this device call you?",
+        // ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (R-3). The Identity pane's
+        // label is now "Your name", matching mockup 07 and the wizard, and it
+        // carries the verified "never sent anywhere" claim. The old question
+        // form is superseded on BOTH surfaces — GATE 1 moved the wizard, GATE 2
+        // moved Settings, so this is the gate where the string disappears.
+        "Your name",
+        "Stored only on this device — never sent anywhere.",
     ] {
         assert!(html.contains(needle), "missing verbatim copy: `{needle}`");
     }

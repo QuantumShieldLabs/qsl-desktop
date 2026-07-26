@@ -25,6 +25,39 @@ const SCREENS = [
   "scr-wiped", "scr-main", "scr-settings",
 ];
 let currentScreen = null;
+// ---- R-14 (NA-0680): content-driven window height -----------------------
+// The pre-main surfaces. Everything else is `Full` and is not measured.
+const PRE_MAIN_SCREENS = [
+  "scr-wizard-vault", "scr-wizard-identity", "scr-unlock", "scr-erase", "scr-wiped",
+];
+
+// Measure the ACTIVE pre-main surface: the card's content height plus the
+// screen's own vertical padding. `scrollHeight` forces a reflow, so it is the
+// laid-out height including anything just written into a conditional element.
+function measurePreMainHeight() {
+  if (!PRE_MAIN_SCREENS.includes(currentScreen)) return null;
+  const screen = byId(currentScreen);
+  const card = screen && screen.querySelector(".card");
+  if (!card) return null;
+  const cs = getComputedStyle(screen);
+  const pad = parseFloat(cs.paddingTop || 0) + parseFloat(cs.paddingBottom || 0);
+  return Math.ceil(card.scrollHeight + pad);
+}
+
+// ⚠ THE ORDERING TRAP THIS EXISTS FOR. Measuring only on a surface change is
+// NOT enough: the autolock path calls `show("scr-unlock")` and THEN writes
+// "Locked after inactivity." into `#unlock-feedback`. A sync that ran only at
+// `show()` would miss the very line that motivated R-14, pass its own test,
+// and still clip "Delete vault?" below the fold. So this is called at `show()`
+// AND after any write to a conditional element AND on resize.
+function syncWindowHeight() {
+  if (!currentScreen) return;
+  invoke("ui_surface_changed", {
+    surface: currentScreen,
+    contentHeight: measurePreMainHeight(),
+  }).catch(() => {});
+}
+
 function show(id) {
   // Item 13 (§5 STATE RULE): every screen transition clears the ceremony
   // and passphrase fields — no typed secret survives a state transition.
@@ -33,7 +66,8 @@ function show(id) {
   currentScreen = id;
   // Item 15 (R1): the backend disables the state-dependent menu entries
   // (File > Settings / Lock now) unless an unlocked surface is showing.
-  invoke("ui_surface_changed", { surface: id }).catch(() => {});
+  // R-14: the measurement rides the same carrier.
+  syncWindowHeight();
 }
 
 // Item 13 (§5 STATE RULE, F2): ceremony forms never persist. Fields are
@@ -107,6 +141,23 @@ function setBanner(el, kind, message) {
   el.querySelector(".status-text").textContent = message;
 }
 
+// ---- R-12/F1 (NA-0680): the quiet status LINE ----------------------------
+// Persistent state renders as a line, not a banner. Banners stay reserved for
+// the Server pane's test RESULTS — an outcome the user just asked for, rather
+// than standing state that is simply true.
+//
+// ⚠ F1 PRECISION, and it is the whole point: `danger` here means danger TEXT.
+// Danger CHROME — borders, fills, card backgrounds — remains ABSOLUTE to the
+// destroy ceremony. The reservation recorded in DESIGN_SPEC §2 is REFINED by
+// the text-vs-chrome distinction, not reversed: the armed-erasure state keeps
+// its severity because the words and the colour carry it, and the destroy card
+// keeps being the only red box on the surface.
+function setStatusLine(el, kind, message) {
+  el.className = "status-line-quiet" + (kind === "danger" ? " is-danger" : "");
+  el.querySelector(".icon").innerHTML = BANNER_ICONS[kind];
+  el.querySelector(".status-text").textContent = message;
+}
+
 // ---- item 1 (E.2): visible numeric validation — invalid entries are
 // BLOCKED with an inline message + the danger field border; never
 // silently clamped, never silently ignored ---------------------------------
@@ -169,6 +220,7 @@ async function route() {
     const cliVault = await invoke("cli_vault_present");
     byId("cli-notice").classList.toggle("hidden", !cliVault);
     show("scr-wizard-vault");
+    syncWindowHeight(); // R-14: the notice is a conditional element too
   } else if (st === "s1") {
     await showUnlockScreen("wizard-identity");
   } else {
@@ -212,6 +264,10 @@ byId("btn-vault-create").addEventListener("click", async () => {
       mismatch: "Passphrases do not match.",
       vault_exists: "A vault already exists; restart the app.",
     });
+    // R-17: mapErr falls through to the BARE code; never show one.
+    if (err.textContent === String(e)) {
+      err.textContent = `Your vault couldn't be created. (${String(e)})`;
+    }
     btn.disabled = false;
   }
 });
@@ -252,6 +308,7 @@ window.addEventListener("resize", () => {
       const el = byId(id);
       if (el && el.textContent) fitCode(el);
     }
+    syncWindowHeight(); // R-14 path (c): re-fit and re-measure together
   }, 60);
 });
 // R-7 (NA-0680): the name is REQUIRED to leave the wizard. Continue is
@@ -287,9 +344,10 @@ async function showIdentityStep() {
     show("scr-wizard-identity");
     fitCode(byId("identity-code"));
   } catch (e) {
-    errEl.textContent = "Identity setup failed: " + e;
+    errEl.textContent = plainError(e, {}, "Your identity couldn't be set up.");
     updateIdentityContinue();
     show("scr-wizard-identity");
+    syncWindowHeight(); // R-14 path (b): the error line is conditional
   }
 }
 
@@ -312,6 +370,16 @@ function startCountdown(seconds, failed) {
   const tick = () => {
     if (left <= 0) {
       clearInterval(countdownTimer);
+      // ⚠ R-18 (NA-0680): NULL THE HANDLE. It was cleared but left truthy, and
+      // the `finally` below re-enables the button only when
+      // `!countdownTimer || className === "feedback"`. After the first
+      // countdown of a session the first term was permanently false, so the
+      // re-enable depended entirely on a className string — and the catch
+      // branch sets "feedback reject", which left Unlock PERMANENTLY DISABLED
+      // with a raw error above it. That is the "dead field then a raw lock"
+      // the finding describes, reached by a path the finding did not name.
+      // `eraseCountdownAbort` nulls its handle correctly; this one did not.
+      countdownTimer = null;
       btn.disabled = false;
       fb.className = "feedback";
       fb.textContent = failed > 0 ? `Failed attempts: ${failed}. You can try again now.` : "";
@@ -358,9 +426,16 @@ byId("btn-unlock").addEventListener("click", async () => {
     }
   } catch (e) {
     fb.className = "feedback reject";
-    fb.textContent = "Unlock failed: " + e;
+    // R-17: a lead SENTENCE, never a bare code.
+    fb.textContent = unlockErrorText(e);
   } finally {
-    if (!countdownTimer || byId("unlock-feedback").className === "feedback") btn.disabled = false;
+    // ⚠ R-18: STATE-DRIVEN, not className-driven. The old predicate asked
+    // whether the feedback element's class string happened to equal
+    // "feedback", which coupled "is the button usable" to "what does the text
+    // look like" — two unrelated things. A countdown is the ONLY reason to
+    // leave Unlock disabled, and `countdownTimer` is now nulled when one ends,
+    // so it is the whole answer.
+    if (countdownTimer === null) btn.disabled = false;
   }
 });
 
@@ -427,7 +502,9 @@ byId("btn-erase").addEventListener("click", () => {
       window.location.reload();
     } catch (e) {
       eraseCountdownAbort();
-      byId("erase-error").textContent = "Erase failed: " + e;
+      byId("erase-error").textContent = plainError(e, {
+        erase_refused_cli_dir: "Nothing was erased — this app refused to touch the command-line tool's data folder.",
+      }, "Nothing was erased.");
     }
   }, 1000);
 });
@@ -511,8 +588,11 @@ async function refreshIdentityPane() {
   body.classList.remove("hidden");
   byId("settings-code").textContent = rec.verify_code;
   byId("settings-fp").textContent = rec.fingerprint;
-  byId("settings-purpose").textContent = rec.purpose_line;
-  byId("settings-pq").textContent = rec.pq_line;
+  // R-4: ONE merged explainer. The pane previously carried the purpose line
+  // and the post-quantum line as two separate paragraphs stacked under the
+  // code; they answer the same question ("what is this for, and is it
+  // strong?") and read better as one.
+  byId("settings-explainer").textContent = rec.purpose_line + " " + rec.pq_line;
   byId("settings-mech").textContent = rec.mechanism_line;
   byId("settings-alias").value = currentSettings.self_alias;
   byId("alias-status").textContent = `Shown as: ${aliasDisplay()} (local only)`;
@@ -526,7 +606,7 @@ byId("btn-alias-save").addEventListener("click", async () => {
     acknowledge(byId("btn-alias-save"), "✓ Saved", byId("alias-status"),
       `Shown as: ${aliasDisplay()} (local only)`);
   } catch (e) {
-    byId("alias-status").textContent = "Not saved: " + e;
+    byId("alias-status").textContent = plainError(e, {}, "Your name wasn't saved.");
   }
 });
 
@@ -546,39 +626,65 @@ byId("btn-attempts-dismiss").addEventListener("click", () => {
   renderAttemptsAlert();
 });
 
-// Item 12: banner copy per spec §2 (red reserved for the armed state).
-function renderWipeBanner(s) {
+// R-11/R-12/R-15 (NA-0680): the erase-after-N state as a quiet status line,
+// with the CONTEXTUAL controls and the remaining count.
+//
+// ⚠ R-15's Phase-0 answer is what makes the counter honest: failed passphrases
+// in the DESTROY pane never reach this counter — `unlock_guarded` is the only
+// ingress and `destroy_with_passphrase` does not route through it. So the only
+// attempts that walk toward erasure are unlock attempts, and "N remaining" is
+// exactly `wipe_after - failed_unlocks` on the DTO the pane already fetches.
+// No new command, no DTO change, no qsc change.
+function remainingBeforeWipe(s) {
+  if (s.wipe_after === null) return null;
+  return Math.max(0, s.wipe_after - s.failed_unlocks);
+}
+function renderWipeState(s) {
   const el = byId("wipe-state");
-  if (s.wipe_after === null) {
-    setBanner(el, "neutral", "Off — wrong attempts never erase the vault");
-  } else {
-    setBanner(el, "danger",
-      `Armed — erases after ${s.wipe_after} failed attempt${s.wipe_after === 1 ? "" : "s"}`);
+  const armed = s.wipe_after !== null;
+  // R-11: Disarm was a DEAD control while off, and Arm is meaningless while
+  // armed. Hidden via `.hidden`, never DOM removal, so the tier needles keep
+  // reading a tiered button.
+  byId("btn-wipe-arm").classList.toggle("hidden", armed);
+  byId("btn-wipe-disarm").classList.toggle("hidden", !armed);
+  if (!armed) {
+    setStatusLine(el, "neutral", "Off — wrong attempts never erase the vault");
+    return;
   }
+  const left = remainingBeforeWipe(s);
+  setStatusLine(el, "danger",
+    `Armed — erases after ${s.wipe_after} failed attempt${s.wipe_after === 1 ? "" : "s"}` +
+    ` · ${left} remaining`);
 }
 // Item 2c (E.3): the autolock banner state machine — value > 0 renders the
 // accent lock banner; value == 0 renders the DANGER banner (the recorded
 // R2 extension: red covers the never-locks state by operator decision).
-function renderAutolockBanner(minutes) {
+// R-12 + F1: ONE line, and the two-branch PROPERTY survives the component
+// change. `design_round3.rs`'s state machine still holds — the 0 state carries
+// danger treatment, the >0 state does not — but the treatment is now danger
+// TEXT on a status line rather than a filled red banner. The test's assertion
+// MECHANISM moves with it; the property it encodes does not change, which is
+// why that needle is amended rather than deleted.
+function renderAutolockState(minutes) {
   const el = byId("autolock-status");
   if (minutes === 0) {
-    setBanner(el, "danger",
+    setStatusLine(el, "danger",
       "Never locks — anyone with access to this device can open your vault");
   } else {
-    setBanner(el, "accent",
-      `Locks after ${minutes} minute${minutes === 1 ? "" : "s"} of inactivity`);
+    setStatusLine(el, "neutral",
+      `Locks after ${minutes} minute${minutes === 1 ? "" : "s"} of inactivity. 0 = never.`);
   }
 }
 async function refreshVaultPane() {
   renderAttemptsAlert();
   const s = await invoke("protection_status");
-  renderWipeBanner(s);
+  renderWipeState(s);
   byId("wipe-limit").min = s.wipe_min;
   byId("wipe-limit").max = s.wipe_max;
   const cfg = await invoke("settings_get");
   adoptSettings(cfg);
   byId("autolock-min").value = cfg.autolock_minutes;
-  renderAutolockBanner(cfg.autolock_minutes);
+  renderAutolockState(cfg.autolock_minutes);
 }
 
 byId("btn-wipe-arm").addEventListener("click", async () => {
@@ -595,7 +701,7 @@ byId("btn-wipe-arm").addEventListener("click", async () => {
     await invoke("wipe_arm", { limit });
     byId("wipe-ack").checked = false;
     const s = await invoke("protection_status");
-    renderWipeBanner(s);
+    renderWipeState(s);
     acknowledge(byId("btn-wipe-arm"), "✓ Armed");
   } catch (e) {
     err.textContent = mapErr(e, { wipe_limit_out_of_bounds: "Limit must be between 1 and 100." });
@@ -606,10 +712,10 @@ byId("btn-wipe-disarm").addEventListener("click", async () => {
   try {
     await invoke("wipe_disarm");
     const s = await invoke("protection_status");
-    renderWipeBanner(s);
+    renderWipeState(s);
     acknowledge(byId("btn-wipe-disarm"), "✓ Off");
   } catch (e) {
-    byId("wipe-error").textContent = String(e);
+    byId("wipe-error").textContent = plainError(e, {}, "That setting wasn't changed.");
   }
 });
 
@@ -625,10 +731,10 @@ byId("btn-autolock-save").addEventListener("click", async () => {
     currentSettings.autolock_minutes = minutes;
     await saveSettings();
     autolockMinutes = minutes;
-    renderAutolockBanner(minutes);
+    renderAutolockState(minutes);
     acknowledge(byId("btn-autolock-save"), "✓ Saved");
   } catch (e) {
-    err.textContent = String(e);
+    err.textContent = plainError(e, {}, "The autolock setting wasn't saved.");
   }
 });
 
@@ -667,7 +773,7 @@ byId("btn-destroy").addEventListener("click", async () => {
     // value (alias, alert counters) die with this document.
     window.location.reload();
   } catch (e) {
-    err.textContent = "Destroy refused: " + e;
+    err.textContent = destroyErrorText(e); // R-17: `vault_locked` here = wrong passphrase
   }
 });
 
@@ -1241,7 +1347,15 @@ setInterval(async () => {
     idleSince = Date.now();
     await invoke("lock_now"); // the one-call NA-0658 lock()
     await showUnlockScreen("main");
+    // R-14: accent severity, not red-adjacent — being locked by the timer is
+    // the protection working, not a failure.
+    byId("unlock-feedback").className = "feedback locked-notice";
     byId("unlock-feedback").textContent = "Locked after inactivity.";
+    // ⚠ R-14 PATH (b): this write happens AFTER show(), so the surface-change
+    // sync already ran against an EMPTY feedback line. Without this call the
+    // window keeps the table height and "Delete vault?" clips — the exact
+    // reported defect.
+    syncWindowHeight();
   }
 }, 5000);
 
@@ -1258,6 +1372,43 @@ if (window.__TAURI__.event && window.__TAURI__.event.listen) {
       await showUnlockScreen("main");
     }
   });
+}
+
+// ---- R-17 (NA-0680): plain language, mapped BY SITE ----------------------
+// ⚠ THE RULING THAT MATTERS: the same code means different things at
+// different call sites, so a single code->text table would ship a false
+// sentence. `vault_locked` is the proof. In the DESTROY pane it means WRONG
+// PASSPHRASE — Settings is unlock-gated, so the vault is demonstrably
+// unlocked and "your vault is locked, unlock it first" would be untrue at the
+// one site the finding named as its example. Elsewhere the same code really
+// does mean locked. Hence: per-site wordings, and `mapErr` never returns a
+// bare code again.
+//
+// The generic fall-through is the mechanism behind NA-0674's naked
+// `vault_write_failed`: `mapErr` returned the raw code when nothing matched,
+// and callers concatenated it straight onto prose. Now a lead sentence always
+// arrives first and the code survives only in parentheses, for a bug report.
+function plainError(e, table, lead) {
+  const s = String(e);
+  for (const k of Object.keys(table)) if (s.includes(k)) return table[k];
+  return `${lead} (${s})`;
+}
+
+function unlockErrorText(e) {
+  return plainError(e, {
+    vault_attempt_limit_io:
+      "This vault's protection settings couldn't be read, so the unlock was refused rather than attempted. Check the app's data folder is readable.",
+  }, "Your vault couldn't be unlocked.");
+}
+
+// The DESTROY pane. `vault_locked` here is a WRONG PASSPHRASE — see above.
+function destroyErrorText(e) {
+  return plainError(e, {
+    vault_locked: "That passphrase doesn't match. Nothing was destroyed.",
+    confirm_phrase_mismatch: "The confirmation phrase doesn't match. Nothing was destroyed.",
+    vault_erase_failed:
+      "The vault file couldn't be erased. Nothing was destroyed — check the app's data folder is writable.",
+  }, "Your vault wasn't destroyed.");
 }
 
 function mapErr(e, table) {
