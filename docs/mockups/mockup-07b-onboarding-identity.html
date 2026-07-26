@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 07B — Onboarding: This is you (after vault step)</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --bg-inset:#1A1A1C;
+  --fg:#E8E8EA; --muted:#9A9AA0; --border:#3A3A3E;
+  --accent-text:#8FBAF0; --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
+.card{width:470px;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:32px}
+h2{margin:0 0 6px;font-size:20px}
+.muted{color:var(--muted);margin:0 0 22px}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+.field-label{color:var(--muted);font-size:12.5px;display:block;margin-bottom:6px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+input[type=text]{width:100%;background:var(--bg-inset);color:var(--fg);
+  border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13.5px}
+button.primary{width:100%;font:inherit;font-size:14px;font-weight:500;padding:10px 16px;
+  border-radius:6px;cursor:pointer;background:var(--accent-fill);
+  border:1px solid var(--accent-fill);color:var(--accent-fill-text);margin-top:22px}
+details summary{cursor:pointer;color:var(--accent-text);font-size:13.5px;list-style:revert}
+.code-card{background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;
+  padding:18px 22px;text-align:center;margin-top:4px}
+.code-card .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:18px;letter-spacing:1.5px;color:var(--fg);white-space:nowrap}
+.fp-box{background:var(--bg-inset);border:1px solid var(--border);border-radius:6px;
+  padding:9px 12px;font-size:12.5px;overflow-wrap:anywhere}
+.block{margin-top:22px}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>This is you</h2>
+  <p class="muted">Your identity was created and is stored in your vault.</p>
+
+  <div>
+    <span class="field-label">Your name</span>
+    <input type="text" placeholder="e.g. Victor" value="">
+    <p class="hint" style="margin-top:6px">Stored only on this device — never sent anywhere.</p>
+  </div>
+
+  <div class="block">
+    <span class="field-label">Your verification code</span>
+    <div class="code-card">
+      <div class="code">39C8-BAAA-CEE6-1D8C-Z</div>
+    </div>
+    <p class="hint" style="margin-top:10px">When you add a contact, you'll compare codes — over a
+    call or in person — to confirm you're really talking to each other. Built to stay secure even
+    against future quantum computers.</p>
+  </div>
+
+  <div class="block">
+    <details>
+      <summary>Show technical details</summary>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+        <div>
+          <span class="field-label">Full fingerprint</span>
+          <div class="fp-box mono">QSCFP-39c8baaacee61d8cd76e2a0954558c85</div>
+        </div>
+        <p class="hint">Post-quantum hybrid: ML-KEM-768 (key agreement) + ML-DSA-65 (signatures)</p>
+      </div>
+    </details>
+  </div>
+
+  <button class="primary">Continue</button>
+</div>
+
+</body>
+</html>

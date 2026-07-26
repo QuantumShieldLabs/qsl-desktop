@@ -13,7 +13,12 @@
     <div class="progress"><span class="dot active">●</span><span class="dot">○</span><span class="progress-label">Step 1 of 2 — Create your vault</span></div>
     <h1>Create your vault</h1>
     <div id="cli-notice" class="notice hidden">Found existing qsc CLI data; v1 does not import it; the GUI keeps its own storage.</div>
-    <p class="body-sm">Your vault protects everything this app stores on this computer. It is encrypted with the passphrase you choose.</p>
+    <!-- R-8: ONE merged intro carrying both good-passphrase recipes AND the
+         anti-pattern. The per-field "Length matters most" hint below the
+         checklist is REMOVED (folded in here) — two places saying the same
+         thing is where the weaker wording survives. `length` is bold, not
+         caps: emphasis, not shouting. -->
+    <p class="body-sm">Everything this app stores is encrypted with the passphrase you choose. Your passphrase <b>length</b> matters most: 4–5 random words, or 12+ random characters from a password manager, are both practically unguessable. A short "complex" password is not.</p>
     <div class="field-stack">
       <label>Passphrase <input type="password" id="vault-pass" autocomplete="off"></label>
       <label>Confirm passphrase <input type="password" id="vault-confirm" autocomplete="off"></label>
@@ -22,8 +27,14 @@
       <li id="req-len" class="req">12+ characters</li>
       <li id="req-match" class="req">Passphrases match</li>
     </ul>
-    <p class="hint">Length matters most — a few random words beat a short complex password.</p>
-    <div class="warn">There is <strong>no recovery</strong>. If you forget this passphrase, no one — not you, not us — can recover your data. The only way back is to erase everything and start over.</div>
+    <!-- R-9: amber -> ACCENT. Amber is not in the token vocabulary's severity
+         set (DESIGN_SPEC §1 names danger/accent/success/neutral); red is
+         reserved for vault-danger CHROME, which by F1 is the destroy ceremony
+         and nowhere else. Accent is the correct class for a callout that is
+         important but not destructive-in-progress. Full prominence kept:
+         bordered callout, and the whole "There is no recovery." sentence is
+         bold, not just two words of it. -->
+    <div class="callout">There is <strong>no recovery.</strong> If you forget this passphrase, no one — not you, not us — can recover your data. The only way back is to erase everything and start over.</div>
     <div id="vault-error" class="error"></div>
     <button id="btn-vault-create" class="primary full" disabled>Create vault</button>
   </div>
@@ -31,16 +42,27 @@
 
 <section id="scr-wizard-identity" class="screen hidden">
   <div class="card">
-    <div class="progress"><span class="dot done">●</span><span class="dot active">●</span><span class="progress-label">Step 2 of 2 — Your identity</span></div>
-    <h1>Your identity</h1>
-    <p class="body-sm">This identity was created on this device and belongs to this vault. The private part of it never leaves this device.</p>
+    <!-- R-6: the wizard-framed identity step, ordered per mockup 07B — NAME
+         FIRST (it is the only thing the user supplies here), then the
+         verification code, then the technical disclosure, then ONE action.
+         The step row stays: this is still step 2 of a 2-step wizard, and the
+         mockup omitting it is a framing artifact of a standalone preview, not
+         an instruction to drop the wizard's own progress affordance. -->
+    <div class="progress"><span class="dot done">●</span><span class="dot active">●</span><span class="progress-label">Step 2 of 2 — This is you</span></div>
+    <h1>This is you</h1>
+    <p class="body-sm">Your identity was created and is stored in your vault. The private part of it never leaves this device.</p>
+    <label>Your name
+      <input type="text" id="alias-input" maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. Victor">
+      <!-- R-3: verified TRUE at 44237b2 — `self_alias` has exactly three call
+           sites (the settings struct, `settings_set`, and the UI that renders
+           it) and no call site carries it outward. design_polish.rs pins that,
+           so the claim goes red rather than quietly false if a reader appears
+           outside settings.rs. -->
+      <span class="hint">Stored only on this device — never sent anywhere.</span>
+    </label>
     <p class="hint code-caption">Your verification code</p>
     <div class="mono verify-code" id="identity-code"></div>
     <p id="identity-purpose" class="muted"></p>
-    <label>What should this device call you?
-      <input type="text" id="alias-input" maxlength="32" autocomplete="off" spellcheck="false">
-      <span class="hint">Local only — leave empty to be shown as “You”.</span>
-    </label>
     <p id="identity-pq" class="muted"></p>
     <details class="tech">
       <summary>Show technical details</summary>
@@ -50,7 +72,12 @@
     </details>
     <p class="hint">You don't need to write this down — view it anytime in Settings.</p>
     <div id="identity-error" class="error"></div>
-    <button id="btn-identity-done" class="primary full">Done</button>
+    <!-- R-7: NAME REQUIRED. Disabled until the field holds a non-empty trimmed
+         value; no error text, because a disabled button beside an empty
+         required field says it already. Onboarding-only (F4): Settings still
+         accepts an empty name and falls back to "You" for profiles created
+         before this gate existed. -->
+    <button id="btn-identity-done" class="primary full" disabled>Continue</button>
   </div>
 </section>
 

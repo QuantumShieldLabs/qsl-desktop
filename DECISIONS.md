@@ -871,3 +871,57 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     `22b3b509…5927655e62f39499`, 407 lines) and spine NA-0677; NA-0676/D-1307 (the
     sanitize that made a whole-tree tier adoptable, and whose closeout found the
     anchoring gap); D-0012 (the claim lane that preceded this one).
+
+- **ID:** D-0015
+  - **Date:** 2026-07-26
+  - **Lane:** NA-0680 (spine), directive **D615** (`QSL-DIR-2026-07-26-615_onboarding_settings_polish.md`, APPROVED 2026-07-26, sha256 `32a15f3f9bb2542b2d9117d1ef72c8b6d158dc316c79bfc32c9bda7195de8e9c`, 399 lines) — **GATE 1 of 3**.
+  - **Decision:** the app-wide focus ring and the two onboarding steps are re-landed per the
+    operator-approved polish rulings **R-1, R-6, R-7, R-8, R-9**, with the reference mockups
+    committed under `docs/mockups/` as the layout authority they were used as.
+  - **⚠ R-1's premise was wrong and the correction is the whole change.** Mockup 10 described the
+    shipped focus treatment as `border-color + box-shadow`. **There is no focus `box-shadow` in
+    this repository and never was** — what shipped is `outline: 2px` at `outline-offset: 1px`,
+    which reads as a detached ring. So the change is **outline → border**, and a lane that
+    faithfully "removed the glow" would have edited nothing and shipped the 2px outline intact.
+    Inputs now take a true 1px accent border with the outline suppressed (mockup 10's `.proposed`
+    rule); every other focusable takes a flush 1px accent outline, because `.settings-rail .cat`
+    is `border: none` and the prose links and `details summary` have no border at all, so "1px
+    accent border" is not directly expressible there. **No colour is introduced** —
+    `--accent-fill` is the shipped token and is exactly mockup 10's `--border-focus`.
+  - **R-8:** ONE merged intro carries both good-passphrase recipes and the anti-pattern; the
+    separate "Length matters most…" hint is REMOVED. Two surfaces stating the same rule is where
+    the weaker wording survives a later edit. `length` is bold, not caps.
+  - **R-9:** the no-recovery box is recoloured amber → **accent**, and the class is renamed
+    `.warn` → `.callout` — a class named "warn" rendering in accent is a lie the next reader has
+    to decode. Full prominence kept (bordered, whole first sentence bold). **The `--warn-*` and
+    `--amber*` tokens stay defined**: `.alert-amber` still consumes them and is out of this
+    lane's scope, so deleting them would be a second, unruled change.
+  - **R-6/R-7:** the identity step follows mockup 07B — heading **"This is you"**, name field
+    first, then the verification code, then the technical disclosure, then ONE **Continue**. The
+    name is **required** (trimmed non-empty) to leave the wizard; no error text. ⚠ **Onboarding
+    only** (D615 F4) — Settings still accepts an empty name and falls back to "You", because
+    profiles created before this gate existed have one and must not be held hostage by a new rule.
+  - **⚠ Two frozen needles were AMENDED, not deleted.** `design_round2::step2_heading_is_your_identity`
+    had its assertion **inverted** (the heading is still pinned, at its new value, and the old
+    wording is now what must not survive) — deleting it would have left the heading unpinned,
+    which is exactly what the round-2 pin existed to prevent. `design_system::appendix_a_copy_verbatim`
+    lost only the one line R-8 deletes; the replacement copy is pinned in the new
+    `design_polish.rs`, so the claim did not become unpinned — it moved.
+  - **⚠ Every authored needle ships with a proof it can fail** (the operator's standing rule).
+    Eight controls were run: each pinned property was broken deliberately, the test observed RED,
+    the break reverted, and the suite observed GREEN again at 79 passed / 1 ignored.
+    **Two of the eight caught defects in the needles themselves before any of them could give a
+    false assurance:** a blanket `!css.contains("box-shadow")` fired on
+    `.settings-rail .cat.active`'s inset active-nav bar, which has nothing to do with focus and
+    would have forced an unrelated control to be rewritten to satisfy a focus rule; and a bare
+    `!html.contains("Your identity")` fired on mockup 07B's own subtitle ("Your identity was
+    created and is stored in your vault"), i.e. a substring ban would have forbidden the copy the
+    mockup specifies. Both were narrowed to the property actually being pinned.
+  - **Not in this gate:** the Identity and Vault & Security panes, the content-driven window
+    sizing (R-14), and R-17/R-18 — all GATE 2. **R-16 is untouched by design:** the redirect is
+    implemented and does cover Settings, so it is ruled not a code defect and waits on the
+    operator's live rig reproduction before GATE 2 closes. **R-19 is not in this lane at all.**
+  - **Goals:** G1. Tests 79 pass / 1 ignored / 0 fail; `cargo fmt --check` and
+    `clippy --all-targets -D warnings` both clean.
+  - **References:** spine D615 and NA-0680; D-0010/D-0011 (the Server pane this lane must not
+    touch); D-0014 (the CI gate whose positive-control discipline this lane reuses).

@@ -180,7 +180,13 @@ fn every_button_is_tiered_or_nav() {
 fn appendix_a_copy_verbatim() {
     let html = ui_file("index.html");
     for needle in [
-        "Length matters most — a few random words beat a short complex password.",
+        // ⛔ REMOVED 2026-07-26 by NA-0680 / D615 (R-8): the per-field hint
+        // "Length matters most — a few random words beat a short complex
+        // password." is FOLDED INTO the step's merged intro, which now carries
+        // both good-passphrase recipes and the anti-pattern. Two surfaces
+        // saying the same thing is where the weaker wording survives. The
+        // replacement copy is pinned in design_polish.rs, so the claim did not
+        // become unpinned — it moved.
         "You don't need to write this down — view it anytime in Settings.",
         "Requires your passphrase. Permanently erases this vault — this cannot be undone.",
         ">Destroy vault</h3>",
