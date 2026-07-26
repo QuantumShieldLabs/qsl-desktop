@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 10 — Focus ring: subtle gray (proposed) vs blue (shipped)</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-inset:#1A1A1C; --fg:#E8E8EA; --muted:#9A9AA0;
+  --border:#3A3A3E; --border-focus:#3D7BC4;
+  --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;gap:40px;align-items:center;justify-content:center;min-height:100vh;padding:32px;flex-wrap:wrap}
+.card{width:340px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:28px}
+h2{margin:0 0 18px;font-size:18px}
+.tag{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 14px}
+.field-label{color:var(--muted);font-size:12.5px;display:block;margin-bottom:6px}
+input{width:100%;background:var(--bg-inset);color:var(--fg);
+  border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13.5px;outline:none}
+.block{margin-top:16px}
+button.primary{width:100%;font:inherit;font-size:14px;font-weight:500;padding:10px 16px;
+  border-radius:6px;cursor:pointer;background:var(--accent-fill);
+  border:1px solid var(--accent-fill);color:var(--accent-fill-text);margin-top:20px}
+
+/* PROPOSED: focus = border one step lighter, nothing else */
+.proposed input:focus{border-color:var(--border-focus)}
+
+/* SHIPPED: blue ring for comparison */
+.shipped input:focus{border-color:#3D7BC4;box-shadow:0 0 0 1px #3D7BC4}
+
+/* simulate focus states for the static preview */
+.proposed .focused{border-color:var(--border-focus)}
+.shipped .focused{border-color:#3D7BC4;box-shadow:0 0 0 1px #3D7BC4}
+</style>
+</head>
+<body>
+
+<div class="card proposed">
+  <p class="tag">Proposed — thin blue (1px, no glow)</p>
+  <h2>Unlock</h2>
+  <span class="field-label">Passphrase (focused)</span>
+  <input type="password" class="focused" value="">
+  <div class="block">
+    <span class="field-label">Another field (not focused)</span>
+    <input type="text" value="">
+  </div>
+  <button class="primary">Unlock</button>
+</div>
+
+<div class="card shipped">
+  <p class="tag">Shipped — blue + glow (current)</p>
+  <h2>Unlock</h2>
+  <span class="field-label">Passphrase (focused)</span>
+  <input type="password" class="focused" value="">
+  <div class="block">
+    <span class="field-label">Another field (not focused)</span>
+    <input type="text" value="">
+  </div>
+  <button class="primary">Unlock</button>
+</div>
+
+<p style="width:100%;text-align:center;color:var(--muted);font-size:12.5px">
+Left: proposed — focused border turns accent blue at plain 1px, no box-shadow glow.
+Right: shipped — same blue plus a 1px glow ring (reads as 2px). Click the left field to feel it live.</p>
+
+</body>
+</html>

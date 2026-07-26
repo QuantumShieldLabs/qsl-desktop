@@ -71,11 +71,37 @@ Order, single column, 12px gaps:
      ○/✓ 12+ characters
      ○/✓ Passphrases match
      unmet = text-muted circle ○ ; met = success-text ✓
-  hint line (12px, text-muted):
-     "Length matters most — a few random words beat a short complex password."
-  no-recovery warning box (unchanged from current build)
+  ⛔ SUPERSEDED 2026-07-26 by [P.1] below (NA-0680, D615, D-0015):
+     hint line (12px, text-muted):
+        "Length matters most — a few random words beat a short complex password."
+     no-recovery warning box (unchanged from current build)
   [Create vault]  primary when both checks met; DISABLED TIER otherwise
 NO strength meter. NO third check. Nothing else on the card.
+
+**[P.1] The merged intro + the accent callout (R-8 / R-9).** The step's body copy
+now carries BOTH good-passphrase recipes AND the anti-pattern in ONE place, and
+the separate hint line above the warning box is REMOVED:
+
+     "Everything this app stores is encrypted with the passphrase you choose.
+      Your passphrase **length** matters most: 4–5 random words, or 12+ random
+      characters from a password manager, are both practically unguessable.
+      A short "complex" password is not."
+
+`length` is emphasised with `<b>`, not caps. The reason the hint is deleted
+rather than kept alongside: two surfaces stating the same rule is where the
+weaker wording survives a later edit.
+
+The **no-recovery box is ACCENT, not amber** — amber is not in §1's severity
+vocabulary, and red is reserved for vault-danger CHROME, which by the D615 F1
+refinement means the destroy ceremony and nowhere else. Full prominence is
+kept: bordered callout, and the whole "There is no recovery." sentence bold.
+The class is `.callout` (renamed from `.warn`, which would have been a class
+name that lies about its colour). The `--warn-*` and `--amber*` tokens STAY
+defined — `.alert-amber` still consumes them and is out of that lane's scope.
+
+**NO strength meter still governs**, and NA-0680 did not touch it: D615's R-19
+was REMOVED from that lane by operator ruling — reinstating a meter is a
+deletion reversal plus a new analysis feature, and needs its own design session.
 
 ## 4. Verification code display (item 5)
 
@@ -117,7 +143,18 @@ provably-complete clear) so nothing typed survives into the next session.
 
 ## 6. Small items
 
-- Item 4: wizard step-2 heading text = "Your identity"
+- ⛔ SUPERSEDED 2026-07-26 by [P.2] (NA-0680, D615, D-0015):
+  ~~Item 4: wizard step-2 heading text = "Your identity"~~
+- **[P.2]** wizard step-2 heading text = **"This is you"**, step label
+  "Step 2 of 2 — This is you" (D615 F3, from mockup 07B). The step is reordered
+  to **name first**, then the verification code, then the technical disclosure,
+  then ONE action labelled **Continue** — the name is the only thing the user
+  supplies here, and it was previously buried under a code they cannot act on
+  yet. **The name is REQUIRED** (R-7): Continue is disabled until the field
+  holds a non-empty *trimmed* value, with no error text — a disabled button
+  beside an empty required field already says it. ⚠ **Onboarding-only** (F4):
+  Settings still accepts an empty name and falls back to "You", because
+  profiles created before this gate existed have one.
 - Round 3 [E.1]: the app runs in TWO window modes, resized on state
   transition — wizard 560x660, unlock/erase 460x420 (both centered, menu
   bar HIDDEN, the card FILLS the compact window, page padding 20-24px);

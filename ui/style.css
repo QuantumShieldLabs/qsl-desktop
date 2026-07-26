@@ -134,7 +134,21 @@ body {
    gap 0 — re-homing a 12px gap there would double every spacing. */
 #scr-erase .card { gap: 0; }
 
-:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 1px; }
+/* R-1 (NA-0680): focus = 1px accent, NO glow, everywhere.
+   ⚠ The mockup described the shipped state as `border-color + box-shadow`.
+   There is no focus box-shadow in this file and never was — what shipped is a
+   2px outline at 1px offset, which reads as a detached ring. So the change is
+   OUTLINE -> BORDER, and a lane that "removed the glow" would have edited
+   nothing.
+   Inputs take a true 1px accent BORDER (below) with the outline suppressed —
+   mockup 10's `.proposed` rule exactly. Everything else takes a flush 1px
+   accent outline: `.settings-rail .cat` is `border: none`, and `a.rm`,
+   `.link-danger` and `details summary` have no border at all, so "1px accent
+   border" is not directly expressible there. A flush outline is visually
+   identical, shifts no layout, and keeps ONE rule for every non-input control.
+   `--accent-fill` is the existing token (mockup 10's `--border-focus` IS this
+   value) — no colour is introduced. */
+:focus-visible { outline: 1px solid var(--accent-fill); outline-offset: 0; }
 
 .busy {
   position: fixed; top: var(--sp-3); right: var(--sp-4); z-index: 50;
@@ -172,8 +186,10 @@ input[type="password"], input[type="text"], input[type="number"] {
   border: 1px solid var(--border); border-radius: var(--radius-small);
   padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body);
 }
-input:focus { outline: 2px solid var(--accent-fill); border-color: var(--accent-fill); }
-input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent-fill); }
+/* R-1: the field's own border turns accent; the outline is suppressed so the
+   ring is 1px total and flush, not a 2px detached halo. */
+input:focus { outline: none; border-color: var(--accent-fill); }
+input[type="checkbox"]:focus-visible { outline: 1px solid var(--accent-fill); }
 /* E.2 (item 1): number fields — ~64px, centered, NO native spinner arrows
    anywhere; invalid entries get the danger border (visible rejection) */
 input.num { width: 64px; text-align: center; appearance: textfield; }
@@ -239,10 +255,16 @@ button.full { width: 100%; }
   background: var(--info-bg); border: 1px solid var(--info-border); border-radius: var(--radius-small);
   padding: var(--sp-3) var(--sp-3); font-size: var(--fs-body);
 }
-.warn {
-  background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: var(--radius-small);
+/* R-9 (NA-0680): the no-recovery callout, amber -> ACCENT. Renamed `.warn` ->
+   `.callout` because a class named "warn" rendering in accent is a lie the
+   next reader has to decode. The --warn-* and --amber* tokens STAY defined:
+   `.alert-amber` (the failed-attempts alert) still uses the amber pair and is
+   out of this lane's scope, so deleting the tokens would be a second, unruled
+   change. No new colour — --accent-bg/--accent-border are the shipped tokens. */
+.callout {
+  background: var(--accent-bg); border: 1px solid var(--accent-border); border-radius: var(--radius-small);
   padding: var(--sp-x10) var(--sp-3); font-size: var(--fs-hint);
-  color: var(--warn-text); line-height: 1.5;
+  color: var(--fg); line-height: 1.5;
 }
 /* E.6/E.7: errors render inline ONLY when present — no reserved gap, no
    oversized void around the banners */

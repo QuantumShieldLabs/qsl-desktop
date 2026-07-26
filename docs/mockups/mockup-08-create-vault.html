@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 08 — Onboarding: Create your vault (clean preview)</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --bg-inset:#1A1A1C;
+  --fg:#E8E8EA; --muted:#9A9AA0; --border:#3A3A3E;
+  --accent-text:#8FBAF0; --accent-border:#2E5A8E; --accent-bg:#1C2A3E;
+  --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF;
+  --ok:#7BC48A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
+.card{width:470px;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:32px}
+.step{color:var(--muted);font-size:12.5px;margin:0 0 14px;display:flex;gap:8px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent-fill);display:inline-block}
+.dot.off{background:var(--border)}
+h2{margin:0 0 6px;font-size:20px}
+.muted{color:var(--muted);margin:0 0 22px}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+.field-label{color:var(--muted);font-size:12.5px;display:block;margin-bottom:6px}
+input[type=password]{width:100%;background:var(--bg-inset);color:var(--fg);
+  border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13.5px}
+.checks{margin:12px 0 0;padding:0;list-style:none;font-size:12.5px;color:var(--muted)}
+.checks li{margin:3px 0}
+.checks .ok{color:var(--ok)}
+.callout{margin-top:22px;background:var(--accent-bg);border:1px solid var(--accent-border);
+  border-radius:6px;padding:12px 14px;font-size:13px;color:var(--fg)}
+button.primary{width:100%;font:inherit;font-size:14px;font-weight:500;padding:10px 16px;
+  border-radius:6px;cursor:pointer;background:var(--accent-fill);
+  border:1px solid var(--accent-fill);color:var(--accent-fill-text);margin-top:22px}
+button.primary:disabled{opacity:.45;cursor:default}
+.block{margin-top:16px}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <p class="step"><span class="dot"></span><span class="dot off"></span> Step 1 of 2</p>
+  <h2>Create your vault</h2>
+  <p class="muted">Everything this app stores is encrypted with the passphrase you choose.
+  Your passphrase <b>length</b> matters most: 4–5 random words, or 12+ random characters
+  from a password manager, are both practically unguessable. A short "complex" password is not.</p>
+
+  <div>
+    <span class="field-label">Passphrase</span>
+    <input type="password" value="">
+  </div>
+
+  <div class="block">
+    <span class="field-label">Confirm passphrase</span>
+    <input type="password" value="">
+  </div>
+
+  <ul class="checks">
+    <li>○ 12+ characters</li>
+    <li>○ Passphrases match</li>
+  </ul>
+
+  <div class="callout">
+    <b>There is no recovery.</b> If you forget this passphrase, no one — not you, not us —
+    can get your data back. The only way forward is to erase everything and start over.
+  </div>
+
+  <button class="primary" disabled>Create vault</button>
+</div>
+
+</body>
+</html>

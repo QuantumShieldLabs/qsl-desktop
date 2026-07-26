@@ -58,13 +58,33 @@ fn confirm_directly_below_passphrase() {
     );
 }
 
-/// Item 4: the wizard step-2 heading and step label read "Your identity".
+/// Item 4: the wizard step-2 heading and step label.
+///
+/// ⛔ AMENDED 2026-07-26 by NA-0680 / D615 (F3). The original pinned
+/// `<h1>Your identity</h1>` and asserted `"This is you"` was ABSENT — the
+/// exact string mockup 07B titles this step with. The operator ruled the
+/// mockup governs, so the assertion is INVERTED rather than deleted: the
+/// heading is still pinned, at its new value, and the OLD wording is now the
+/// one that must not survive. Deleting the test would have left the heading
+/// unpinned, which is what the round-2 pin existed to prevent.
 #[test]
 fn step2_heading_is_your_identity() {
     let html = ui_file("index.html");
-    assert!(html.contains("<h1>Your identity</h1>"));
-    assert!(html.contains("Step 2 of 2 — Your identity"));
-    assert!(!html.contains("This is you"));
+    assert!(html.contains("<h1>This is you</h1>"));
+    assert!(html.contains("Step 2 of 2 — This is you"));
+    // The superseded HEADING FORMS must not survive. ⚠ Deliberately NOT a bare
+    // `!contains("Your identity")`: mockup 07B's own subtitle reads "Your
+    // identity was created and is stored in your vault", so a substring ban
+    // would forbid the copy the mockup specifies. Caught by this assertion
+    // failing on its first run.
+    assert!(
+        !html.contains("<h1>Your identity</h1>"),
+        "the superseded heading must not survive"
+    );
+    assert!(
+        !html.contains("Step 2 of 2 — Your identity"),
+        "the superseded step label must not survive"
+    );
 }
 
 /// Item 5: the verification code renders on one line, never wrapping,

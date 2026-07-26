@@ -254,6 +254,21 @@ window.addEventListener("resize", () => {
     }
   }, 60);
 });
+// R-7 (NA-0680): the name is REQUIRED to leave the wizard. Continue is
+// disabled until the field holds a non-empty TRIMMED value — whitespace is not
+// a name. No error text: a disabled button beside an empty required field is
+// self-explanatory, and an error message for a state the user has not left yet
+// is noise.
+//
+// ONBOARDING-ONLY (F4). Settings keeps accepting an empty name and
+// `aliasDisplay()` still falls back to "You", because profiles created before
+// this gate existed have one and must not be held hostage by a new rule.
+function updateIdentityContinue() {
+  const el = byId("alias-input");
+  byId("btn-identity-done").disabled = el.value.trim() === "";
+}
+byId("alias-input").addEventListener("input", updateIdentityContinue);
+
 async function showIdentityStep() {
   const errEl = byId("identity-error");
   errEl.textContent = "";
@@ -268,10 +283,12 @@ async function showIdentityStep() {
     // the wizard never pre-fills a prior value; Settings is the edit
     // surface (D596 F2).
     byId("alias-input").value = "";
+    updateIdentityContinue(); // R-7: an empty field must arrive DISABLED
     show("scr-wizard-identity");
     fitCode(byId("identity-code"));
   } catch (e) {
     errEl.textContent = "Identity setup failed: " + e;
+    updateIdentityContinue();
     show("scr-wizard-identity");
   }
 }
