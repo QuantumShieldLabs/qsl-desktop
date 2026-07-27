@@ -19,6 +19,13 @@ fn env_lock() -> &'static Mutex<()> {
     L.get_or_init(|| Mutex::new(()))
 }
 
+/// Model the onboarding Continue press: it is the act that first writes
+/// `settings.json`, and post-R-7 that write IS the "identity step finished"
+/// signal the resolver reads (D-0018 / ENG-0076).
+fn write_settings_marker(dir: &std::path::Path) {
+    settings::save(dir, &settings::AppSettings::default()).expect("settings write");
+}
+
 fn fresh_env(tmp: &tempfile::TempDir) {
     lock(None);
     bootstrap(tmp.path()).expect("bootstrap");
@@ -54,7 +61,18 @@ fn c_prime_deferred_path_to_honest_disconnected() {
     // configures a relay — so the profile still carries ONLY the autolock key
     // (relay_url is omitted while empty), and the footer's honest state is
     // "no server configured".
+    // ⛔ AMENDED 2026-07-26 — NA-0680 / D-0018 (authorised D595 revision).
+    // The core sequence above stops at identity GENERATION, which post-R-7 is
+    // mid-step: Continue is what finishes it, and Continue writes settings.
+    // So this flow resolves S1 until that write happens.
+    assert_eq!(
+        resolve_launch_state(tmp.path()),
+        LaunchState::S1,
+        "post-R-7: identity generated but Continue not yet pressed"
+    );
+    write_settings_marker(tmp.path());
     assert_eq!(resolve_launch_state(tmp.path()), LaunchState::S2);
+
     let v = serde_json::to_value(settings::load(tmp.path())).unwrap();
     let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
     assert_eq!(
@@ -88,9 +106,26 @@ fn d_interruption_matrix() {
     ));
     let rec1 = qsc::identity::identity_ensure(SELF_LABEL).expect("identity");
 
-    // "kill after identity": relaunch resolves S2; identity_ensure re-run
-    // returns the SAME record (no mutation).
+    // ⛔ AMENDED 2026-07-26 — NA-0680 / D-0018, an AUTHORISED revision of the
+    // D595 launch contract. This file is byte-frozen; the unfreeze is recorded
+    // rather than silent.
+    //
+    // This test MODELS the Finding-5 scenario and, until R-7, sanctioned its
+    // outcome: kill after identity -> S2. That was correct when written,
+    // because a nameless identity was a valid completed state. **R-7 made the
+    // name mandatory to leave the identity step**, so an identity with no
+    // `settings.json` beside it is now an UNFINISHED step, not a finished one.
+    // Amending this assertion RECORDS that supersession; it does not weaken a
+    // contract that still holds. See ENG-0076 and state.rs's revised header.
     lock(None);
+    assert_eq!(
+        resolve_launch_state(tmp.path()),
+        LaunchState::S1,
+        "post-R-7: an identity with no settings.json means Continue never ran"
+    );
+
+    // ...and once the step is FINISHED (Continue writes settings), S2.
+    write_settings_marker(tmp.path());
     assert_eq!(resolve_launch_state(tmp.path()), LaunchState::S2);
     assert!(matches!(
         unlock_guarded("interrupt-pass").expect("unlock"),
