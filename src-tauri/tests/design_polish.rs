@@ -803,3 +803,65 @@ fn verification_code_box_cannot_clip_its_glyphs() {
         "the height must be re-measured AFTER fitCode changes the code's size"
     );
 }
+
+/// ENG-0076 / D-0018: nothing may write `settings.json` before the onboarding
+/// Continue, or the resume signal breaks silently.
+///
+/// ⚠ MUST GO RED IF: a write path to `settings.json` becomes reachable BEFORE
+/// Continue. The whole fix rests on "settings.json does not exist until
+/// Continue ran" — established by tracing every writer, not by assuming it. A
+/// future pre-Continue write would make a killed onboarding look completed,
+/// resume would resolve S2, and R-7's gate would be bypassed again **with no
+/// other test failing**. This is that test.
+///
+/// The alternative signal — `self_alias` absent — was RULED OUT and must not
+/// return: `skip_serializing_if = "String::is_empty"` omits an empty alias, so
+/// key-absent also matches "name cleared in Settings" and matches every
+/// pre-R-7 profile, which D615's F4 forbids re-routing.
+#[test]
+fn no_settings_write_precedes_onboarding_continue() {
+    let js = ui_file("main.js");
+
+    // The boot path READS settings and must never write them — otherwise a
+    // launched-but-abandoned onboarding would look completed.
+    let boot = js.find("// ---- boot").expect("the boot block");
+    assert!(
+        !js[boot..].contains("saveSettings"),
+        "the boot path must not write settings.json"
+    );
+
+    // Backend: the two commands reachable before Continue must not persist.
+    let cmds = manifest_file("src/commands.rs");
+    for (sig, name) in [
+        ("pub async fn vault_create", "vault_create"),
+        ("pub fn settings_get", "settings_get"),
+    ] {
+        let f = cmds.find(sig).unwrap_or_else(|| panic!("{name} not found"));
+        let body = &cmds[f..f + cmds[f..].find("\n}").expect("fn end")];
+        assert!(
+            !body.contains("settings::save"),
+            "`{name}` is reachable before Continue and MUST NOT write settings.json"
+        );
+    }
+
+    // Continue IS a save site — it is what creates the file.
+    let cont = js
+        .find(r#"byId("btn-identity-done").addEventListener"#)
+        .expect("the Continue handler");
+    let handler = &js[cont..cont + js[cont..].find("\n});").expect("handler end")];
+    assert!(
+        handler.contains("saveSettings()"),
+        "Continue must write settings — that write IS the finished-step signal"
+    );
+
+    // And the resolver reads it, on the ruled signal only.
+    let state_src = manifest_file("src/state.rs");
+    assert!(
+        state_src.contains("settings_file(data_dir).exists()"),
+        "resume must gate S2 on settings.json existing"
+    );
+    assert!(
+        !strip_rust_comments(&state_src).contains("self_alias"),
+        "the self_alias signal was ruled out and must not return"
+    );
+}

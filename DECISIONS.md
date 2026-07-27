@@ -1049,3 +1049,48 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
   - **Goals:** G1. Tests 92 pass / 1 ignored / 0 fail; fmt and clippy `--all-targets` clean.
   - **References:** D-0015, D-0016; spine D615/NA-0680; **ENG-0076** (the held Finding-5
     regression); ENG-0075 (the `-q` CI gap, also filed at closeout).
+
+- **ID:** D-0018
+  - **Date:** 2026-07-26
+  - **Lane:** NA-0680 — **a D595 CONTRACT REVISION riding a polish lane.** Recorded loudly, not
+    folded in: same discipline as the `[F.1-COMMIT]` reversal.
+  - **Decision:** D595's **S1/S2 discriminator is revised**. S2 was "vault and identity exist";
+    it becomes "vault exists AND the onboarding identity step FINISHED", where finished is
+    signalled by `settings.json` existing beside the identity record.
+  - **Why (and why it is a supersession, not a break):** D595's definition was **correct when
+    written** — a nameless identity was a valid completed state, and the wizard's own copy said
+    "leave empty to be shown as You". **R-7 (D615, this lane) made the name MANDATORY** to leave
+    the identity step, superseding that premise without updating the definition. The gap is a real
+    regression, tracked as **ENG-0076**: the identity record is written when the step OPENS
+    (`identity_ensure` → `identity_self_kem_keypair` → `identity_write_public_record`), so killing
+    the app between the step opening and Continue left a keypair on disk with no name, resume
+    resolved S2, and the user landed in main with R-7's gate silently bypassed, shown as "You".
+  - **⚠ THE SIGNAL, and why not the obvious one.** `self_alias`-absent was ruled out:
+    `skip_serializing_if = "String::is_empty"` OMITS an empty alias, so "key absent" is
+    indistinguishable from "name cleared in Settings" **and** matches every profile created before
+    R-7 — which D615's F4 exists to protect. The operator's own live profile is an instance
+    (`{"autolock_minutes":1}`, no alias key, identity present); that signal would have re-routed a
+    completed profile through onboarding. **`settings.json`'s EXISTENCE is unambiguous**, because
+    NO write path precedes Continue — traced, not assumed: `vault_create` writes no settings,
+    `settings_get` is read-only, the boot path never saves, and the alias/autolock/relay writers
+    are reachable only after main. That trace is PINNED by
+    `design_polish::no_settings_write_precedes_onboarding_continue`, because a future pre-Continue
+    write would break the signal with no other test failing.
+  - **⚠ THE FROZEN-FILE UNFREEZE, with the scope corrected from 7 to 2.** The change was first
+    reported as breaking SEVEN `slice_a_flows.rs` tests. **Only TWO actually fail**
+    (`d_interruption_matrix`, `c_prime_deferred_path_to_honest_disconnected`); the other five pass
+    in isolation and were failing as a **cascade** — the file's shared `env_lock()` `Mutex` is
+    POISONED by the first panic, so every later `.lock().unwrap()` panics too. **The suite's
+    failure list overstated the blast radius 3.5×**, and the operator's stop condition ("if any
+    amendment encodes something R-7 did NOT supersede, STOP") is exactly what forced checking each
+    one individually rather than trusting the count.
+  - **Both real amendments ARE R-7 supersessions**, so no stop condition fired.
+    `d_interruption_matrix` models this precise interruption and sanctioned S2 for it;
+    `c_prime`'s core sequence stops at identity GENERATION, which post-R-7 is mid-step. Both now
+    assert **S1 until the step finishes**, then S2 — so the tests still pin the discriminator,
+    at its revised value, rather than being deleted.
+  - **Negative controls:** making a settings write reachable before Continue → **RED**; reverting
+    the resolver to "identity exists ⇒ S2" → **RED** on the amended contract test.
+  - **Goals:** G1. Tests 93 pass / 1 ignored / 0 fail; fmt and clippy `--all-targets` clean.
+  - **References:** **ENG-0076** (the R-7 regression this fixes); D-0015/D-0016/D-0017 (this
+    lane); D595 (the revised contract); D615 F4 (why the alias signal was rejected).
