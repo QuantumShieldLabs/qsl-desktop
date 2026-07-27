@@ -295,6 +295,17 @@ button.full { width: 100%; }
 .verify-code {
   font-size: var(--fs-mono); font-weight: var(--fw-mid);
   letter-spacing: 1.5px; white-space: nowrap; overflow: hidden;
+  /* Finding 2 (live flight): the code's BOTTOM pixels were clipped by the box
+     border on first render, intermittently — full on a later render of the
+     same screen. `overflow: hidden` is load-bearing for the shrink-to-fit
+     logic and stays, so the fix is to guarantee the line box is taller than
+     the glyph box instead of relying on the inherited 1.5 and sub-pixel
+     rounding at whatever fractional size fitCode lands on. An explicit
+     line-height scales WITH the font-size fitCode sets, so the headroom holds
+     at every step from 17px down to the 11px floor.
+     ⚠ This is a PIXEL defect and cannot be verified headlessly — there is no
+     input driver on the build host. It needs the operator's re-flight. */
+  line-height: 1.6;
   text-align: center;
   padding: var(--sp-x13); background: var(--bg-inset);
   border: 1px solid var(--border); border-radius: var(--radius-small);
@@ -495,6 +506,15 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 .pane-sect { padding: var(--sp-6) 0; }
 .pane-sect:first-child { padding-top: var(--sp-2); }
 .pane-sect + .pane-sect { border-top: 1px solid var(--border); }
+/* Finding 4 (live flight): the section padding was CORRECT at --sp-6 (32px);
+   the extra height came from `.pane h3`'s 12px TOP margin stacking on it — 44px
+   above a heading where mockup 09 draws 32. Scoped to `.pane-sect h3` rather
+   than editing `.pane h3`, so the blast radius stays where the defect is: Vault
+   is the only pane with h3s today (4 of them; Identity/Server/About/Appearance/
+   Notifications have none), and a future pane with an h3 outside a section is
+   not silently restyled by this fix. Mockup 09's rhythm is no top margin, 8px
+   below. */
+.pane-sect h3 { margin: 0 0 var(--sp-2) 0; }
 
 /* R-12/F1: persistent state renders as a QUIET STATUS LINE, not a banner —
    banners are reserved for the Server pane's test RESULTS, which are an

@@ -9,7 +9,10 @@
 //! cannot silently drift back.
 
 use qsl_desktop_app::settings::{self, AppSettings, AUTOLOCK_DEFAULT_MINUTES};
-use qsl_desktop_app::{mode_for_surface, window_mode_spec, WindowMode};
+use qsl_desktop_app::{
+    mode_for_surface, window_mode_spec, WindowMode, SETTINGS_ICON_RAIL_W, SETTINGS_NAV_RAIL_W,
+    SETTINGS_PANE_MAX_W, SETTINGS_PANE_PAD_W,
+};
 use std::fs;
 use std::path::Path;
 
@@ -355,8 +358,13 @@ fn window_modes_and_menu_visibility() {
     assert_eq!(mode_for_surface("scr-unlock"), WindowMode::Unlock);
     assert_eq!(mode_for_surface("scr-erase"), WindowMode::Erase);
     assert_eq!(mode_for_surface("scr-wiped"), WindowMode::Wiped);
-    assert_eq!(mode_for_surface("scr-main"), WindowMode::Full);
-    assert_eq!(mode_for_surface("scr-settings"), WindowMode::Full);
+    // ⛔ AMENDED 2026-07-26 by NA-0680 Finding 1 (acceptance flight). `Full` is
+    // SPLIT: sharing one mode between the main window and Settings is why
+    // opening Settings never resized anything and left ~212px of dead space
+    // beside a 560px content column. Settings' width is now DERIVED from the
+    // layout caps it must contain.
+    assert_eq!(mode_for_surface("scr-main"), WindowMode::Main);
+    assert_eq!(mode_for_surface("scr-settings"), WindowMode::Settings);
 
     // Round 4a: one size per pre-main surface, and no two pre-main surfaces
     // share a height any more — that sharing WAS the dead space.
@@ -383,8 +391,16 @@ fn window_modes_and_menu_visibility() {
         let ((w, _), _, _) = window_mode_spec(m);
         assert_eq!(w, 360.0, "every pre-main surface shares the reading width");
     }
-    let ((w, h), (mw, mh), menu) = window_mode_spec(WindowMode::Full);
-    assert_eq!((w, h, mw, mh, menu), (1024.0, 700.0, 800.0, 600.0, true));
+    // Finding 1: Settings is DERIVED, not chosen — 52 + 160 + 560 + 40.
+    let ((w, _), (mw, _), menu) = window_mode_spec(WindowMode::Settings);
+    assert_eq!((w, mw, menu), (812.0, 812.0, true));
+    assert_eq!(
+        w,
+        SETTINGS_ICON_RAIL_W + SETTINGS_NAV_RAIL_W + SETTINGS_PANE_MAX_W + SETTINGS_PANE_PAD_W,
+        "the Settings width must be DERIVED from the layout caps, not a literal"
+    );
+    let ((w, h), _, menu) = window_mode_spec(WindowMode::Main);
+    assert_eq!((w, h, menu), (1024.0, 700.0, true));
 
     // Every pre-main surface shares ONE modest minimum so the window can be
     // dragged small enough to exercise the F4 wrap remedy.
@@ -426,6 +442,13 @@ fn window_modes_and_menu_visibility() {
     assert!(
         conf.contains(r#""height": 585"#),
         "F1 compact initial height — round 4a: the wizard-step-1 literal"
+    );
+    // Finding 1: the creation-time 800x600 floor is REMOVED. Left in place it
+    // would silently re-impose itself over every content-driven width and
+    // height, which is the defect wearing a different hat.
+    assert!(
+        !conf.contains("minWidth") && !conf.contains("minHeight"),
+        "no creation-time size floor may survive content-driven sizing"
     );
 }
 

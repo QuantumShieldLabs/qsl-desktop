@@ -57,18 +57,11 @@ details summary{cursor:pointer;color:var(--accent-text);font-size:13.5px;list-st
     against future quantum computers.</p>
   </div>
 
-  <div class="block">
-    <details>
-      <summary>Show technical details</summary>
-      <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
-        <div>
-          <span class="field-label">Full fingerprint</span>
-          <div class="fp-box mono">QSCFP-39c8baaacee61d8cd76e2a0954558c85</div>
-        </div>
-        <p class="hint">Post-quantum hybrid: ML-KEM-768 (key agreement) + ML-DSA-65 (signatures)</p>
-      </div>
-    </details>
-  </div>
+  <!-- NA-0680 Finding 3 (operator ruling, 2026-07-26): the "Show technical
+       details" disclosure is REMOVED from onboarding and KEPT in Settings
+       (mockup 07). Nothing is being verified yet at this step, so the
+       fingerprint and the ML-KEM/ML-DSA line are premature here even collapsed;
+       identity detail belongs where it is acted on. -->
 
   <button class="primary">Continue</button>
 </div>

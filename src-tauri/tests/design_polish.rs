@@ -11,7 +11,7 @@
 //! GATE 1 rows only. The GATE-2 rows (Identity/Vault panes, content-driven
 //! window sizing, R-17/R-18) land with GATE 2.
 
-use qsl_desktop_app::{height_for, window_mode_spec, WindowMode};
+use qsl_desktop_app::{height_for, size_for, window_mode_spec, WindowMode};
 use std::fs;
 use std::path::Path;
 
@@ -45,6 +45,21 @@ fn strip_html_comments(html: &str) -> String {
     }
     out.push_str(rest);
     out
+}
+
+/// Strip `//` line comments from Rust source. Same lesson as
+/// `strip_html_comments`, learned a FOURTH time: a needle that bans a
+/// substring across a file fires on the comment explaining the ban. Here the
+/// resolver's own note — recording WHY the `self_alias` signal was ruled out —
+/// tripped two separate `self_alias` bans.
+fn strip_rust_comments(src: &str) -> String {
+    src.lines()
+        .map(|l| match l.find("//") {
+            Some(i) => &l[..i],
+            None => l,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Slice `css` from `sel` to the next `}`.
@@ -292,7 +307,11 @@ fn self_alias_has_no_reader_outside_settings() {
         "src/gateway.rs",
         "src/markers.rs",
     ] {
-        let text = manifest_file(src);
+        // ⚠ CODE only. `state.rs` documents WHY the `self_alias` resume signal
+        // was ruled out (ENG-0076), and an unstripped ban fires on that prose —
+        // the fourth time in this lane that a substring ban hit the comment
+        // explaining the ban.
+        let text = strip_rust_comments(&manifest_file(src));
         assert!(
             !text.contains("self_alias"),
             "`{src}` reads self_alias — the claim \"never sent anywhere\" must be \
@@ -579,49 +598,208 @@ fn window_height_syncs_on_the_autolock_path_not_just_surface_change() {
     );
 }
 
-/// R-14, tested as BEHAVIOUR rather than as text: `height_for` is a floor.
+/// Finding 1 (acceptance flight): EVERY window tracks its content, in BOTH
+/// directions. There is no per-surface floor.
 ///
-/// ⚠ MUST GO RED IF: the function starts returning the measurement
-/// unconditionally (which would let a short surface shrink below the
-/// operator's chosen reading composition — the round-4a work), or starts
-/// ignoring the measurement (which reinstates the clip this lane exists to
-/// fix). Both directions are asserted, because "take the max" is exactly the
-/// property and either half alone is wrong.
+/// ⛔ SUPERSEDES this test's earlier form, which asserted the opposite — that a
+/// surface shorter than its table value must NOT shrink. That floor was my
+/// inference, never an operator instruction, and it CAUSED six of the seven
+/// instances the live flight found: windows held open above their content.
+///
+/// ⚠ MUST GO RED IF: any mode stops tracking its measurement — in either
+/// direction. The operator's ruling was explicit that a test covering one
+/// window would be hollow, so this iterates EVERY mode, including the two that
+/// are not measured today: if a future lane starts measuring Settings or Main,
+/// the property is already pinned.
 #[test]
-fn window_height_table_is_a_floor_not_a_fixed_size() {
-    for mode in [
+fn every_window_tracks_its_content_in_both_directions() {
+    let all = [
         WindowMode::WizardVault,
         WindowMode::WizardIdentity,
         WindowMode::Unlock,
         WindowMode::Erase,
         WindowMode::Wiped,
-    ] {
-        let ((_, table), _, _) = window_mode_spec(mode);
+        WindowMode::Settings,
+        WindowMode::Main,
+    ];
+    for mode in all {
+        let ((_, fallback), (_, min_h), _) = window_mode_spec(mode);
 
-        // No measurement -> the table governs, exactly as before this lane.
-        assert_eq!(height_for(mode, None), table, "{mode:?}: no measurement");
+        // No measurement yet -> the fallback, so the window opens at something.
+        assert_eq!(height_for(mode, None), fallback, "{mode:?}: unmeasured");
 
-        // Content SHORTER than the table -> the table still governs. This is
-        // what keeps the operator's reading composition.
+        // ⚠ THE REVERSAL: content SHORTER than the fallback must SHRINK the
+        // window. A `max(fallback, measured)` floor fails exactly here, and
+        // that failure is what the flight observed six times.
+        // ⚠ The probe is DERIVED from each mode's own headroom, not a fixed
+        // offset. A flat `fallback - 60` underflowed Unlock (255-60 < 200) and
+        // Wiped (220-60 < 200) and tripped this very guard — the assertion
+        // caught a defect in its own input, which is the point of asserting the
+        // precondition instead of assuming it.
+        assert!(
+            fallback > min_h,
+            "{mode:?}: fallback must exceed the safety min"
+        );
+        let short = min_h + (fallback - min_h) / 2.0;
         assert_eq!(
-            height_for(mode, Some(table - 40.0)),
-            table,
-            "{mode:?}: a short surface must NOT shrink below the floor"
+            height_for(mode, Some(short)),
+            short,
+            "{mode:?}: a window MUST shrink to content — dead space is the defect"
         );
 
-        // Content TALLER than the table -> the window grows. This is the fix.
+        // Content TALLER -> grows (the original R-14 clip).
+        assert_eq!(height_for(mode, Some(fallback + 18.0)), fallback + 18.0);
+
+        // The ONLY clamp is the absolute minimum, and it exists so the window
+        // cannot become un-draggable — not to encode a preferred size.
         assert_eq!(
-            height_for(mode, Some(table + 18.0)),
-            table + 18.0,
-            "{mode:?}: the window must grow to fit content the table never saw"
+            height_for(mode, Some(min_h - 50.0)),
+            min_h,
+            "{mode:?}: clamp"
         );
+
+        // "No window exceeds its content box by more than the intended
+        // padding": the measurement already carries the surface's padding, so
+        // the returned height must EQUAL it, never pad it again.
+        for probe in [min_h + 1.0, fallback, fallback + 200.0] {
+            assert_eq!(
+                size_for(mode, Some(probe)).1,
+                probe,
+                "{mode:?}: height must equal the measured content box, not exceed it"
+            );
+        }
     }
 
-    // The concrete R-14 case, stated in its own numbers: the unlock window is
-    // 255 measured against an EMPTY feedback line; one line of 12px/1.5 hint
-    // text is ~18px, and the card is `overflow-y: auto`, so at a fixed 255 the
-    // "Delete vault?" link fell below the fold.
-    let ((_, unlock), _, _) = window_mode_spec(WindowMode::Unlock);
-    assert_eq!(unlock, 255.0, "the floor is unchanged by this lane");
-    assert_eq!(height_for(WindowMode::Unlock, Some(273.0)), 273.0);
+    // Width is the mode's own and must not drift with content.
+    for mode in all {
+        let ((w, _), _, _) = window_mode_spec(mode);
+        assert_eq!(
+            size_for(mode, Some(1234.0)).0,
+            w,
+            "{mode:?}: width is stable"
+        );
+    }
+}
+
+/// Finding 1: the frontend measures EVERY pre-main surface, not just the one
+/// that was reported.
+///
+/// ⚠ MUST GO RED IF: a pre-main screen is added to the app and left out of the
+/// measured set — it would then silently inherit its fallback height forever,
+/// which is how five of the seven instances stayed invisible until a human
+/// looked at them.
+#[test]
+fn every_pre_main_surface_is_measured() {
+    let js = ui_file("main.js");
+    let f = js.find("const PRE_MAIN_SCREENS").expect("the measured set");
+    let decl = &js[f..f + js[f..].find("];").expect("end of list")];
+    for screen in [
+        "scr-wizard-vault",
+        "scr-wizard-identity",
+        "scr-unlock",
+        "scr-erase",
+        "scr-wiped",
+    ] {
+        assert!(decl.contains(screen), "`{screen}` must be measured");
+    }
+    // And the Rust side must have a mode for each of them.
+    let lib = manifest_file("src/lib.rs");
+    for surface in [
+        "scr-wizard-vault",
+        "scr-wizard-identity",
+        "scr-unlock",
+        "scr-erase",
+        "scr-wiped",
+    ] {
+        assert!(lib.contains(surface), "`{surface}` must map to a mode");
+    }
+    // Settings must NOT share the main window's mode any more (instance 4).
+    assert!(
+        lib.contains(r#""scr-settings" => WindowMode::Settings"#),
+        "Settings needs its own mode, or opening it never resizes anything"
+    );
+}
+
+/// Finding 4: the section heading rhythm matches mockup 09.
+///
+/// ⚠ MUST GO RED IF: the h3 top margin returns and stacks on the section
+/// padding — 32 + 12 = 44px above a heading where the mockup draws 32. Scoped
+/// to `.pane-sect h3`, so a heading outside a section is unaffected.
+#[test]
+fn section_headings_do_not_stack_margin_on_padding() {
+    let css = ui_file("style.css");
+    let b = rule_block(&css, ".pane-sect h3");
+    assert!(
+        b.contains("margin: 0 0 var(--sp-2) 0"),
+        "no top margin; 8px below, per mockup 09"
+    );
+    // The section padding itself was never the defect and must stay at --sp-6.
+    let sect = rule_block(&css, ".pane-sect {");
+    assert!(
+        sect.contains("padding: var(--sp-6) 0"),
+        "32px section padding"
+    );
+}
+
+/// Finding 3: the technical-details disclosure is GONE from onboarding and
+/// KEPT in Settings.
+///
+/// ⚠ MUST GO RED IF: the disclosure returns to the wizard (premature — nothing
+/// is being verified yet at that point), OR if it is removed from Settings too
+/// (that is where identity detail is acted on). Both directions matter, which
+/// is why both are asserted.
+#[test]
+fn technical_details_is_settings_only() {
+    let html = ui_file("index.html");
+    let wiz = &html[html.find(r#"id="scr-wizard-identity""#).expect("wizard")..];
+    let wiz = &wiz[..wiz.find("</section>").expect("end")];
+    let wiz_markup = strip_html_comments(wiz);
+    assert!(
+        !wiz_markup.contains("Show technical details"),
+        "onboarding must NOT carry the disclosure"
+    );
+    assert!(
+        !wiz_markup.contains("identity-fp") && !wiz_markup.contains("identity-mech"),
+        "and neither its fingerprint nor its mechanism line"
+    );
+
+    let pane = &html[html.find(r#"id="pane-identity""#).expect("identity pane")..];
+    let pane = &pane[..pane.find(r#"id="pane-server""#).expect("next pane")];
+    assert!(
+        pane.contains("Show technical details") && pane.contains("settings-fp"),
+        "Settings KEEPS the disclosure — that is where identity detail is acted on"
+    );
+}
+
+/// Finding 2: the verification code cannot clip its own glyphs.
+///
+/// ⚠ MUST GO RED IF: the explicit line-height is dropped back to the inherited
+/// value. `overflow: hidden` is load-bearing for the shrink-to-fit logic and
+/// stays, so the only defence against a clipped glyph bottom is a line box
+/// taller than the glyph box at EVERY size fitCode can land on.
+/// ⓘ This pins the mechanism; the PIXEL result needs the operator's re-flight,
+/// because there is no input driver on the build host.
+#[test]
+fn verification_code_box_cannot_clip_its_glyphs() {
+    let css = ui_file("style.css");
+    let b = rule_block(&css, ".verify-code {");
+    assert!(
+        b.contains("line-height:"),
+        "an EXPLICIT line-height — the inherited one left no headroom"
+    );
+    assert!(
+        b.contains("white-space: nowrap"),
+        "the frozen base property holds"
+    );
+    let js = ui_file("main.js");
+    // fitCode changes the rendered size, so it must precede the measurement or
+    // the window is sized against a code that is about to change.
+    let fit = js
+        .find(r#"fitCode(byId("identity-code"));"#)
+        .expect("the wizard fit call");
+    let after = &js[fit..];
+    assert!(
+        after[..after.find("\n}").unwrap_or(after.len())].contains("syncWindowHeight();"),
+        "the height must be re-measured AFTER fitCode changes the code's size"
+    );
 }
