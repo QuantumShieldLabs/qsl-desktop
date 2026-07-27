@@ -385,9 +385,32 @@ byId("btn-identity-done").addEventListener("click", async () => {
 });
 
 // ---- unlock ---------------------------------------------------------------
+// ⚠ THE UNLOCK FEEDBACK LINE IS A CONDITIONAL ELEMENT, AND WRITING IT MUST
+// RESIZE THE WINDOW. This helper exists so that cannot be forgotten.
+//
+// The re-flight found "Delete vault?" disappearing the moment a wrong
+// passphrase was entered — the feedback text appears, the content grows, the
+// window does not, and the link is pushed out of view. That is the ORIGINAL
+// R-14 defect, found a THIRD time.
+//
+// It survived because the previous fix wired the sync at the ONE write the
+// finding happened to name (the autolock notice), while D615's own rule says
+// "after ANY write to a conditional element". Five other writers — the empty
+// reset, the empty-passphrase guard, the rejected-attempt line, the countdown
+// tick and its expiry, the error path — each wrote and none resized.
+//
+// So the remedy is structural rather than another reminder: there is now ONE
+// way to write this element and it resizes. `design_polish.rs` asserts no
+// other writer exists, which is what makes this a control instead of a note.
+function setUnlockFeedback(kind, text) {
+  const fb = byId("unlock-feedback");
+  fb.className = kind ? "feedback " + kind : "feedback";
+  fb.textContent = text;
+  syncWindowHeight();
+}
+
 let countdownTimer = null;
 function startCountdown(seconds, failed) {
-  const fb = byId("unlock-feedback");
   const btn = byId("btn-unlock");
   let left = seconds;
   btn.disabled = true;
@@ -406,13 +429,13 @@ function startCountdown(seconds, failed) {
       // `eraseCountdownAbort` nulls its handle correctly; this one did not.
       countdownTimer = null;
       btn.disabled = false;
-      fb.className = "feedback";
-      fb.textContent = failed > 0 ? `Failed attempts: ${failed}. You can try again now.` : "";
+      setUnlockFeedback("", failed > 0 ? `Failed attempts: ${failed}. You can try again now.` : "");
       return;
     }
-    fb.className = "feedback reject";
-    fb.textContent =
-      `Too many failed attempts (${failed}). Try again in ${left} second${left === 1 ? "" : "s"}.`;
+    setUnlockFeedback(
+      "reject",
+      `Too many failed attempts (${failed}). Try again in ${left} second${left === 1 ? "" : "s"}.`
+    );
     left -= 1;
   };
   tick();
@@ -421,10 +444,8 @@ function startCountdown(seconds, failed) {
 
 byId("btn-unlock").addEventListener("click", async () => {
   const pass = byId("unlock-pass").value;
-  const fb = byId("unlock-feedback");
-  fb.className = "feedback";
-  fb.textContent = "";
-  if (!pass) { fb.className = "feedback reject"; fb.textContent = "Enter your passphrase."; return; }
+  setUnlockFeedback("", "");
+  if (!pass) { setUnlockFeedback("reject", "Enter your passphrase."); return; }
   const btn = byId("btn-unlock");
   btn.disabled = true;
   try {
@@ -440,9 +461,8 @@ byId("btn-unlock").addEventListener("click", async () => {
       else enterMain();
     } else if (r.kind === "rejected") {
       observedFailedUnlocks = r.failed_unlocks;
-      fb.className = "feedback reject";
       if (r.retry_after_s > 0) startCountdown(r.retry_after_s, r.failed_unlocks);
-      else fb.textContent = `Wrong passphrase. Failed attempts: ${r.failed_unlocks}.`;
+      else setUnlockFeedback("reject", `Wrong passphrase. Failed attempts: ${r.failed_unlocks}.`);
     } else if (r.kind === "delayed") {
       observedFailedUnlocks = r.failed_unlocks;
       startCountdown(r.retry_after_s, r.failed_unlocks);
@@ -450,9 +470,8 @@ byId("btn-unlock").addEventListener("click", async () => {
       show("scr-wiped");
     }
   } catch (e) {
-    fb.className = "feedback reject";
     // R-17: a lead SENTENCE, never a bare code.
-    fb.textContent = unlockErrorText(e);
+    setUnlockFeedback("reject", unlockErrorText(e));
   } finally {
     // ⚠ R-18: STATE-DRIVEN, not className-driven. The old predicate asked
     // whether the feedback element's class string happened to equal
@@ -1374,14 +1393,10 @@ setInterval(async () => {
     await invoke("lock_now"); // the one-call NA-0658 lock()
     await showUnlockScreen("main");
     // R-14: accent severity, not red-adjacent — being locked by the timer is
-    // the protection working, not a failure.
-    byId("unlock-feedback").className = "feedback locked-notice";
-    byId("unlock-feedback").textContent = "Locked after inactivity.";
-    // ⚠ R-14 PATH (b): this write happens AFTER show(), so the surface-change
-    // sync already ran against an EMPTY feedback line. Without this call the
-    // window keeps the table height and "Delete vault?" clips — the exact
-    // reported defect.
-    syncWindowHeight();
+    // the protection working, not a failure. The helper resizes: this write
+    // lands AFTER show(), so the surface-change sync already ran against an
+    // EMPTY feedback line.
+    setUnlockFeedback("locked-notice", "Locked after inactivity.");
   }
 }, 5000);
 

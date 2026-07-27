@@ -62,6 +62,22 @@ fn strip_rust_comments(src: &str) -> String {
         .join("\n")
 }
 
+/// Strip `//` line comments from JS. Same lesson as the HTML and Rust
+/// strippers — a substring ban fires on the comment explaining the ban.
+fn strip_js_line_comments(js: &str) -> String {
+    js.lines()
+        .map(|l| {
+            let t = l.trim_start();
+            if t.starts_with("//") {
+                ""
+            } else {
+                l
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// Slice `css` from `sel` to the next `}`.
 fn rule_block<'a>(css: &'a str, sel: &str) -> &'a str {
     let start = css
@@ -553,14 +569,20 @@ fn unlock_reenable_is_state_driven() {
     );
 }
 
-/// R-14: the window table is a FLOOR, and the sync runs on the path that
-/// actually trips the defect.
+/// R-14: the autolock path resizes AFTER writing its notice — the specific
+/// case the operator ruled must be exercised, not just surface-change.
 ///
-/// ⚠ MUST GO RED IF: the sync is wired only to `show()`. The autolock path
-/// calls `show("scr-unlock")` and writes "Locked after inactivity." into the
-/// feedback line AFTERWARDS — a fix tested only on surface-change passes its
-/// own test and still clips "Delete vault?" below the fold. That is the
-/// hollow-proof shape the operator ruled against explicitly.
+/// ⛔ AMENDED after the re-flight. This test used to look for the literal
+/// `byId("unlock-feedback").textContent = "Locked after inactivity."` followed
+/// by a `syncWindowHeight()`. That pinned the INSTANCE, and the re-flight
+/// proved the instance was never the point: five other writers of the same
+/// element had the same defect and this test was blind to all of them. The
+/// class is now pinned by
+/// `unlock_feedback_has_exactly_one_writer_and_it_resizes`; this one keeps the
+/// autolock path specifically covered, because the operator ruled it must be.
+///
+/// ⚠ MUST GO RED IF: the autolock path stops routing its write through the
+/// resizing writer — e.g. by setting `textContent` directly again.
 #[test]
 fn window_height_syncs_on_the_autolock_path_not_just_surface_change() {
     let js = ui_file("main.js");
@@ -570,24 +592,35 @@ fn window_height_syncs_on_the_autolock_path_not_just_surface_change() {
         "the measurement rides the existing surface-change carrier"
     );
 
-    // PATH (b), the one that matters: the autolock write must be FOLLOWED by a
-    // sync, in that order.
-    let write = js
-        .find(r#"byId("unlock-feedback").textContent = "Locked after inactivity.";"#)
-        .expect("the autolock feedback write");
-    let after = &js[write..];
-    let sync = after
-        .find("syncWindowHeight();")
-        .expect("a sync after the write");
-    let next_fn = after.find("\n}").unwrap_or(after.len());
+    // The autolock path must write through the RESIZING writer, and do so
+    // after showing the unlock screen — the write lands after `show()`, so the
+    // surface-change sync has already run against an empty line.
+    //
+    // ⚠ Anchored on the elapsed-time comparison, which is UNIQUE to the idle
+    // timer. `showUnlockScreen("main")` appears three times (route, the idle
+    // timer, the menu Lock-now) and a bare `find` returns route's — the same
+    // "first match is not the one you mean" shape as the `.verify-code` slice.
+    let timer = js
+        .find("autolockMinutes * 60 * 1000")
+        .expect("the idle-timer comparison");
+    let branch = &js[timer..];
+    let branch = &branch[..branch.find("}, 5000);").unwrap_or(branch.len())];
     assert!(
-        sync < next_fn,
-        "the autolock path MUST re-sync after writing the feedback line — \
-         syncing only at show() misses the very content R-14 exists for"
+        branch.contains(r#"await showUnlockScreen("main");"#),
+        "the idle timer redirects to unlock"
+    );
+    let show = branch.find("showUnlockScreen").unwrap();
+    let write = branch
+        .find(r#"setUnlockFeedback("locked-notice", "Locked after inactivity.")"#)
+        .expect("the autolock notice must go through the RESIZING writer");
+    assert!(
+        show < write,
+        "the notice is written AFTER the redirect — which is exactly why it \
+         needs its own resize"
     );
 
-    // And the measurement must include the screen's padding, or a surface will
-    // be sized to its content and clip at the edges.
+    // The measurement must include the screen's padding, or a surface is sized
+    // to its content and clips at the edges.
     let f = js
         .find("function measurePreMainHeight")
         .expect("the measurer");
@@ -980,5 +1013,59 @@ fn settings_width_derives_from_the_form_cap() {
         window_mode_spec(WindowMode::Settings).0 .0,
         52.0 + 160.0 + 520.0 + 40.0,
         "the window must equal rail + nav + FORM cap + padding, so both insets match"
+    );
+}
+
+/// ⚠ R-14, THIRD OCCURRENCE: writing the unlock feedback MUST resize the
+/// window, and this pins the CLASS rather than the instance.
+///
+/// The re-flight found "Delete vault?" vanishing the moment a wrong passphrase
+/// was entered: the feedback text appears, content grows, the window does not,
+/// and the link is pushed out of view. Enlarging the window by hand brought it
+/// back — the signature of content outgrowing an unresized window.
+///
+/// ⚠ WHY THIS TEST IS SHAPED THIS WAY. The previous fix wired the sync at the
+/// ONE write the finding named (the autolock notice) while D615's own rule
+/// says "after ANY write to a conditional element" — so five other writers
+/// silently kept the bug. **Asserting that the known writers call the sync
+/// would repeat that mistake**: it can only ever cover the writers that exist
+/// today. Instead this asserts there is exactly ONE way to write the element,
+/// and that way resizes — so a new writer added later cannot reintroduce the
+/// defect without failing here.
+///
+/// ⚠ MUST GO RED IF: any code writes `#unlock-feedback` outside the helper, or
+/// the helper stops resizing.
+#[test]
+fn unlock_feedback_has_exactly_one_writer_and_it_resizes() {
+    let js = ui_file("main.js");
+
+    // The helper writes AND resizes — the two are one operation.
+    let f = js
+        .find("function setUnlockFeedback")
+        .expect("the single writer must exist");
+    let body = &js[f..f + js[f..].find("\n}").expect("fn end")];
+    assert!(
+        body.contains("fb.textContent = text") && body.contains("syncWindowHeight()"),
+        "the writer must resize in the same call, not rely on callers remembering"
+    );
+
+    // ⚠ NOBODY ELSE may touch the element. Comments are stripped so the
+    // explanation of this rule does not trip it — the fourth time that has
+    // mattered in this lane.
+    let code = strip_js_line_comments(&js);
+    let writers = code.matches("unlock-feedback").count();
+    assert_eq!(
+        writers, 1,
+        "exactly ONE reference to #unlock-feedback may exist in code (inside \
+         setUnlockFeedback); found {writers}. A second writer is how this defect \
+         returned twice."
+    );
+
+    // And the element is genuinely conditional — it is empty until written,
+    // which is what makes an unresized write shift the layout.
+    let html = ui_file("index.html");
+    assert!(
+        html.contains(r#"<div id="unlock-feedback" class="feedback"></div>"#),
+        "the feedback element starts EMPTY; that is why writing it changes height"
     );
 }

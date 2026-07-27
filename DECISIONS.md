@@ -1144,3 +1144,49 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
   - **Goals:** G1. Tests 96 pass / 1 ignored / 0 fail; fmt and clippy `--all-targets` clean.
   - **References:** D-0015/D-0016/D-0017/D-0018 (this lane); R-14 (the defect this finally
     diagnoses); ENG-0076 (verified live here).
+
+- **ID:** D-0020
+  - **Date:** 2026-07-26
+  - **Lane:** NA-0680 — **round-2 re-flight fix.** R-14, third occurrence.
+  - **⚠ THE ORIGINAL R-14 DEFECT REAPPEARED, ON THE MOST COMMON PATH IN THE APP.** The operator's
+    round-2 flight found "Delete vault?" vanishing the moment a wrong passphrase is entered:
+    the feedback text appears, content grows, the window does not, and the link is pushed out of
+    view — enlarging the window by hand brings it back, which is the signature.
+  - **⚠ WHY IT SURVIVED TWO FIXES: I WROTE THE RULE AND IMPLEMENTED THE INSTANCE.** D615 says the
+    height sync runs "after **ANY** write to a conditional element". D-0017 wired it at the ONE
+    write the finding happened to name — the autolock notice — plus the CLI notice and the identity
+    error. The unlock feedback line has **six** writers (the empty reset, the empty-passphrase
+    guard, the rejected-attempt line, the countdown tick, the countdown expiry, the error path) and
+    **none of them resized**. The single most frequently hit conditional element in the app was the
+    one left out.
+  - **THE FIX IS STRUCTURAL, NOT ANOTHER REMINDER.** All six writers are routed through one
+    `setUnlockFeedback(kind, text)` helper that writes **and** resizes in the same call. There is
+    now exactly ONE way to write that element and it cannot forget.
+  - **⚠ AND THE TEST PINS THE CLASS, NOT THE INSTANCE — which is the actual lesson.** Asserting
+    that the six known writers call the sync would repeat the original mistake: it can only ever
+    cover the writers that exist today. `unlock_feedback_has_exactly_one_writer_and_it_resizes`
+    instead asserts there is exactly ONE reference to `#unlock-feedback` in code and that it
+    resizes, so a **new** writer added later cannot reintroduce the defect without failing.
+    `window_height_syncs_on_the_autolock_path_not_just_surface_change` is amended to pin the
+    autolock path through the new writer, since the operator ruled that path must stay covered.
+  - **⚠ A TEST ANCHOR WAS WRONG IN THE SAME "FIRST MATCH" SHAPE AS THE `.verify-code` SLICE.**
+    `showUnlockScreen("main")` appears three times (route, the idle timer, the menu Lock-now) and a
+    bare `find` returned route's. Re-anchored on `autolockMinutes * 60 * 1000`, which is unique to
+    the idle timer.
+  - **⚠ ONE NEGATIVE CONTROL SILENTLY NO-OPPED AND REPORTED GREEN.** The control removing the
+    resize from the helper did not match its target, so the test "passed" — indistinguishable from
+    a test that cannot fail. Re-run with the edit **asserted applied first**, it goes RED correctly.
+    Same family as the `-q` and failure-list findings: **a control is itself an instrument, and an
+    unverified one proves nothing.**
+  - **Round-2 flight results, all verified live:** instance 1 **649** and instance 2 **636** —
+    different heights where round 1 had both pinned at 765, confirming the measurement now computes
+    rather than inherits; Settings **800 wide with even insets** (772 derived + 28 chrome); the
+    resume-path code box **636, identical to the fresh path** — path-independent, which is what
+    content-driven means; erase confirm and countdown clean.
+  - **⚠ INSTANCE 7 WAS A CHECKLIST ERROR, NOT AN APP DEFECT.** The "Vault erased" screen is reached
+    only from the armed-wipe path (`unlock_attempt` returning `wiped`); the manual erase reloads to
+    S0 → Create vault, which is correct — the user CHOSE to erase, and that notice exists to explain
+    an erasure they did not initiate. The armed-wipe terminal was verified working in round 1.
+  - **Goals:** G1. Tests 97 pass / 1 ignored / 0 fail; fmt and clippy `--all-targets` clean.
+  - **References:** D-0019 (Facts 1 and 2); D-0017 (the instance-scoped fix this supersedes);
+    R-14 (the defect, now diagnosed three times to two causes).
