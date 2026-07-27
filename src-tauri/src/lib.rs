@@ -60,9 +60,17 @@ pub enum WindowMode {
     Erase,
     /// The wiped notice, reachable only from a failed-unlock wipe.
     Wiped,
-    /// Main window + Settings: 1024x700 (min 800x600 restored), menu
-    /// visible. Unchanged by this lane.
-    Full,
+    /// Settings: a VIEW whose content columns are capped, so its width is
+    /// DERIVED from those caps rather than guessed. Split out of `Full` by
+    /// NA-0680 Finding 1 — sharing a mode with the main window is why opening
+    /// Settings never resized anything and left ~212px of dead space to the
+    /// right of a 560px content column.
+    Settings,
+    /// The main window: a three-pane shell whose content pane is `1fr`, i.e.
+    /// it has no natural content size and is MEANT to fill. It keeps a default
+    /// size, and that is not the defect class Finding 1 covers — no instance in
+    /// the acceptance flight named it.
+    Main,
 }
 
 pub fn mode_for_surface(surface: &str) -> WindowMode {
@@ -72,7 +80,8 @@ pub fn mode_for_surface(surface: &str) -> WindowMode {
         "scr-unlock" => WindowMode::Unlock,
         "scr-erase" => WindowMode::Erase,
         "scr-wiped" => WindowMode::Wiped,
-        _ => WindowMode::Full, // scr-main, scr-settings
+        "scr-settings" => WindowMode::Settings,
+        _ => WindowMode::Main, // scr-main
     }
 }
 
@@ -96,6 +105,18 @@ pub const COMPACT_MIN: (f64, f64) = (360.0, 200.0);
 /// other. Changing this constant invalidates every height below.
 pub const PRE_MAIN_WIDTH: f64 = 360.0;
 
+/// Finding 1 (instance 4): the Settings width is DERIVED from the layout
+/// constants it must contain, not chosen. `.settings-layout` is
+/// `52px | 160px | 1fr`, `.pane` caps at 560px, and `.settings-pane` pads
+/// 20px each side. A window wider than their sum is dead space by
+/// construction — which is exactly what 1024 produced.
+pub const SETTINGS_ICON_RAIL_W: f64 = 52.0;
+pub const SETTINGS_NAV_RAIL_W: f64 = 160.0;
+pub const SETTINGS_PANE_MAX_W: f64 = 560.0;
+pub const SETTINGS_PANE_PAD_W: f64 = 40.0; // --sp-x20 left + right
+pub const SETTINGS_WIDTH: f64 =
+    SETTINGS_ICON_RAIL_W + SETTINGS_NAV_RAIL_W + SETTINGS_PANE_MAX_W + SETTINGS_PANE_PAD_W;
+
 pub fn window_mode_spec(mode: WindowMode) -> ((f64, f64), (f64, f64), bool) {
     // Heights measured headlessly at a 360px viewport in WebKit2 4.1 — the
     // same engine tauri uses on Linux — against the real ui/index.html, with
@@ -115,7 +136,11 @@ pub fn window_mode_spec(mode: WindowMode) -> ((f64, f64), (f64, f64), bool) {
         // both without a resize between them.
         WindowMode::Erase => ((PRE_MAIN_WIDTH, 275.0), COMPACT_MIN, false),
         WindowMode::Wiped => ((PRE_MAIN_WIDTH, 220.0), COMPACT_MIN, false),
-        WindowMode::Full => ((1024.0, 700.0), (800.0, 600.0), true),
+        // Finding 1: width DERIVED (see SETTINGS_WIDTH); the minimum no longer
+        // carries the old 800x600 floor, which would have silently re-imposed
+        // itself over any content-driven width.
+        WindowMode::Settings => ((SETTINGS_WIDTH, 700.0), (SETTINGS_WIDTH, 400.0), true),
+        WindowMode::Main => ((1024.0, 700.0), (640.0, 400.0), true),
     }
 }
 
@@ -125,30 +150,39 @@ struct WindowModeState(Mutex<Option<WindowMode>>);
 /// nothing does not call `set_size` on every keystroke.
 struct AppliedHeight(Mutex<Option<f64>>);
 
-/// R-14 (NA-0680): the height the window should take for `mode`, given the
-/// frontend's MEASURED content height.
+/// R-14 as RE-SCOPED by the acceptance flight (Finding 1): the height a window
+/// should take, given the frontend's MEASURED content height.
 ///
-/// ⚠ THE TABLE IS A FLOOR, NOT A FIXED SIZE. That is the whole ruling. Every
-/// pre-main height in `window_mode_spec` was measured once, headlessly,
-/// against the EMPTY state of that surface's conditional elements — so the
-/// unlock window (255) had no room for the "Locked after inactivity." line
-/// autolock writes into `#unlock-feedback`, the card is `overflow-y: auto`,
-/// and the "Delete vault?" link fell below the fold. Wizard step 1 has the
-/// same latent defect via `#cli-notice`, and the erase screen via
-/// `#erase-error`; they simply do not trip on every run.
+/// ⚠ THIS IS CONTENT-DRIVEN IN BOTH DIRECTIONS. THE EARLIER "FLOOR" IS GONE.
 ///
-/// Taking the max rather than the measurement keeps the operator's chosen
-/// reading composition (the widths and heights were found by hand-resizing
-/// until the copy composed correctly) while letting any surface grow to fit
-/// content it did not have when it was measured. It also means the literals in
-/// `window_mode_spec` and their frozen needle keep their values — only their
-/// MEANING changes, from "the size" to "the minimum".
+/// The first implementation returned `max(table, measured)`, on my reasoning
+/// that the per-surface table values encoded a chosen reading composition worth
+/// preserving. **That was an inference the operator never stated, and the live
+/// flight disproved it**: six of the seven observed instances were windows too
+/// TALL, which is precisely a floor holding a window open when its content is
+/// shorter. The unlock window is the proof in one surface — it used to clip,
+/// then over-corrected to dead space, so its height was never tracking content
+/// in either direction.
+///
+/// So: the measurement governs. The only clamp is the mode's own absolute
+/// minimum, which exists so a window can never become un-draggable, not to
+/// encode a preferred size. The table height survives ONLY as the pre-first-
+/// report fallback — the window has to open at something before the frontend
+/// has measured anything.
 pub fn height_for(mode: WindowMode, measured_content: Option<f64>) -> f64 {
-    let ((_, table_h), _, _) = window_mode_spec(mode);
+    let ((_, fallback), (_, min_h), _) = window_mode_spec(mode);
     match measured_content {
-        Some(m) if m > table_h => m,
-        _ => table_h,
+        Some(m) => m.max(min_h),
+        None => fallback,
     }
+}
+
+/// Finding 1: the full size, both dimensions, one place. Width is the mode's
+/// own (a reading width for pre-main, a DERIVED width for Settings); height
+/// tracks content.
+pub fn size_for(mode: WindowMode, measured_content: Option<f64>) -> (f64, f64) {
+    let ((w, _), _, _) = window_mode_spec(mode);
+    (w, height_for(mode, measured_content))
 }
 
 fn apply_window_mode(
@@ -157,12 +191,12 @@ fn apply_window_mode(
     mode: WindowMode,
     measured_content: Option<f64>,
 ) {
-    let (size, min, menu_visible) = window_mode_spec(mode);
-    let height = height_for(mode, measured_content);
+    let (_, min, menu_visible) = window_mode_spec(mode);
+    let (width, height) = size_for(mode, measured_content);
     // E.1 order: set_min_size, then set_size, then center — the pinned
     // tauri 2 core window API only.
     let _ = w.set_min_size(Some(tauri::LogicalSize::new(min.0, min.1)));
-    let _ = w.set_size(tauri::LogicalSize::new(size.0, height));
+    let _ = w.set_size(tauri::LogicalSize::new(width, height));
     let _ = w.center();
     // Menu visibility by ATTACHMENT, not gtk-hide: tao's set_visible(true)
     // is gtk show_all() on Linux, which resurrects hidden child widgets —
@@ -222,12 +256,12 @@ fn ui_surface_changed(app: tauri::AppHandle, surface: String, content_height: Op
         };
         if changed {
             apply_window_mode(&app, &w, mode, content_height);
-        } else if height_changed && mode != WindowMode::Full {
-            // Same surface, taller content — grow to fit without re-centering
-            // or touching the menu. Guarded on an actual change so a re-measure
-            // that agrees with the last one issues no window call at all.
-            let ((width, _), _, _) = window_mode_spec(mode);
-            let _ = w.set_size(tauri::LogicalSize::new(width, height));
+        } else if height_changed {
+            // Same surface, content changed size — track it, without
+            // re-centering or touching the menu. Guarded on an actual change so
+            // a re-measure that agrees with the last one issues no window call.
+            let (width, h) = size_for(mode, content_height);
+            let _ = w.set_size(tauri::LogicalSize::new(width, h));
         }
         if !w.is_visible().unwrap_or(true) {
             let _ = w.show();

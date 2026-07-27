@@ -332,17 +332,20 @@ async function showIdentityStep() {
   try {
     const d = await invoke("identity_ensure");
     byId("identity-code").textContent = d.verify_code;
-    byId("identity-fp").textContent = d.fingerprint;
     byId("identity-purpose").textContent = d.purpose_line;
     byId("identity-pq").textContent = d.pq_line;
-    byId("identity-mech").textContent = d.mechanism_line;
     // Item 13 (F2 inventory): a NEW identity starts with an EMPTY alias —
     // the wizard never pre-fills a prior value; Settings is the edit
     // surface (D596 F2).
     byId("alias-input").value = "";
     updateIdentityContinue(); // R-7: an empty field must arrive DISABLED
     show("scr-wizard-identity");
+    // ⚠ ORDERING (Findings 1+2): fitCode CHANGES the code's rendered size, so
+    // it must run BEFORE the window is measured — `show()` already synced once
+    // against the pre-fit size. Re-sync after fitting or the window is sized to
+    // a code that is about to shrink.
     fitCode(byId("identity-code"));
+    syncWindowHeight();
   } catch (e) {
     errEl.textContent = plainError(e, {}, "Your identity couldn't be set up.");
     updateIdentityContinue();
@@ -597,6 +600,7 @@ async function refreshIdentityPane() {
   byId("settings-alias").value = currentSettings.self_alias;
   byId("alias-status").textContent = `Shown as: ${aliasDisplay()} (local only)`;
   fitCode(byId("settings-code"));
+  syncWindowHeight();
 }
 
 byId("btn-alias-save").addEventListener("click", async () => {

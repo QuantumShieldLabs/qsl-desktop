@@ -993,3 +993,59 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     `clippy --all-targets -D warnings` clean.
   - **References:** D-0015 (GATE 1); spine D615/NA-0680; D-0010/D-0011 (the Server pane this lane
     must not touch); Appendix F.8 (the new wordings); Appendix E [E.1] (sizes → minima).
+
+- **ID:** D-0017
+  - **Date:** 2026-07-26
+  - **Lane:** NA-0680, directive **D615** — **acceptance-flight fixes** (GATE 2 reopened).
+  - **Decision:** the operator's live flight produced findings CI cannot reach. Findings 1–4 land
+    here; **Finding 5 is HELD** (below).
+  - **⚠ FINDING 1 — window sizing was not content-driven, in EITHER direction, app-wide.** Seven
+    instances, one root cause. **My own floor caused six of them:** `height_for` returned
+    `max(table, measured)` on my reasoning that the per-surface table encoded a chosen reading
+    composition. **That was an inference the operator never stated**, and a floor holds a window
+    open when its content is shorter — which is exactly "too tall". The unlock window is the proof
+    in one surface: it clipped, then over-corrected, so it was never tracking content either way.
+    **The floor is removed**; the measurement governs and the only clamp is the mode's absolute
+    minimum, which exists so a window cannot become un-draggable. The table height survives ONLY
+    as the pre-first-report fallback.
+  - **Finding 1, instance 4 (Settings too wide) — diagnosed as a BAD DEFAULT, not remembered
+    geometry.** There is **no window-state plugin**, so nothing persists across launches. `Full`
+    was a hard-coded 1024 while the Settings content needs 812. The "sometimes" was deterministic:
+    `mode_for_surface` mapped **both** `scr-main` and `scr-settings` to `Full`, so opening Settings
+    never resized anything. **`Full` is SPLIT into `Settings` and `Main`**, and the Settings width
+    is **DERIVED** from the layout caps it must contain (52 + 160 + 560 + 40), asserted as that sum
+    rather than as a literal. The `tauri.conf.json` `minWidth: 800 / minHeight: 600` creation floor
+    is **removed** — left in place it would silently re-impose itself over any content-driven size.
+  - **⚠ FINDING 4 — the answer was NEITHER option the operator offered.** The section-padding token
+    is CORRECT at `--sp-6` (32px) on both `.pane-sect` and `.srv-sect`. The extra height came from
+    **`.pane h3`'s 12px TOP margin stacking on it** → 44px where mockup 09 draws 32. **Blast radius,
+    counted:** Vault has 4 `h3`s; Identity/Server/About/Appearance/Notifications have **zero**. The
+    rule is shared, the effect is one pane — so the fix is scoped to **`.pane-sect h3`**, leaving
+    `.pane h3` alone so no future pane is silently restyled.
+  - **Finding 3 (operator ruling):** the technical-details disclosure is REMOVED from onboarding and
+    KEPT in Settings › Identity. Nothing is being verified yet at that point in the flow, so the
+    fingerprint and mechanism line are premature there even collapsed; identity detail belongs where
+    it is acted on. Mockup 07B updated in lockstep. The needle asserts **both** directions.
+  - **Finding 2:** the verification code clipped its own glyph bottoms intermittently. `overflow:
+    hidden` is load-bearing for the shrink-to-fit logic and stays, so the fix is an **explicit
+    `line-height`** that scales with whatever size `fitCode` lands on, plus a re-order so `fitCode`
+    runs BEFORE the height measurement — the window was being sized against a code about to change
+    size. ⚠ **This is a PIXEL defect and cannot be verified headlessly; it needs the re-flight.**
+  - **⚠ FINDING 5 — HELD, NOT LANDED. See ENG-0076.** The operator ruled `settings.json`'s
+    EXISTENCE as the resume signal (correctly — the `self_alias`-absent alternative was withdrawn
+    because `skip_serializing_if` omits an empty alias, making key-absent indistinguishable from a
+    cleared name and from every pre-R-7 profile, including the operator's own). **Implementing it
+    breaks SEVEN behavioural tests in `slice_a_flows.rs`**, a file design_round3's header declares
+    **byte-frozen**, because `d_interruption_matrix` *already encodes this exact scenario* and
+    asserts **S2**: create vault → `identity_ensure` → no settings write → **S2**. That is D595's
+    normative S1/S2 discriminator, and it was correct when written — a nameless identity was the
+    sanctioned default until R-7 made a name mandatory. **The change is therefore a normative
+    amendment to D595's launch-state machine, not the one-line resolver fix it was ruled as.**
+    Reverted from this commit and reported for a ruling rather than landed silently.
+  - **⚠ Five negative controls, all RED**, including reinstating the floor (the exact defect the
+    flight found) and returning Settings to the shared mode. ⚠ A **fourth** substring-ban defect
+    surfaced: the resolver's own comment recording why `self_alias` was ruled out tripped two
+    `self_alias` bans, producing a `strip_rust_comments` helper alongside the HTML one.
+  - **Goals:** G1. Tests 92 pass / 1 ignored / 0 fail; fmt and clippy `--all-targets` clean.
+  - **References:** D-0015, D-0016; spine D615/NA-0680; **ENG-0076** (the held Finding-5
+    regression); ENG-0075 (the `-q` CI gap, also filed at closeout).
