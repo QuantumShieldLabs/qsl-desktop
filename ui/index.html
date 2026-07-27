@@ -64,12 +64,13 @@
     <div class="mono verify-code" id="identity-code"></div>
     <p id="identity-purpose" class="muted"></p>
     <p id="identity-pq" class="muted"></p>
-    <details class="tech">
-      <summary>Show technical details</summary>
-      <p class="hint">Full fingerprint</p>
-      <div class="mono fingerprint" id="identity-fp"></div>
-      <p id="identity-mech" class="hint"></p>
-    </details>
+    <!-- Finding 3 (operator ruling, live flight): the "Show technical details"
+         disclosure is REMOVED from onboarding and KEPT in Settings > Identity.
+         Nothing is being verified yet at this point in the flow, so the
+         fingerprint and the ML-KEM/ML-DSA line are premature here even
+         collapsed; identity detail belongs where it is acted on — Settings and
+         the verification ceremony. Same principle that removed the fingerprint
+         from the add-contact step. -->
     <p class="hint">You don't need to write this down — view it anytime in Settings.</p>
     <!-- R-12: the autolock wizard-exemption note lives HERE now, where the
          exemption actually applies, instead of on the Vault pane's autolock

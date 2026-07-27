@@ -13,9 +13,7 @@
         "label": "main",
         "visible": false,
         "width": 360,
-        "height": 585,
-        "minWidth": 800,
-        "minHeight": 600
+        "height": 585
       }
     ],
     "security": {
