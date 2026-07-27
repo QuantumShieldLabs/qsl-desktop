@@ -112,7 +112,14 @@ pub const PRE_MAIN_WIDTH: f64 = 360.0;
 /// construction — which is exactly what 1024 produced.
 pub const SETTINGS_ICON_RAIL_W: f64 = 52.0;
 pub const SETTINGS_NAV_RAIL_W: f64 = 160.0;
-pub const SETTINGS_PANE_MAX_W: f64 = 560.0;
+/// ⚠ CORRECTED by the acceptance flight: this is `.pane-form`'s cap (520), NOT
+/// `.pane`'s (560). The first derivation used 560 and produced a window 40px
+/// too wide — visible as ASYMMETRIC insets, 20px from the nav rail to the
+/// start of a section hairline but 60px from its end to the window edge. The
+/// hairlines span `.pane-form`, so `.pane-form` is the constant that decides
+/// the width; `.pane`'s cap only bounds panes that carry no form and is never
+/// the widest thing on screen.
+pub const SETTINGS_PANE_MAX_W: f64 = 520.0;
 pub const SETTINGS_PANE_PAD_W: f64 = 40.0; // --sp-x20 left + right
 pub const SETTINGS_WIDTH: f64 =
     SETTINGS_ICON_RAIL_W + SETTINGS_NAV_RAIL_W + SETTINGS_PANE_MAX_W + SETTINGS_PANE_PAD_W;

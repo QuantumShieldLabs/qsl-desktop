@@ -138,14 +138,16 @@ fn autolock_helper_verbatim() {
         "the superseded pane-side helper must not survive the move"
     );
     assert!(!html.contains("On by default (15"));
-    // The exemption note now lives on the wizard's identity step.
-    let wiz = &html[html
-        .find(r#"id="scr-wizard-identity""#)
-        .expect("wizard identity")..];
-    let wiz = &wiz[..wiz.find("</section>").expect("section end")];
+    // ⚠ CORRECTED AGAIN 2026-07-26 by the acceptance flight. This lane first
+    // read R-12's "moves to the wizard" as "needs a home there" and put the
+    // exemption note on the identity step. Flown, it reads as noise: the user
+    // has no autolock context at that point and the note explains a setting
+    // they have not met. The right answer was to DROP it — the exemption is
+    // real and is stated where it is actionable, in the Vault pane's own
+    // autolock section, not merely where it is true.
     assert!(
-        wiz.contains("Idle autolock does not run during setup"),
-        "the exemption note must land on the wizard, not merely disappear"
+        !html.contains("Idle autolock does not run during setup"),
+        "the relocated note is dropped, not re-homed"
     );
     // The pane's autolock line states the 0 semantics in ONE line (the copy
     // itself is rendered by JS and pinned in design_polish.rs).

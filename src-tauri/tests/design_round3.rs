@@ -393,7 +393,7 @@ fn window_modes_and_menu_visibility() {
     }
     // Finding 1: Settings is DERIVED, not chosen — 52 + 160 + 560 + 40.
     let ((w, _), (mw, _), menu) = window_mode_spec(WindowMode::Settings);
-    assert_eq!((w, mw, menu), (812.0, 812.0, true));
+    assert_eq!((w, mw, menu), (772.0, 772.0, true));
     assert_eq!(
         w,
         SETTINGS_ICON_RAIL_W + SETTINGS_NAV_RAIL_W + SETTINGS_PANE_MAX_W + SETTINGS_PANE_PAD_W,

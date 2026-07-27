@@ -1094,3 +1094,53 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
   - **Goals:** G1. Tests 93 pass / 1 ignored / 0 fail; fmt and clippy `--all-targets` clean.
   - **References:** **ENG-0076** (the R-7 regression this fixes); D-0015/D-0016/D-0017 (this
     lane); D595 (the revised contract); D615 F4 (why the alias signal was rejected).
+
+- **ID:** D-0019
+  - **Date:** 2026-07-26
+  - **Lane:** NA-0680 — **re-flight fixes.** The operator flew the staged checklist; these are the
+    outcomes CI could not reach.
+  - **⚠ THE FOUR SIZING FINDINGS COLLAPSE TO TWO CSS FACTS, NEITHER OF THEM WRITTEN BY THIS LANE.**
+    - **FACT 1 — the card is STRETCHED to the window.** `.screen` is
+      `position:absolute; inset:0; display:flex` with `align-items: stretch` (round 4a), so the
+      card's height IS the window's. A stretched box whose content is shorter reports its OWN
+      height from `scrollHeight`, so the measurement was **self-referential** —
+      `measured = window_height` — and the window could grow but never shrink. It is also why two
+      different surfaces reported an identical 388×765: **the size was inherited, not computed.**
+      Fixed by releasing the stretch (`align-self: flex-start`) for the duration of the read.
+    - **FACT 2 — the card's children SHRINK.** Nothing in the stylesheet ever set `flex-shrink`,
+      so every child of the flex column carried the default `1`. A window shorter than its content
+      **squashed** the children instead of the card scrolling, and the code box's `overflow:
+      hidden` turned that squash into a clipped glyph. Fixed with `flex-shrink: 0`.
+  - **⚠ FACT 2 REFRAMES THE ORIGINAL R-14 DEFECT.** "Delete vault?" was never below a scroll fold —
+    it was squashed. That is why raising the window height *appeared* to fix it, and why the code
+    box clipped again on the resume path where the window arrives short (592 inner vs 700). One
+    cause, two symptoms, two lanes apart.
+  - **⚠ THE D-0016 `line-height` "FIX" WAS AIMED AT THE WRONG MECHANISM.** It is KEPT as deliberate
+    headroom but **re-labelled**: it passed on the fresh path only because the window happened to
+    be tall enough for nothing to shrink. The comment claiming it was the remedy is corrected
+    rather than left to mislead the next reader into thinking the box is already defended.
+  - **⚠ AND THE D-0017 SIZING TEST WAS A HOLLOW PROOF — MINE.**
+    `every_window_tracks_its_content_in_both_directions` feeds `height_for` SYNTHETIC values, so it
+    passed green on a build whose windows were visibly wrong in six places: **the defect was in
+    what reached the function.** Its doc now states that scope explicitly, and the pipeline is
+    pinned separately by `measurement_releases_the_stretch_before_reading`. I named this failure
+    mode three times in this lane before shipping an instance of it.
+  - **Instance 4 corrected:** the Settings width mechanism worked (840 = 812 + 28 chrome, matching
+    the pre-main 388 = 360 + 28), but was derived off `.pane`'s 560 cap instead of `.pane-form`'s
+    520 — 40px too wide, visible as **asymmetric insets** (20px left, 60px right). The hairlines
+    span `.pane-form`, so `.pane-form` decides the width. Now `52 + 160 + 520 + 40 = 772`.
+  - **Copy corrected:** the autolock-exemption note is **dropped**, not relocated. This lane first
+    read R-12's "moves to the wizard" as "needs a home there"; flown, it reads as noise where the
+    user has no autolock context. `autolock_helper_verbatim` amended again to assert its absence.
+  - **⚠ A DOCUMENTED HAZARD IN THIS FILE WAS TRIPPED ANYWAY.** `style.css` already warned that
+    `design_round2`'s frozen needle slices from the FIRST `.verify-code` in the file, so no earlier
+    comment may name that selector. The new FACT-2 comment named it and moved the slice off the
+    rule. Reworded, and the warning is now restated at the site that tripped it.
+  - **Verified live (operator flight):** ENG-0076 / D-0018 **PASSES** — no `settings.json` after a
+    kill before Continue, and the relaunch resumes AT the identity step. Unlock sizing correct.
+    Fresh-path code box clean. Onboarding copy, name gate and disclosure placement all correct.
+  - **Four negative controls, all RED:** removing the un-stretch; dropping `flex-shrink: 0`;
+    reverting the width derivation; restoring the dropped note.
+  - **Goals:** G1. Tests 96 pass / 1 ignored / 0 fail; fmt and clippy `--all-targets` clean.
+  - **References:** D-0015/D-0016/D-0017/D-0018 (this lane); R-14 (the defect this finally
+    diagnoses); ENG-0076 (verified live here).

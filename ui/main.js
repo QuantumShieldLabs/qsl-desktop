@@ -31,9 +31,27 @@ const PRE_MAIN_SCREENS = [
   "scr-wizard-vault", "scr-wizard-identity", "scr-unlock", "scr-erase", "scr-wiped",
 ];
 
-// Measure the ACTIVE pre-main surface: the card's content height plus the
-// screen's own vertical padding. `scrollHeight` forces a reflow, so it is the
-// laid-out height including anything just written into a conditional element.
+// Measure the ACTIVE pre-main surface: the card's CONTENT height plus the
+// screen's own vertical padding.
+//
+// ⚠ FACT 1 (NA-0680 re-flight) — WHY THE UN-STRETCH IS LOAD-BEARING.
+// `.screen` is `position:absolute; inset:0; display:flex` with
+// `align-items: stretch`, so the card is STRETCHED to fill the window. A
+// stretched box whose content is shorter reports its OWN height from
+// `scrollHeight`, not its content's. The measurement was therefore
+//
+//     measured = (window_height - 56) + 56 = window_height
+//
+// — the window measuring ITSELF. It could grow (content exceeding the box)
+// but could never shrink, which is exactly the "clipped, then over-corrected
+// to too-tall, never content-driven in either direction" the acceptance
+// flight found. It is also why two different surfaces reported an IDENTICAL
+// 388x765: the size was inherited, not computed.
+//
+// `align-self: flex-start` releases the stretch for the duration of the read,
+// so the card collapses to its content and `scrollHeight` reports what we
+// actually want. It is restored before returning; nothing observes the
+// intermediate state because the read is synchronous.
 function measurePreMainHeight() {
   if (!PRE_MAIN_SCREENS.includes(currentScreen)) return null;
   const screen = byId(currentScreen);
@@ -41,7 +59,11 @@ function measurePreMainHeight() {
   if (!card) return null;
   const cs = getComputedStyle(screen);
   const pad = parseFloat(cs.paddingTop || 0) + parseFloat(cs.paddingBottom || 0);
-  return Math.ceil(card.scrollHeight + pad);
+  const prevAlignSelf = card.style.alignSelf;
+  card.style.alignSelf = "flex-start";
+  const content = card.scrollHeight; // forces layout with the stretch released
+  card.style.alignSelf = prevAlignSelf;
+  return Math.ceil(content + pad);
 }
 
 // ⚠ THE ORDERING TRAP THIS EXISTS FOR. Measuring only on a surface change is

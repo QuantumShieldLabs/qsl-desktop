@@ -598,8 +598,16 @@ fn window_height_syncs_on_the_autolock_path_not_just_surface_change() {
     );
 }
 
-/// Finding 1 (acceptance flight): EVERY window tracks its content, in BOTH
-/// directions. There is no per-surface floor.
+/// Finding 1: `height_for` tracks its input in BOTH directions, with no floor.
+///
+/// ⚠ SCOPE, STATED HONESTLY BECAUSE THIS TEST ONCE OVERSTATED IT. This feeds
+/// `height_for` SYNTHETIC values. It pins the FUNCTION, not the pipeline — and
+/// the acceptance flight proved that distinction is not academic: this test
+/// passed green on a build whose windows were visibly wrong in six places,
+/// because the defect was in what REACHED the function (a stretched card
+/// measuring the window). The pipeline is pinned separately by
+/// `measurement_releases_the_stretch_before_reading`, and the OUTCOME can only
+/// be judged by flying it — there is no input driver on the build host.
 ///
 /// ⛔ SUPERSEDES this test's earlier form, which asserted the opposite — that a
 /// surface shorter than its table value must NOT shrink. That floor was my
@@ -863,5 +871,114 @@ fn no_settings_write_precedes_onboarding_continue() {
     assert!(
         !strip_rust_comments(&state_src).contains("self_alias"),
         "the self_alias signal was ruled out and must not return"
+    );
+}
+
+/// ⚠ FACT 1 (the acceptance flight's root cause): the measurement must RELEASE
+/// the card's stretch before reading, or it measures the window.
+///
+/// `.screen` is `display:flex` with `align-items: stretch`, so the card's
+/// height IS the window height. A stretched box whose content is shorter
+/// reports its own height from `scrollHeight`, making the measurement
+/// self-referential — `measured = window_height` — so the window could grow
+/// but never shrink. Two different surfaces reported an identical 388x765
+/// because the size was inherited, not computed.
+///
+/// ⚠ MUST GO RED IF: the un-stretch is removed. That single line is the whole
+/// difference between a content-driven window and a feedback loop, and its
+/// absence is INVISIBLE to every other test in this repository — the sizing
+/// test above passed throughout.
+#[test]
+fn measurement_releases_the_stretch_before_reading() {
+    let js = ui_file("main.js");
+    let f = js
+        .find("function measurePreMainHeight")
+        .expect("the measurer");
+    let body = &js[f..f + js[f..].find("\n}").expect("fn end")];
+
+    let release = body
+        .find(r#"card.style.alignSelf = "flex-start""#)
+        .expect("the stretch MUST be released before the read");
+    let read = body.find("card.scrollHeight").expect("the read");
+    let restore = body
+        .find("card.style.alignSelf = prevAlignSelf")
+        .expect("the stretch must be restored");
+    assert!(
+        release < read && read < restore,
+        "order must be release -> read -> restore (got {release}/{read}/{restore})"
+    );
+
+    // And the stretch it is releasing must actually still be there — if the
+    // stylesheet stops stretching the card, this dance is dead code and should
+    // be removed deliberately rather than left as cargo.
+    let css = ui_file("style.css");
+    assert!(
+        css.contains("align-items: stretch"),
+        "the un-stretch exists because the card IS stretched; if that changed, \
+         revisit the measurement rather than leaving this in place"
+    );
+}
+
+/// ⚠ FACT 2: the card's children must not SHRINK — a too-short window scrolls,
+/// it does not crush content.
+///
+/// Nothing in the stylesheet set `flex-shrink`, so every child of the flex
+/// column carried the default `1`. A window shorter than its content squashed
+/// the children, and `.verify-code`'s `overflow: hidden` turned that squash
+/// into a clipped glyph bottom. **This is also the ORIGINAL R-14 defect**:
+/// "Delete vault?" was never below a scroll fold, it was squashed — which is
+/// why raising the window height appeared to fix it.
+///
+/// ⚠ MUST GO RED IF: the rule is dropped. The failure it prevents is silent
+/// and content-dependent — it appears only when a window is shorter than its
+/// content, which is precisely the case no fixed-height test exercises.
+#[test]
+fn pre_main_card_children_never_shrink() {
+    let css = ui_file("style.css");
+    let start = css
+        .find("#scr-wizard-vault .card > *")
+        .expect("the no-shrink rule must exist");
+    let block = &css[start..css[start..].find('}').expect("rule end") + start];
+    assert!(
+        block.contains("flex-shrink: 0"),
+        "children must not shrink; the card scrolls instead"
+    );
+    for screen in [
+        "#scr-wizard-identity .card > *",
+        "#scr-unlock .card > *",
+        "#scr-erase .card > *",
+        "#scr-wiped .card > *",
+    ] {
+        assert!(
+            block.contains(screen),
+            "`{screen}` must be covered — a surface left out squashes silently"
+        );
+    }
+    // The card must still be able to scroll, or disabling shrink just clips.
+    assert!(
+        css.contains("overflow-y: auto"),
+        "the card scrolls when content exceeds it"
+    );
+}
+
+/// Instance 4: the Settings width is derived from the constant that actually
+/// renders.
+///
+/// ⚠ MUST GO RED IF: the derivation goes back to `.pane`'s 560 cap. That
+/// produced a window 40px too wide, visible as asymmetric insets — 20px from
+/// the nav rail to a section hairline, 60px from its end to the window edge.
+/// The hairlines span `.pane-form`, so `.pane-form` decides the width.
+#[test]
+fn settings_width_derives_from_the_form_cap() {
+    let css = ui_file("style.css");
+    let form = rule_block(&css, ".pane-form {");
+    assert!(
+        form.contains("max-width: 520px"),
+        "the form cap is the constant the window derives from"
+    );
+    assert_eq!(
+        window_mode_spec(WindowMode::Settings).0 .0,
+        52.0 + 160.0 + 520.0 + 40.0,
+        "the window must equal rail + nav + FORM cap + padding, so both insets match"
     );
 }

@@ -130,6 +130,25 @@ body {
   background: none; border: none; border-radius: 0; padding: 0;
   display: flex; flex-direction: column; gap: var(--sp-3);
 }
+/* ⚠ FACT 2 (NA-0680 re-flight): THE TRUE R-14 FIX. The card is a flex column
+   and NOTHING in this stylesheet set `flex-shrink`, so every child carried the
+   default `flex-shrink: 1`. Combined with the card being stretched to the
+   window (the rule above), a window shorter than its content SQUASHED the
+   children instead of scrolling — and the verification-code box's
+   `overflow: hidden` turned that squash into a clipped glyph bottom.
+   ⚠ That selector is deliberately NOT spelled with its leading dot here: the
+   frozen needle in design_round2.rs slices from the FIRST occurrence of it in
+   this file, and naming it above the base rule moves the slice off the rule.
+   The file already carried that warning at the base rule; this comment tripped
+   it anyway.
+   That is the same mechanism as the ORIGINAL R-14 defect: "Delete vault?" was
+   never below a scroll fold, it was squashed. Raising the window height only
+   appeared to fix it. With shrink disabled the card scrolls (it already has
+   `overflow-y: auto`), which is the honest behaviour for content that does not
+   fit — nothing is silently crushed. */
+#scr-wizard-vault .card > *, #scr-wizard-identity .card > *, #scr-unlock .card > *,
+#scr-erase .card > *, #scr-wiped .card > * { flex-shrink: 0; }
+
 /* The erase screen's children carry the E.4 explicit margins, so it keeps
    gap 0 — re-homing a 12px gap there would double every spacing. */
 #scr-erase .card { gap: 0; }
@@ -295,16 +314,16 @@ button.full { width: 100%; }
 .verify-code {
   font-size: var(--fs-mono); font-weight: var(--fw-mid);
   letter-spacing: 1.5px; white-space: nowrap; overflow: hidden;
-  /* Finding 2 (live flight): the code's BOTTOM pixels were clipped by the box
-     border on first render, intermittently — full on a later render of the
-     same screen. `overflow: hidden` is load-bearing for the shrink-to-fit
-     logic and stays, so the fix is to guarantee the line box is taller than
-     the glyph box instead of relying on the inherited 1.5 and sub-pixel
-     rounding at whatever fractional size fitCode lands on. An explicit
-     line-height scales WITH the font-size fitCode sets, so the headroom holds
-     at every step from 17px down to the 11px floor.
-     ⚠ This is a PIXEL defect and cannot be verified headlessly — there is no
-     input driver on the build host. It needs the operator's re-flight. */
+  /* ⚠ CORRECTED after the re-flight. This line-height was landed as "the fix"
+     for the clipped code and IT WAS NOT — the cause is FACT 2 above: the box
+     was being SQUASHED by flex-shrink when the window was shorter than the
+     card's content, and `overflow: hidden` turned the squash into a clip. The
+     earlier fix passed on the fresh path only because the window happened to
+     be tall enough there for nothing to shrink.
+     It is KEPT as deliberate headroom — an explicit line-height scales with
+     whatever size fitCode lands on, from 17px to the 11px floor — but the
+     comment claiming it was the remedy is corrected rather than left to
+     mislead the next reader into thinking this box is already defended. */
   line-height: 1.6;
   text-align: center;
   padding: var(--sp-x13); background: var(--bg-inset);
