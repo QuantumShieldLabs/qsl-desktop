@@ -472,7 +472,10 @@ fn claim_discipline_covers_cargo_metadata_and_module_docs() {
     let lib = repo_file("src-tauri/src/lib.rs");
 
     // (a) the retired claim is absent from BOTH newly covered surfaces.
-    for (surface, body) in [("src-tauri/Cargo.toml", &cargo_toml), ("src-tauri/src/lib.rs", &lib)] {
+    for (surface, body) in [
+        ("src-tauri/Cargo.toml", &cargo_toml),
+        ("src-tauri/src/lib.rs", &lib),
+    ] {
         assert!(
             !body.contains("serverless skeleton"),
             "{surface} still carries the retired 'serverless skeleton' claim"
@@ -487,7 +490,10 @@ fn claim_discipline_covers_cargo_metadata_and_module_docs() {
     //     the false clause is not the same as one that states the real limit —
     //     "research-stage, no security-assurance claims" is the standing posture
     //     and it must survive here as it does in the in-app About.
-    for (surface, body) in [("src-tauri/Cargo.toml", &cargo_toml), ("src-tauri/src/lib.rs", &lib)] {
+    for (surface, body) in [
+        ("src-tauri/Cargo.toml", &cargo_toml),
+        ("src-tauri/src/lib.rs", &lib),
+    ] {
         assert!(
             body.contains("Research-stage") || body.contains("research-stage"),
             "{surface} must state the research-stage boundary"
