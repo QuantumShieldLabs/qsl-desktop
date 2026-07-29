@@ -1252,3 +1252,33 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     would put hundreds of hits into the tree the gate measures.
   - **References:** spine D618 / D-1320 / D-1321; D-0010/D-0011 (the pane this renames);
     D615 (the polish lane that last touched these surfaces).
+
+- **ID:** D-0022
+  - **Status:** Accepted
+  - **Date:** 2026-07-29
+  - **Goals:** G4
+  - **Lane:** NA-0684 — the infra-hostname sanitization micro-lane. Spine directive **D619**
+    (sha256 `a8dab7f1…7ea65092`, 539 lines, all seven flags ruled plus two post-ruling
+    findings ruled); spine decisions **D-1322** (implementation) and **D-1323** (closeout).
+  - **Decision:** `docs/DESIGN_SPEC_AppendixF.md` takes **both** edits ruled for its one
+    line: the mockup's example relay name becomes `<lan-relay-host>`, and the
+    `ServerInfoDoc` field list reads **relay version**. This is **NA-0683's fourteenth F1
+    line** — the one that lane could not land.
+  - **⚠ WHY IT COULD NOT LAND THEN, AND CAN NOW.** The line carried an
+    operator-infrastructure literal **already present on `main`**, and that literal class
+    fires on **added lines only**. So the tree read clean until a lane *touched* the line;
+    the one-word edit re-added it and the pre-commit gate refused the commit. NA-0683
+    **reverted rather than worked around it**, because redacting a hostname inside a naming
+    PR would have pre-empted this lane. Removing the literal is what makes the commit
+    possible — the two edits are not merely adjacent, they are **mutually enabling**.
+  - **⚠ The line number moved between the ruling and the execution** — `:239` → `:241`,
+    pushed down by NA-0683's own revision line. The lane anchored on **content**, and the
+    directive says so in as many words: *anchor on content, never on a number.*
+  - `ServerInfoDoc` is an **identifier and is untouched**, per D-1320's named boundary: the
+    naming ruling does user-facing work only, and *a lane that cites it to rename an
+    identifier has misread it.*
+  - **This file's revision note is one dated line**, per the F1 convention NA-0683
+    established; every `⛔ SUPERSEDED` block is untouched.
+  - **References:** spine D619 / D-1322 / D-1323; **D-1320's follow-up map**, which records
+    this line as F1's deferred fourteenth and is cited rather than re-derived; D-0021 (the
+    naming sweep); **ENG-0089** (the instrument finding this line produced).
