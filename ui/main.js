@@ -566,9 +566,9 @@ async function enterMain() {
     const cfg = await invoke("relay_config_get");
     byId("status-line").textContent = cfg.relay_url
       ? `Relay: ${cfg.relay_url}`
-      : "No server configured — add one in Settings › Server.";
+      : "No relay configured — add one in Settings › Relay.";
   } catch (_) {
-    byId("status-line").textContent = "No server configured — add one in Settings › Server.";
+    byId("status-line").textContent = "No relay configured — add one in Settings › Relay.";
   }
 }
 byId("btn-add-contact").addEventListener("click", () => {
@@ -1189,7 +1189,7 @@ function renderServerOutcome(res, committed) {
       doc.appendChild(docRow("Access", bearer ? "Token required — accepted" : "Open — no token needed"));
       if (d.retention_ttl_secs) doc.appendChild(docRow("Message retention", humanDuration(d.retention_ttl_secs)));
       if (d.max_body_bytes) doc.appendChild(docRow("Max message size", humanBytes(d.max_body_bytes)));
-      if (d.version) doc.appendChild(docRow("Server version", d.version));
+      if (d.version) doc.appendChild(docRow("Relay version", d.version));
       break;
     }
     case "auth_required":
@@ -1203,10 +1203,10 @@ function renderServerOutcome(res, committed) {
     case "cert_not_trusted":
       setBanner(status, "accent", "Certificate not trusted");
       detail.textContent =
-        "This server presented a certificate your computer doesn't recognise. That's expected if the operator runs their own certificate authority — and it's also what an interception attack looks like. Ask the operator for their CA certificate and add it above, or install it on this computer.";
+        "This relay presented a certificate your computer doesn't recognise. That's expected if the operator runs their own certificate authority — and it's also what an interception attack looks like. Ask the operator for their CA certificate and add it above, or install it on this computer.";
       break;
     case "unreachable":
-      setBanner(status, "accent", "Couldn't reach the server");
+      setBanner(status, "accent", "Couldn't reach the relay");
       detail.textContent =
         "Nothing answered at that address. Check the address, and check you're on the same network or VPN as the relay.";
       break;
@@ -1243,7 +1243,7 @@ function renderServerError(codeStr) {
   if (RELAY_CA_CODES.some((c) => codeStr.includes(c))) {
     setBanner(byId("relay-status"), "accent", "Certificate authority file couldn't be read");
     byId("relay-detail").textContent =
-      "The certificate authority file you configured couldn't be read. Check the path under “Certificate authority” above — this is a local file problem, not a problem with the server's certificate.";
+      "The certificate authority file you configured couldn't be read. Check the path under “Certificate authority” above — this is a local file problem, not a problem with the relay's certificate.";
   } else {
     setBanner(byId("relay-status"), "accent", "Couldn't start the connection test");
     byId("relay-detail").textContent = "The connection test couldn't be started (" + codeStr + ").";

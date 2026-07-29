@@ -1,5 +1,7 @@
 # Appendix D — Reference markup (operator-approved 2026-07-19)
 
+> 2026-07-29, NA-0683: the pane is renamed Relay; live prose and quoted UI strings updated; superseded passages untouched.
+
 Companion to QSC_DESIGN_SPEC_v1_round2.md. This appendix BINDS item 14
 (full-bleed shell) and supplies the visual DNA for the round-2 surfaces.
 Adapt ids/selectors/wiring to the app; copy structure, tokens, spacing,
@@ -70,7 +72,7 @@ the round-3 amendments below are marked [E.x].
     <h2>Settings</h2>                                 <!-- 16px/500, padding 0 14px, mb 10px -->
     <a class="nav-item active">Identity</a>           <!-- active: bg #1C2A3E, border-left 2px #3D7BC4,
                                                             color #8FBAF0, padding 7px 14px, 13px -->
-    <a class="nav-item">Server</a>                    <!-- idle: color #A8A8A8 -->
+    <a class="nav-item">Relay</a>                     <!-- idle: color #A8A8A8 -->
     <a class="nav-item">Vault and Security</a>
     <a class="nav-item muted">Appearance</a>          <!-- unbuilt: #7A7A7A -->
     <a class="nav-item muted">Notifications</a>

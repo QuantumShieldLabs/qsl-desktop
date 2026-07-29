@@ -1190,3 +1190,65 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
   - **Goals:** G1. Tests 97 pass / 1 ignored / 0 fail; fmt and clippy `--all-targets` clean.
   - **References:** D-0019 (Facts 1 and 2); D-0017 (the instance-scoped fix this supersedes);
     R-14 (the defect, now diagnosed three times to two causes).
+
+- **ID:** D-0021
+  - **Date:** 2026-07-29
+  - **Lane:** NA-0683 — **the naming sweep.** Spine directive **D618** (sha256
+    `48d77b12…f9d8b390`, 445 lines, all six flags ruled); spine decisions **D-1320** (the
+    ruling itself) and **D-1321** (closeout).
+  - **THE RULING (operator, 2026-07-27):** the user-facing term is **"Relay", never
+    "Server"**. The rationale is the part that must survive: *relay* **teaches the security
+    model** — a dumb pipe forwarding opaque bytes, not a trust-holding service — it matches
+    the protocol docs and the invite system, and it suits a privacy-conscious audience.
+    That first clause is why the sweep stops where it does: the word is doing security-model
+    work **on surfaces a user reads**, and nowhere else.
+  - **⚠ THE WORD WAS ALREADY ~90% SHIPPED.** "Relay address", "Relay name", "Open relay",
+    "Not a QSL relay", "This relay requires an access token" and `Relay: {url}` shipped
+    before this lane — **in the same pane** as "No server configured" and "Couldn't reach
+    the server". This lane finishes a word the product had already chosen; it does not
+    introduce one.
+  - **WHAT CHANGED — 16 lines, 8 files, one word each:** the settings nav item and the pane
+    heading (`Server` → `Relay`), the main-window status line, the two "Settings › Server"
+    strings, the `Server version` result row, the "Couldn't reach the server" banner, the
+    cert-not-trusted sentence, the CA-unreadable sentence, `app_info().slice`'s "server
+    connectivity", two README lines, and the rendered text of both reference mockups. Plus
+    **F1**: 14 live normative lines in `DESIGN_SPEC.md` / Appendix D / Appendix F, each
+    file carrying **exactly one** dated revision line.
+  - **⚠ WHAT DELIBERATELY DID NOT CHANGE, AND MUST NOT LATER:** `data-pane="server"`,
+    `#pane-server`, `.server-form`, `.srv-sect`, `serverBusy`, `commitServerSettings`,
+    `refreshServerState`, `ServerInfoDocDto`, `RelayServerInfoOutcome`, `relay_server_info`,
+    `GET /v1/server-info`, and the test file name `server_pane.rs`. **No user reads any of
+    them**, and renaming a key, field, route or identifier costs compatibility to buy
+    nothing. The settings key is `relay_url` and was already correct.
+  - **⚠ ONE LINE WAS RULED UNFIXABLE IN ONE WORD (F2).**
+    `DESIGN_SPEC_AppendixD.md:60` reads "No server configured — server setup arrives in a
+    future update". The substitution would produce a sentence that is **false** — relay
+    setup shipped in slice B, and `server_pane.rs` asserts that clause is gone from the app.
+    Correcting it means deciding what the appendix should now say, which is a design
+    decision wearing a naming decision's clothes. **Left, and filed to the Slice 4 spec
+    refresh.**
+  - **⚠ ONE STALE CLAIM WAS RULED LEFT (F5), AND THE REAL DEFECT IS THE GAP AROUND IT.**
+    `src-tauri/Cargo.toml:6` still describes the crate as "slice A: serverless skeleton".
+    `server_pane.rs::claim_discipline_five_surfaces_swept` asserts that phrase is gone from
+    `ui/index.html` and `src-tauri/src/commands.rs` — **Cargo metadata and module docs are
+    outside every needle**, and `src-tauri/src/lib.rs:1` carries the same phrase. The naming
+    gate prints it as its single `RULED-LEAVE` rather than hiding it. Filed to the
+    CI/tooling lane with OBS-1: **the needle gap, not the word, is the defect.**
+  - **THE GUARD (F4).** `src-tauri/tests/relay_naming.rs` pins the renamed surfaces and
+    asserts the retired literals stay gone — the idiom
+    `claim_discipline_five_surfaces_swept` already uses. It was proven **red-capable**
+    before being trusted: one retired string reintroduced, the guard observed RED, the file
+    restored byte-identically, green again. A rename with no guard is a rename that comes
+    back one edit at a time.
+  - **⚠ THE CENSUS CORRECTED FOUR OF THE LANE INTENT'S OWN PREMISES**, each measured, none
+    inferred: the repo **does** have a public-safety scan (it simply cannot block, since the
+    one required context is `rust`); the config-key stop condition **cannot fire** here
+    (`relay_url`); **no existing test asserts any string this lane changes**, so the
+    "update the test expectations" work set was **empty**; and one user-facing string lives
+    in **Rust, not `ui/`** (`commands.rs` → rendered by `main.js`), which a sweep of `ui/`
+    alone would have missed.
+  - **Goals:** G4 (primary), supports G1. **Evidence lives in the spine** — the census
+    table, the cross-repo enumeration and the gate output are full of the retired word and
+    would put hundreds of hits into the tree the gate measures.
+  - **References:** spine D618 / D-1320 / D-1321; D-0010/D-0011 (the pane this renames);
+    D615 (the polish lane that last touched these surfaces).

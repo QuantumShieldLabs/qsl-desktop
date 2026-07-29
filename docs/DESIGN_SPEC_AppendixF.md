@@ -1,9 +1,11 @@
-# Appendix F — Server pane & connection-results taxonomy (slice B, operator-approved 2026-07-24; REVISED 2026-07-25 by the NA-0674 redesign)
+# Appendix F — Relay pane & connection-results taxonomy (slice B, operator-approved 2026-07-24; REVISED 2026-07-25 by the NA-0674 redesign)
+
+> 2026-07-29, NA-0683: the pane is renamed Relay; live prose and quoted UI strings updated; superseded passages untouched.
 
 Companion to QSC_DESIGN_SPEC_v1_round2.md (§1 tokens govern values; §2 status
-banner component) and Appendices D/E. This appendix BINDS the Server pane
+banner component) and Appendices D/E. This appendix BINDS the Relay pane
 (spine lanes NA-0673 / directive D609, and NA-0674 / directive D610). Where F
-and an earlier appendix disagree ON THE SERVER PANE, F governs — it is the
+and an earlier appendix disagree ON THE RELAY PANE, F governs — it is the
 newer decision. F changes nothing about the pre-main screens, the Vault pane,
 or the token values.
 
@@ -18,8 +20,8 @@ or the token values.
 > text follows immediately. **F.3, F.5, F.6, F.7 and [F.1-COLOUR] are
 > UNCHANGED by that revision.**
 
-The Server pane is the app's FIRST network surface: it points the app at a
-relay and tests the connection. Scope is server CONNECTIVITY only — not
+The Relay pane is the app's FIRST network surface: it points the app at a
+relay and tests the connection. Scope is relay CONNECTIVITY only — not
 contacts, not messaging, not the Logs pane, not the rail toggle.
 
 ## F.1 — Layout & structure
@@ -229,7 +231,7 @@ and rendered here — never re-classified):
 | 1 | Reachable / Bearer | 200 + `auth.mode=bearer` + token accepted | neutral | "Connected" — "Token required — accepted. Certificate trusted." |
 | 2 | Reachable / Open | 200 + `auth.mode=open` | neutral | "Connected" — "Open relay — anyone who can reach this address can use it…" |
 | 3 | Cert not trusted | TLS refused a readable cert | accent | "Certificate not trusted" (…"also what an interception attack looks like") |
-| 4 | Unreachable | conn/DNS/timeout | accent | "Couldn't reach the server" |
+| 4 | Unreachable | conn/DNS/timeout | accent | "Couldn't reach the relay" |
 | 5 | Token rejected | 401 + QSL challenge, token WAS sent | accent | "Token rejected" |
 | 6 | Token required | 401 + QSL challenge, token was NOT sent | accent | "This relay requires an access token" |
 | 7 | Not a QSL relay | answered, no parseable `auth.mode` | accent | "Not a QSL relay" |
@@ -333,8 +335,8 @@ differs, and it differs in order to be accurate.
 States 5 and 6 come from the SAME byte-identical relay `401` — the relay does
 not, and must not, reveal which. The CLIENT distinguishes them by whether IT
 sent a token (`token_was_sent`). Both messages are phrased as LOCAL
-OBSERVATIONS about what this app did, NEVER as server verdicts: "the one this
-app sent" / "this app sent no token." The app never claims the server said
+OBSERVATIONS about what this app did, NEVER as relay verdicts: "the one this
+app sent" / "this app sent no token." The app never claims the relay said
 anything it did not say.
 
 ## F.4 — Save/Test relationship
@@ -396,8 +398,8 @@ certificate) is a LOCAL CONFIGURATION problem: the request was never formed,
 because the client could not be built. It is rendered as its own results line
 with a file-path remedy. It is EXPLICITLY NOT state 3 (Certificate not
 trusted), which means TLS refused a READABLE-but-untrusted certificate presented
-by the server. Conflating them would send a private-CA self-hoster debugging a
-server certificate problem that does not exist — the wrong-error-mapping class,
+by the relay. Conflating them would send a private-CA self-hoster debugging a
+relay certificate problem that does not exist — the wrong-error-mapping class,
 on precisely the private-CA surface NA-0663 built for and NA-0672 first
 exercised live (the CA pair). The two states carry different remedies and must
 stay visibly distinct.
@@ -408,7 +410,7 @@ stay visibly distinct.
 `vault::secret_get`, which fails CLOSED when the vault is locked. A locked vault
 therefore reports `configured = false` — reading as "no CA file / no token set"
 rather than "unknown." This is SAFE ONLY because the Settings surface is
-unlock-gated by construction: the Server pane is reachable only from an unlocked
+unlock-gated by construction: the Relay pane is reachable only from an unlocked
 session, so the vault is always unlocked when the pane reads it. **It becomes a
 lie the moment any future lane exposes a Settings pane (or this status) in a
 locked state.** Any such lane must resolve the locked case to an explicit

@@ -1,5 +1,7 @@
 # QSC Desktop Design Spec v1 — Round-2 Reference (operator-approved 2026-07-19)
 
+> 2026-07-29, NA-0683: the pane is renamed Relay; live prose and quoted UI strings updated; superseded passages untouched.
+
 This file is the DESIGN AUTHORITY for the round-2 lane and all future GUI
 lanes until revised. Prose in the intent describes intent; THIS FILE defines
 pixels. Where the build and this spec disagree, the build is wrong.
@@ -61,7 +63,7 @@ CSS:
 
 **[P.3] BANNERS ARE FOR RESULTS; PERSISTENT STATE IS A QUIET LINE (R-12).**
 The banner component above is UNCHANGED and still ships — it narrowed to ONE
-consumer, the Server pane's connection-test results, which are an outcome the
+consumer, the Relay pane's connection-test results, which are an outcome the
 user just asked for. Standing state that is simply true renders as
 `.status-line-quiet`: icon + text, no box.
 

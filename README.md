@@ -12,11 +12,11 @@ Desktop client (GUI) for the QSL protocol — in development, pre-release.
 - v1 targets Linux only (roadmap decision D-A / locked decision L9); macOS
   is the first post-skeleton platform lane, Windows sits at a later horizon.
 
-## Status: local lifecycle + server configuration; no messaging
+## Status: local lifecycle + relay configuration; no messaging
 This build contains the local vault/identity/unlock lifecycle —
 onboarding (create vault, identity display), the unlock screen with its
 escalating-delay protection display, idle autolock, and the Vault &
-Security settings — plus the Settings › Server pane, where a relay
+Security settings — plus the Settings › Relay pane, where a relay
 address, an access token, and a CA certificate file are configured. One
 **Save** commits the pane; **Test connection** saves first and then
 reports what the relay actually answered. (That commit model is a
