@@ -445,3 +445,66 @@ fn claim_discipline_five_surfaces_swept() {
         "About native menu lost the surviving no-assurance clause"
     );
 }
+
+/// NA-0686 / D-1325 (ENG-0088) — THE NEEDLE GAP, closed.
+///
+/// ⚠ THE DEFECT WAS THE NEEDLE SET, NOT THE WORD. `claim_discipline_five_surfaces_swept`
+/// retired "serverless skeleton" from `ui/index.html` and `src-tauri/src/commands.rs`
+/// — and stopped there. Two published surfaces kept the retired claim for two
+/// more slices: the crate DESCRIPTION in `Cargo.toml` (which reaches package
+/// registries and any bundle manifest) and the MODULE DOC in `lib.rs:1` (which
+/// reaches `cargo doc`).
+///
+/// The sharper reading, measured rather than inherited from the filing: `lib.rs`
+/// WAS already in the older guard's needle set — but only for the phrase "makes
+/// no network connections", never for "serverless skeleton". So the gap was not
+/// "a file nobody looked at"; it was **a file looked at for the wrong needle**,
+/// which is harder to spot and is exactly why a sweep that stops at the surfaces
+/// a previous lane happened to name keeps missing the ones nobody thought of.
+///
+/// Slice B shipped relay connectivity. "Serverless skeleton" is no longer true
+/// of the crate it describes, and a published crate description that states
+/// something the product outgrew is a claim-discipline failure whatever file it
+/// lives in.
+#[test]
+fn claim_discipline_covers_cargo_metadata_and_module_docs() {
+    let cargo_toml = repo_file("src-tauri/Cargo.toml");
+    let lib = repo_file("src-tauri/src/lib.rs");
+
+    // (a) the retired claim is absent from BOTH newly covered surfaces.
+    for (surface, body) in [("src-tauri/Cargo.toml", &cargo_toml), ("src-tauri/src/lib.rs", &lib)] {
+        assert!(
+            !body.contains("serverless skeleton"),
+            "{surface} still carries the retired 'serverless skeleton' claim"
+        );
+        assert!(
+            !body.contains("slice A:"),
+            "{surface} still describes the crate as slice A only; slice B shipped relay connectivity"
+        );
+    }
+
+    // (b) both surfaces carry the claim boundary. A description that merely drops
+    //     the false clause is not the same as one that states the real limit —
+    //     "research-stage, no security-assurance claims" is the standing posture
+    //     and it must survive here as it does in the in-app About.
+    for (surface, body) in [("src-tauri/Cargo.toml", &cargo_toml), ("src-tauri/src/lib.rs", &lib)] {
+        assert!(
+            body.contains("Research-stage") || body.contains("research-stage"),
+            "{surface} must state the research-stage boundary"
+        );
+        assert!(
+            body.contains("no security-assurance claims"),
+            "{surface} must keep the no-security-assurance claim boundary"
+        );
+    }
+
+    // (c) both describe what the crate ACTUALLY contains now.
+    assert!(
+        cargo_toml.contains("relay connectivity"),
+        "Cargo.toml description must reflect slice B's relay connectivity"
+    );
+    assert!(
+        lib.contains("relay connectivity"),
+        "lib.rs module doc must reflect slice B's relay connectivity"
+    );
+}

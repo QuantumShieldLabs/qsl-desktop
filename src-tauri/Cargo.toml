@@ -3,7 +3,7 @@ name = "qsl-desktop-app"
 version = "0.1.0"
 edition = "2021"
 license = "AGPL-3.0-only"
-description = "QSL desktop client — slice A: serverless skeleton (vault/identity/unlock lifecycle)"
+description = "QSL desktop client — slices A–B: vault, identity and unlock lifecycle, plus relay connectivity. Research-stage; makes no security-assurance claims."
 
 [lib]
 name = "qsl_desktop_app"
