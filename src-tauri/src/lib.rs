@@ -1,8 +1,20 @@
-//! qsl-desktop — slice A: the serverless skeleton (D595 / spine D-1282 /
-//! repo-local D-0002; round-2 design pass D597 / spine D-1284 / D-0004).
+//! QSL desktop client — slices A–B: vault, identity and unlock lifecycle, plus
+//! relay connectivity. Research-stage; makes no security-assurance claims.
+//!
+//! (D595 / spine D-1282 / repo-local D-0002; round-2 design pass D597 / spine
+//! D-1284 / D-0004. Slice B's relay connectivity: D609 / spine D-1295.)
 //! Tauri v2 shell consuming qsc in-process as a rev-pinned git dependency.
-//! Slice A contains ZERO networking code; the server-connectivity surface
-//! is slice B (owed).
+//!
+//! NA-0686 / D-1325 (ENG-0088): the previous first line still described this
+//! crate as a slice-A-only shell with no networking code, a claim slice B
+//! retired. It survived two slices because the claim-discipline guard read this
+//! file for a different needle; it is now covered by
+//! `claim_discipline_covers_cargo_metadata_and_module_docs`.
+//!
+//! ⚠ That guard matches on the retired phrases themselves, so this note
+//! deliberately paraphrases rather than quotes them — a comment explaining a
+//! retired claim must not reintroduce it. The guard caught exactly that mistake
+//! in this very comment while it was being written.
 
 pub mod commands;
 pub mod gateway;

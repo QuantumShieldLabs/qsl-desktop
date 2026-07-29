@@ -1282,3 +1282,49 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
   - **References:** spine D619 / D-1322 / D-1323; **D-1320's follow-up map**, which records
     this line as F1's deferred fourteenth and is cited rather than re-derived; D-0021 (the
     naming sweep); **ENG-0089** (the instrument finding this line produced).
+
+- **ID:** D-0023
+  - **Status:** Accepted
+  - **Date:** 2026-07-29
+  - **Decision:** Close the **claim-discipline needle gap** (spine ENG-0088) and
+    fold in the **desktop suite's enumeration remedy** (spine ENG-0075), under
+    spine lane **NA-0686 / D-1325**.
+    - `src-tauri/Cargo.toml` `description` and `src-tauri/src/lib.rs`'s module doc
+      now read the operator-pre-approved wording: *"QSL desktop client — slices
+      A–B: vault, identity and unlock lifecycle, plus relay connectivity.
+      Research-stage; makes no security-assurance claims."* Slice B shipped relay
+      connectivity, so the previous slice-A-only description had been false for
+      two slices.
+    - ⚠ **The needles were extended FIRST, because the defect was the needle set
+      and not the word.** `claim_discipline_covers_cargo_metadata_and_module_docs`
+      now covers Cargo metadata (which reaches package registries and any bundle
+      manifest) and module docs (which reach `cargo doc`), asserting both the
+      ABSENCE of the retired claim and the PRESENCE of the research-stage and
+      no-security-assurance boundaries.
+    - ⚠ **The filed description of the gap was slightly wrong, and the correction
+      sharpens it.** ENG-0088 recorded that the old guard reads `ui/index.html`
+      and `src-tauri/src/commands.rs` *"and nowhere else"*. Measured: it reads
+      **five** files, `lib.rs` among them — but only for a DIFFERENT phrase. The
+      gap was **a file looked at for the wrong needle**, which is harder to spot
+      than a file nobody looked at, and a stronger argument for the same
+      conclusion.
+    - ⚠ **The new guard caught this very change writing the defect back in:** the
+      first draft of the `lib.rs` explanatory note QUOTED the retired claim and
+      failed the needle. Recorded because it is direct evidence the guard works on
+      live content rather than only on the case it was written for.
+    - **ENG-0075 (narrow authorised fold):** CI loses `cargo test -q`, which hid
+      which binaries ran and let a deleted test file stay green at a lower total
+      nobody compared. `scripts/ci/test_inventory.sh` pins every test NAME in
+      `scripts/ci/EXPECTED_TEST_INVENTORY.txt` and fails the build when one
+      disappears — **by name, not as a number that moved**, because printing is
+      not checking. Baseline **103 tests** (102 passed + 1 ignored, 11 binaries).
+      Growth is allowed; disappearance is not.
+    - The `infra-literal-scan` self-test runs ahead of the scan, so a broken
+      instrument fails before it can report clean.
+  - **Controls:** reintroducing the retired phrase into either surface turns the
+    new guard red (both directions, both restored byte-identical); deleting
+    `src-tauri/tests/relay_naming.rs` drops the enumeration 103 → 98 and fails
+    naming the five missing tests.
+  - **References:** spine NA-0686 / D-1325; ENG-0088; ENG-0075; D-0021 (the naming
+    lane that filed the claim as LEAVE-and-FILE); `server_pane.rs`'s existing
+    `claim_discipline_five_surfaces_swept`.
