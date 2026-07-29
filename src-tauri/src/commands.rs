@@ -311,7 +311,7 @@ pub fn app_info() -> AppInfoDto {
     AppInfoDto {
         display_name: APP_DISPLAY_NAME,
         version: env!("CARGO_PKG_VERSION"),
-        slice: "B (server connectivity: point the app at a relay and test the connection)",
+        slice: "B (relay connectivity: point the app at a relay and test the connection)",
     }
 }
 
