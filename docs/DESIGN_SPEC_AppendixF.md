@@ -2,6 +2,8 @@
 
 > 2026-07-29, NA-0683: the pane is renamed Relay; live prose and quoted UI strings updated; superseded passages untouched.
 
+> 2026-07-29, NA-0684: the mockup's example relay name is replaced by a placeholder, and the `ServerInfoDoc` field list reads *relay version* — NA-0683's fourteenth F1 line, which its own gate refused because the line carried an operator-infrastructure literal.
+
 Companion to QSC_DESIGN_SPEC_v1_round2.md (§1 tokens govern values; §2 status
 banner component) and Appendices D/E. This appendix BINDS the Relay pane
 (spine lanes NA-0673 / directive D609, and NA-0674 / directive D610). Where F
@@ -238,7 +240,7 @@ and rendered here — never re-classified):
 
 For a Reachable outcome the panel also renders the REAL `ServerInfoDoc` fields
 (relay name, certificate = Trusted, access mode, retention, max message size,
-server version). The mockup's `0.9.2` / `7 days` / `1 MB` / `inspiron-lan-relay`
+relay version). The mockup's `0.9.2` / `7 days` / `1 MB` / `<lan-relay-host>`
 are placeholders; the pane shows what the probe returns.
 
 ⛔ **THE SAVE-STATE — REMOVED 2026-07-25 (R-F1).**
