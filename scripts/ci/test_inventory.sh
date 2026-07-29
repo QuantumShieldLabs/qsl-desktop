@@ -23,24 +23,37 @@ set -uo pipefail
 cd "$(dirname "$0")/../.." || exit 2
 EXPECTED="scripts/ci/EXPECTED_TEST_INVENTORY.txt"
 ACTUAL="$(mktemp)"
-trap 'rm -f "$ACTUAL"' EXIT
+trap 'rm -f "$ACTUAL" "$ACTUAL.cmperr"' EXIT
 
-# `--list` names every test without running it; two trailing lines summarise, so
-# they are dropped. `--format terse` keeps the shape stable across cargo versions.
+# ⚠ LC_ALL=C IS LOAD-BEARING, NOT TIDINESS (NA-0686, caught by CI).
+#
+# The pin is generated on one machine and compared on another, and `comm`
+# requires both inputs sorted in the SAME collation. Test names contain `::` and
+# `_`, and locale-dependent collation orders punctuation differently — so a pin
+# written under a UTF-8 locale and compared under another produced a
+# SELF-CONTRADICTORY report: the same seven tests listed as both ADDED and
+# DISAPPEARED. `comm` warned ("input is not in sorted order") and the script
+# printed the nonsense anyway.
+#
+# That is precisely the ENG-0075 defect one level down — a warning is not a
+# remedy, and an instrument that reports impossible output is worse than one
+# that reports nothing. So: collation is pinned to C everywhere, and an
+# unsorted-input warning is now FATAL rather than advisory.
+export LC_ALL=C
+
+# `--list` names every test without running it. `--format terse` keeps the shape
+# stable across cargo versions.
 if ! cargo test --no-run --quiet 2>/dev/null; then
   echo "test_inventory: FAILED to build test targets" >&2
   exit 2
 fi
 
+# One line per test NAME, so a removal is visible by name rather than as a
+# number that moved. A count alone cannot say WHICH test left.
 cargo test -- --list --format terse 2>/dev/null \
   | grep ': test$' \
   | sed 's/: test$//' \
-  | sort > "$ACTUAL.names"
-
-# One line per test NAME, so a removal is visible by name rather than as a
-# number that moved. A count alone cannot say WHICH test left.
-sort -o "$ACTUAL.names" "$ACTUAL.names"
-cp "$ACTUAL.names" "$ACTUAL"
+  | sort > "$ACTUAL"
 
 COUNT=$(wc -l < "$ACTUAL" | tr -d ' ')
 
@@ -62,7 +75,21 @@ if [ "$COUNT" -eq 0 ]; then
   exit 2
 fi
 
-MISSING=$(comm -23 "$EXPECTED" "$ACTUAL")
+# ⚠ Treat `comm`'s sortedness warning as FATAL. Without this the script can emit
+# a report in which the same test is both added and removed, which is not a
+# finding — it is the instrument lying. Fail loudly and say how to fix it.
+MISSING=$(comm -23 "$EXPECTED" "$ACTUAL" 2>"$ACTUAL.cmperr")
+if [ -s "$ACTUAL.cmperr" ]; then
+  echo "" >&2
+  echo "test_inventory: COMPARISON IS NOT TRUSTWORTHY -- comm reported:" >&2
+  sed 's/^/    /' "$ACTUAL.cmperr" >&2
+  echo "" >&2
+  echo "The pin and the enumeration are not in the same sort order, so any diff" >&2
+  echo "below would be meaningless. This normally means the pin was written" >&2
+  echo "under a different locale; regenerate it with:" >&2
+  echo "    scripts/ci/test_inventory.sh --write" >&2
+  exit 2
+fi
 ADDED=$(comm -13 "$EXPECTED" "$ACTUAL")
 
 echo "test_inventory: enumerated $COUNT tests (pin: $(wc -l < "$EXPECTED" | tr -d ' '))"
