@@ -1328,3 +1328,68 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
   - **References:** spine NA-0686 / D-1325; ENG-0088; ENG-0075; D-0021 (the naming
     lane that filed the claim as LEAVE-and-FILE); `server_pane.rs`'s existing
     `claim_discipline_five_surfaces_swept`.
+
+- **ID:** D-0024
+  - **Status:** Accepted
+  - **Date:** 2026-08-06
+  - **Lane:** spine **NA-0697 / D631 as twice amended** (post-A2 sha `010943c9…592e`;
+    spine decision **D-1337**; ENG-0048, filed on the protocol ledger by NA-0661).
+  - **Decision:** **A tokened DESTROY now removes the app-level `settings.json`
+    AND its `settings.json.tmp` staging sibling** (Shape A, ratified at the
+    Director's STOP-002 ruling). `destroy_vault`'s gateway closure delegates to
+    the new `pub fn destroy_vault_impl(data_dir, passphrase)` — the
+    byte-equivalent tokened core destroy followed by the removal loop, each path
+    exists-then-`remove_file` with erase's error mapping — the erase-mirror
+    testability shape (`erase_all` / `erase_all_impl` precedent), ratified as
+    D631 Amendment 2 after NA-0697 STOP 004 proved the originally ruled
+    "inline block" shape untestable (the new test must compile at base AND
+    exercise the edit; only a pub non-`State` fn satisfies both).
+  - **Why (the artifact-level reading, CITING spine D-1337):** the D-1336
+    boundary rule classifies ARTIFACTS; the artifact here is **the file**, the
+    level at which qsc's own `config.txt`/`store.meta` were classified — and
+    `settings.json` is vault-lifecycle-coupled through its D-0018 role: its
+    EXISTENCE is the per-profile "identity step finished" signal. "Vault-keyed
+    joins the gone-set" reads at the artifact level as semantic keying to the
+    profile's lifecycle; the survivor clause protects vault-independent CONFIG
+    ARTIFACTS, and a dual-role file whose signal role is load-bearing is not
+    one. Field verdicts BY NAME (ruled, Amendment 1): `autolock_minutes`
+    survives-as-field · `relay_url` survives-as-field · `self_alias`
+    DIES-as-field (profile-scoped; its resurfacing under the next identity IS
+    the ENG-0048 complaint) — all three die WITH the file under Shape A, the
+    stated cost accepted deliberately (destroy is profile-ending; erase already
+    resets both survivors, unfiled as defect).
+  - **The §5 finding, closed BY CONSTRUCTION (citing NA-0697 STOP 001):** a
+    surviving `settings.json` FORGES the D-0018 S2 signal for the next profile —
+    destroy → re-onboard → step 2 opens (identity record written) → kill before
+    Continue → relaunch resolves S2 off the OLD profile's file — the precise
+    ENG-0076 regression, reintroduced for every post-destroy re-onboarding.
+    With the file dead at destroy, the forged-signal path no longer exists.
+  - **Instrument:** NEW `src-tauri/tests/eng0048_destroy_boundary.rs::
+    destroy_residue_set_enumerated_by_name` — ks1 vault + a REAL settings.json
+    (alias + relay non-default) → destroy via `destroy_vault_impl` → `data_dir`
+    listing EQUALITY == `["qsc"]` (never a count) + `resolve_launch_state == S0`
+    + `!vault_unlocked()`. Deliberately does NOT pin the `qsc/` interior (the
+    pinned library owns that boundary). Inventory re-pinned 104 → 105 BY NAME,
+    deliberate (D631 R7).
+  - **Controls (the A2 mechanism-identical pair):** Control 1′ = base +
+    factoring + test, NO removal → exactly this one test red at the listing
+    (measured `["qsc", "settings.json"]`), all others green (factoring
+    neutrality inside the control); Control 2′ = final tree with the removal
+    loop reverted → the identical one-test red; both restores cmp-identical.
+  - **⚠ The pin-advance inheritance, BY NAME:** the qsc pin stays `ab5041cd`
+    (pre-D-1336). The future pin-advance lane inherits the
+    `DestroyConfirmToken::confirm_with_passphrase` → `confirm(typed)` rename at
+    the desktop's **three measured constructor call sites**
+    (`commands.rs::destroy_vault_impl` + `slice_a_flows.rs:352/:356`; the
+    directive's "two call sites" was its enumeration — this record states the
+    measured set), plus the D-1336 gone-set/ceremony semantics arriving with
+    head qsc. Until then nothing at this pin contradicts the boundary rule (the
+    desktop creates ks1 vaults, for which D-1336 keeps destroy byte-unchanged).
+  - **Cross-references:** spine D-1337 (the interpretive precedent + the
+    cross-repo mechanics this lane sets); **ENG-0119** (erase's own crash-window
+    `.tmp` residue — `settings.json.tmp` survives erase if a crash lands between
+    settings.rs:59's write and :62's rename; FILED on the protocol ledger by
+    this lane, deliberately NOT fixed here); D-0018 (the signal role); D-0002 /
+    D-0003 (the settings-file and alias semantics this supersedes at the destroy
+    boundary); Slice 4's inherited copy obligation (the destroy copy must state
+    device preferences — auto-lock, relay address, display name — are reset).

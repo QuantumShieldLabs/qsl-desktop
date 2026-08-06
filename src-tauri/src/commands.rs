@@ -248,14 +248,30 @@ pub async fn destroy_vault(
     if confirm_phrase != DESTROY_CONFIRM_PHRASE {
         return Err("confirm_phrase_mismatch".into());
     }
+    let data = st.data_dir.clone();
     st.gw
-        .call(move || {
-            let token =
-                qsc::vault::protection::DestroyConfirmToken::confirm_with_passphrase(&passphrase);
-            qsc::vault::protection::destroy_with_passphrase(&passphrase, token)
-                .map_err(|e| e.to_string())
-        })
+        .call(move || destroy_vault_impl(&data, &passphrase))
         .await
+}
+
+/// The tokened core destroy (passphrase-committed — the opposite case from
+/// erase) plus its app-level boundary consequence (ENG-0048; D-0024, spine
+/// D-1337): `settings.json` is profile-scoped, and its existence is the
+/// D-0018 "identity step finished" signal — a file surviving destroy would
+/// forge S2 for the NEXT profile's onboarding. It dies with the vault,
+/// mirroring erase; the `.tmp` staging sibling (the settings.rs write path)
+/// goes with it.
+pub fn destroy_vault_impl(data_dir: &Path, passphrase: &str) -> Result<(), String> {
+    let token = qsc::vault::protection::DestroyConfirmToken::confirm_with_passphrase(passphrase);
+    qsc::vault::protection::destroy_with_passphrase(passphrase, token)
+        .map_err(|e| e.to_string())?;
+    let sf = paths::settings_file(data_dir);
+    for p in [sf.clone(), sf.with_extension("json.tmp")] {
+        if p.exists() {
+            fs::remove_file(&p).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
