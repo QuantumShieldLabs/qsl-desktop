@@ -1,3 +1,4 @@
+all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes
 appendix_a_copy_verbatim
 arm_checkbox_hit_area
 arm_destructive_disarm_secondary

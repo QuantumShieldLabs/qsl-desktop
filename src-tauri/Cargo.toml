@@ -24,3 +24,7 @@ qsc = { git = "https://github.com/QuantumShieldLabs/qsl-protocol", rev = "ab5041
 
 [dev-dependencies]
 tempfile = "3"
+# NA-0700 (D-0025): tauri's own mock runtime for the IPC replay harness —
+# dev-scoped feature enablement only; the shipped binary's feature set is
+# unchanged (cargo unions this into test/bench builds exclusively).
+tauri = { version = "2", features = ["test"] }

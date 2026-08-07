@@ -1393,3 +1393,63 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     D-0003 (the settings-file and alias semantics this supersedes at the destroy
     boundary); Slice 4's inherited copy obligation (the destroy copy must state
     device preferences — auto-lock, relay address, display name — are reset).
+
+- **ID:** D-0025
+  - **Status:** Accepted
+  - **Date:** 2026-08-07
+  - **Lane:** spine **NA-0700 / D634 as amended (A2-FINAL)** (directive
+    `QSL-DIR-2026-08-07-634_polish_gui_ipc_boundary_closure_A2FINAL.md`, sha256
+    `dedc4b374949de059954bf9110c196df6a64dbde088f281f5e3996c5a48c045d`; spine
+    decision **D-1340**).
+  - **Decision:** **The desktop's IPC arg/DTO boundary is pinned by an in-repo
+    replay harness** (`src-tauri/tests/na0700_ipc_replay.rs`): every one of the
+    27 registered commands is invoked through tauri's REAL IPC ingestion on the
+    mock runtime — real serde arg decoding, real camelCase→snake_case mapping,
+    real State injection, the REAL compiled ACL — with the arg-key sets
+    HARVESTED from the 31 `main.js` call sites and replayed literally
+    (`confirmPhrase`, `autolockMinutes`, `selfAlias`, `contentHeight` among
+    them), DTO wire shapes pinned as serialized (the `kind` strings the FE
+    string-matches: `unlocked`/`rejected`/`unreachable` pinned live), and the 2
+    registered-and-dormant commands (`marker_stats`, `core_busy`) invoked
+    registration-level. Enablers, both behaviour-identical to the shipped app:
+    the tauri `test` dev-feature (dev-dependencies re-declaration; **measured
+    Cargo.lock delta: NONE** — the feature resolves inside the already-locked
+    tauri 2.11.5) and the `configure_builder` composition point extracted from
+    `run()` (managed state + the one `generate_handler!` list; `run()` composes
+    through it, so the harness registers exactly the run-path set;
+    `ui_surface_changed`/`apply_window_mode`/`MenuHandles` genericized over
+    `tauri::Runtime` for the mock runtime, Wry behaviour unchanged).
+  - **Claim boundary (R108, verbatim on this record):** this harness does NOT
+    click, type, or read the interface, and closes only the IPC half of the
+    GUI-test blindness; the interface half belongs to NA-0701. The desktop
+    consumes qsc at pin `ab5041cd` — measured an ancestor of spine base
+    `a6abd911`, so it predates the qsc output-routing edit and this harness
+    tests the desktop against its pinned qsc: the two NA-0700 halves are
+    independent by measurement (R115), desktop-first merge order. The routing
+    improvement itself arrives only at the future pin-advance lane (D-0024's
+    ceremony; R120(a): the boundary is closed AT qsc HEAD, not in the shipped
+    desktop).
+  - **Harness findings, recorded so no future seat re-derives them:** (1) the
+    mock context's EMPTY capability set rejects every command — the compiled
+    ACL from `capabilities/default.json` is part of the boundary, so the
+    harness builds with the real `generate_context!()` on the mock runtime;
+    (2) config-declared windows are a run()-phase creation — the harness builds
+    the `main` webview itself under the ACL's label and uses the webview's own
+    origin for the local-scope match; (3) `bootstrap()`'s panic-redaction hook
+    would redact every test-assert panic, so the harness replicates bootstrap's
+    env/policy/routing steps and omits only the hook (qsc-owned production
+    behaviour, tested there).
+  - **Instrument:** inventory re-pinned **105 → 106 BY NAME**, deliberate — the
+    one added name is
+    `all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes`.
+    In-harness red-capability: a deliberate missing-required-arg invoke is
+    asserted REJECTED at the boundary.
+  - **Control (SR-06, one edit, exact red set):** removing the single entry
+    `commands::app_info,` from `configure_builder`'s handler list reds exactly
+    `{all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes}`
+    and nothing else; restore proven cmp-identical.
+  - **References:** spine D-1340 (the routing half + the claim sentence); D-0024
+    (pin-advance ceremony this record defers to); D-0022/ENG-0075 (the
+    inventory-by-name discipline); R108/R109/R111 (harness joins the existing
+    `rust` job, no new CI context), R115, R119–R122, R130–R158 via the banked
+    NA-0700 record.
