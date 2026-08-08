@@ -1516,3 +1516,73 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     record: STOP_002 (probe, R164), STOP_007 (Phase 0, R169), STOP_008 (the
     R-14 catch, R170), STOP_009/STOP_010 (the red-set corrections, R171/R172);
     rulings R163–R172 banked as RBANK_NA0701_002–013.
+
+- **ID:** D-0027
+  - **Status:** Accepted
+  - **Date:** 2026-08-08
+  - **Lane:** spine **NA-0702 / D637 as amended (A1)** (directive
+    `QSL-DIR-2026-08-08-637_na0702_eng0123_erase_error_resize_fix.md`, sha256
+    `4000ae6ace0a9aa99272c43f0a530222124c67eb321940b763f5c8966218a97c`, 88
+    lines = base + Amendment A1, A1 governs on conflict; spine decision
+    **D-1342**).
+  - **Decision:** **`#erase-error` becomes a ONE-RESIZING-WRITER element**
+    (ENG-0123 — R-14 class, FOURTH occurrence, the GUI driver's first machine
+    catch: after a wrong ceremony phrase the error write skipped the resize
+    and BOTH `#btn-erase` and `#btn-erase-cancel` fell outside the card's
+    clip on the app's most stressful screen). The `setUnlockFeedback`
+    PROPERTY applied verbatim — STRUCTURAL, not a reminder: one TOTAL helper
+    `setEraseError(text)` (null-guard retained, resize unconditional) is the
+    only way to write the element, its body writes AND calls
+    `syncWindowHeight()` in the same operation, and
+    `design_polish.rs::erase_error_has_exactly_one_writer_and_it_resizes`
+    COUNTS THE REFERENCES (comment-stripped == 1) so a second writer cannot
+    appear silently. ALL FOUR base sites absorbed (:488 entry-clear ·
+    :515–:516 abort-clear · :520–:523 handler clear + wrong-phrase write ·
+    :549 catch write); `syncWindowHeight` call sites 7 → 8; COUNTDOWN CODE
+    BYTE-UNTOUCHED (measured FORK B at formalization: the countdown block is
+    SHORTER than the form it replaces, cancel bottom 225.0 vs clip 245.0 =
+    20.0px margin; the NAMED near-miss is FILED on the spine ledger with its
+    numbers per A1.1, not fixed). F-E (`f_e_erase_ceremony.json`, 45 → 51
+    steps, existing ops only — runner.py untouched): leg B gains the REAL
+    Cancel click at the error state (`#btn-erase-cancel` → scr-unlock; the
+    driver's own in-view-centre refusal is the instrument that caught
+    ENG-0123, so acceptance is that instrument passing); leg C RETAINED as
+    the R170 boot-to-unlock nothing-was-erased instrument with the workaround
+    property REMOVED — it deliberately re-enters the error state and carries
+    the RESTORED in-place wrong→correct click; the in-file note updated,
+    STOP_NA0701_008 kept as origin. Inventory 112 → 113 BY NAME.
+  - **The three-point ordering proof (A1.2, executed in this order):**
+    (1) the corrected scenario RED against the UNFIXED app — under cargo,
+    first-red abort at EXACTLY the leg-B Cancel row (rc=2); under the
+    perturbation facility, EXACTLY the pair {leg-B Cancel click, leg-C
+    in-place click} both rc=2 `element not interactable` + 7
+    consequence-class rows with NOTHING ERASED positively measured
+    (vault.qsv present); the born-red control red at the same base (no
+    helper; base reference count 4). (2) AFTER the fix, the C2 regression
+    (the resize line deleted) reds the SAME pair row-for-row — red for the
+    RIGHT REASON, not for the new rows' existence. (3) GREEN with the fix
+    via the real consumers: `cargo test --test gui_driver -- --ignored
+    --test-threads=1` 6/6, full bare suite 113 names 106/0/7 exit 0.
+  - **Controls (SR-06, both under the REBUILD BRACKET — `frontendDist:
+    "../ui"` embeds the assets — with cmp-identical restores and re-greens):**
+    C1 reinserted direct write at the `#link-forgot` handler →
+    EXACTLY {the new control} at count 2, F-E green (an entry-time clear is
+    height-neutral) · C2 resize-line deletion → EXACTLY {the control's body
+    assertion (b), na0701_gui_e_erase_ceremony per the pair above}.
+    Evidence root:
+    `target/gui_driver_runs/na0702_execution_20260808T162637Z/`
+    (ORDERING_PROOF.md; every red and green run preserved).
+  - **Claim boundary (§9):** after a wrong ceremony phrase BOTH ceremony
+    buttons are interactable at the measured geometry, proven by the
+    driver's own real clicks on the box and on the CI producer as separately
+    measured. NOT claimed: every conditional element resize-safe (the sweep
+    lane); the countdown near-miss fixed (FILED with its numbers); any
+    Slice-4 screen; native GTK menus/WM; macOS/Windows; required-status
+    promotion; the promotion-three count (this lane's spine PR is
+    record-only).
+  - **References:** spine D-1342 + the two IMPROVEMENT_LEDGER rows (ENG-0123
+    → resolved; the countdown near-miss filing); D-0026/D-1341 (the driver
+    that caught the defect); D-0025/ENG-0075 (inventory-by-name discipline);
+    the NA-0702 record chain: RBANK_NA0702_001 (brief) → STOP_NA0702_001
+    (formalization; the FORK B measurement) → RBANK_NA0702_002 (R174) →
+    STOP_NA0702_002 (promotion PR #1716) → this lane's execution stop.

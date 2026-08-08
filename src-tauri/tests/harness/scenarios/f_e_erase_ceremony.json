@@ -147,8 +147,16 @@
    "expect": "hidden"
   },
   {
+   "op": "click",
+   "sel": "#btn-erase-cancel"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-unlock"
+  },
+  {
    "op": "note",
-   "text": "wrong phrase blocked at the :522 gate, NOTHING erased (the blocks-wrong-phrase row). OPTION-1 SHAPE (R170 §3, citing STOP_NA0701_008): the in-place correct-phrase click is UNEXECUTABLE against the real app - the erase-error write skips the R-14 resize and clips both ceremony buttons (ENG row rides the spine PR); the corrected shape relaunches for a clean scr-erase. The boot-to-unlock below is itself a STRONGER nothing-was-erased instrument: protection_status still finds the vault after wrong-phrase + relaunch."
+   "text": "wrong phrase blocked at the phrase gate, NOTHING erased (the blocks-wrong-phrase rows), then Cancel is a REAL click at the error state - the driver's own in-view-centre refusal caught ENG-0123, so acceptance is that same instrument passing. ORIGIN: STOP_NA0701_008 (the erase-error write skipped the R-14 resize and clipped both ceremony buttons). FIXED at NA-0702 / D637 / desktop D-0027: setEraseError is the ONE resizing writer of #erase-error. The third launch is RETAINED as the R170 boot-to-unlock nothing-was-erased instrument (protection_status still finds the vault after wrong-phrase + relaunch), its workaround property REMOVED: leg C deliberately re-enters the error state and carries the restored in-place wrong-to-correct click."
   },
   {
    "op": "teardown"
@@ -176,6 +184,20 @@
   },
   {
    "op": "type",
+   "sel": "#erase-phrase",
+   "text": "erase nothing"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-erase"
+  },
+  {
+   "op": "read_text",
+   "sel": "#erase-error",
+   "literal": "Type exactly: erase everything"
+  },
+  {
+   "op": "clear_type",
    "sel": "#erase-phrase",
    "text": "erase everything"
   },

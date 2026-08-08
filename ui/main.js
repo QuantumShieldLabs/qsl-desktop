@@ -485,7 +485,7 @@ byId("btn-unlock").addEventListener("click", async () => {
 
 byId("link-forgot").addEventListener("click", (ev) => {
   ev.preventDefault();
-  byId("erase-error").textContent = "";
+  setEraseError("");
   show("scr-erase"); // deliberate step 2 of 2; show() clears the phrase field
 });
 
@@ -495,6 +495,19 @@ byId("link-forgot").addEventListener("click", (ev) => {
 // scope are byte-untouched; the command is invoked ONLY at countdown zero.
 // Cancel, closing the window, or any state transition ABORTS with nothing
 // erased.
+//
+// ⚠ R-14, FOURTH OCCURRENCE (ENG-0123, NA-0702 / D-0027): the ceremony error
+// line is a conditional element, and every writer used to skip the resize —
+// after a wrong phrase the content grew past the card's clip and BOTH Erase
+// and Cancel fell out of reach on the app's most stressful screen. Same
+// remedy as setUnlockFeedback above: there is ONE way to write the element
+// and that way resizes. `design_polish.rs` counts the references so a second
+// writer cannot appear silently.
+function setEraseError(text) {
+  const el = byId("erase-error");
+  if (el) el.textContent = text;
+  syncWindowHeight();
+}
 let eraseCountdownTimer = null;
 let eraseCountdownLeft = 0;
 function renderEraseCountdown() {
@@ -512,15 +525,13 @@ function eraseCountdownAbort() {
   if (form) form.classList.remove("hidden");
   const phrase = byId("erase-phrase");
   if (phrase) phrase.value = "";
-  const err = byId("erase-error");
-  if (err) err.textContent = "";
+  setEraseError("");
 }
 byId("btn-erase").addEventListener("click", () => {
   const phrase = byId("erase-phrase").value;
-  const err = byId("erase-error");
-  err.textContent = "";
+  setEraseError("");
   if (phrase !== "erase everything") {
-    err.textContent = 'Type exactly: erase everything';
+    setEraseError('Type exactly: erase everything');
     return;
   }
   // The typed phrase already satisfies the landed gate; the form is
@@ -546,9 +557,9 @@ byId("btn-erase").addEventListener("click", () => {
       window.location.reload();
     } catch (e) {
       eraseCountdownAbort();
-      byId("erase-error").textContent = plainError(e, {
+      setEraseError(plainError(e, {
         erase_refused_cli_dir: "Nothing was erased — this app refused to touch the command-line tool's data folder.",
-      }, "Nothing was erased.");
+      }, "Nothing was erased."));
     }
   }, 1000);
 });
