@@ -1,0 +1,129 @@
+{
+ "scenario": "na0701_gui_c_lock_unlock",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0701-fc-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0701-fc-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-len",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-match",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "poll_hidden",
+   "screen": "scr-wizard-vault"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FC"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "teardown"
+  },
+  {
+   "op": "note",
+   "text": "launch #2 on the persisted profile: boot must land scr-unlock via protection_status (main.js:229-232) - reload-survival proven"
+  },
+  {
+   "op": "launch"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-unlock"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-unlock"
+  },
+  {
+   "op": "read_text",
+   "sel": "#unlock-feedback",
+   "literal": "Enter your passphrase."
+  },
+  {
+   "op": "type",
+   "sel": "#unlock-pass",
+   "text": "definitely-wrong-pass"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-unlock"
+  },
+  {
+   "op": "read_text",
+   "sel": "#unlock-feedback",
+   "literal": "Wrong passphrase. Failed attempts: 1."
+  },
+  {
+   "op": "note",
+   "text": "the :465 template at failed_unlocks=1, retry_after_s=0 (backend schedule A1.14: failures 1-2 free at qsc pin ab5041c; a delayed-branch hit is a RED to investigate, never accommodate)"
+  },
+  {
+   "op": "clear_type",
+   "sel": "#unlock-pass",
+   "text": "na0701-fc-passphrase"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-unlock"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}

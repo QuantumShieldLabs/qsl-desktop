@@ -1,0 +1,97 @@
+{
+ "scenario": "na0701_gui_f_menu_event_substitutes",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0701-ff-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0701-ff-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-len",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-match",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "poll_hidden",
+   "screen": "scr-wizard-vault"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FF"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "HONEST LIMIT (m10/R109): the emit rides tauri's built-in event plugin -> app.emit, the IDENTICAL broadcast API the real menu closure calls (lib.rs:447/:450); this proves the FE listen handlers (:1405/:1410) + broadcast plumbing, NOT that the GTK menu item invokes the closure - native menus stay operator-flown"
+  },
+  {
+   "op": "exec",
+   "script": "window.__TAURI__.event.emit(\"menu-open-settings\"); return true;",
+   "expect": true
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
+   "op": "exec",
+   "script": "window.__TAURI__.event.emit(\"menu-lock-now\"); return true;",
+   "expect": true
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-unlock"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}
