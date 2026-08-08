@@ -1069,3 +1069,50 @@ fn unlock_feedback_has_exactly_one_writer_and_it_resizes() {
         "the feedback element starts EMPTY; that is why writing it changes height"
     );
 }
+
+/// ⚠ R-14, FOURTH OCCURRENCE (ENG-0123 — the GUI driver's first machine
+/// catch): writing the ceremony error MUST resize the window, and this pins
+/// the CLASS on the erase screen's error line.
+///
+/// NA-0701's driver clicked where a user would click and was refused: after a
+/// wrong ceremony phrase the error line appears, content grows, the window
+/// does not — and BOTH Erase and Cancel fall outside the card's clip on the
+/// app's most stressful screen. Same shape as the unlock feedback above; same
+/// structural remedy: exactly ONE way to write the element, that way resizes,
+/// and the reference count is the tripwire against a second writer.
+///
+/// ⚠ MUST GO RED IF: any code writes `#erase-error` outside the helper, or
+/// the helper stops resizing.
+#[test]
+fn erase_error_has_exactly_one_writer_and_it_resizes() {
+    let js = ui_file("main.js");
+
+    // The helper writes AND resizes — the two are one operation.
+    let f = js
+        .find("function setEraseError")
+        .expect("the single writer must exist");
+    let body = &js[f..f + js[f..].find("\n}").expect("fn end")];
+    assert!(
+        body.contains("el.textContent = text") && body.contains("syncWindowHeight()"),
+        "the writer must resize in the same call, not rely on callers remembering"
+    );
+
+    // ⚠ NOBODY ELSE may touch the element. Comments are stripped so the
+    // explanation of this rule does not trip it.
+    let code = strip_js_line_comments(&js);
+    let writers = code.matches("erase-error").count();
+    assert_eq!(
+        writers, 1,
+        "exactly ONE reference to #erase-error may exist in code (inside \
+         setEraseError); found {writers}. A second writer is how the R-14 class \
+         returned three times before the driver caught this one."
+    );
+
+    // And the element is genuinely conditional — it is empty until written,
+    // which is what makes an unresized write shift the layout.
+    let html = ui_file("index.html");
+    assert!(
+        html.contains(r#"<div id="erase-error" class="error"></div>"#),
+        "the error element starts EMPTY; that is why writing it changes height"
+    );
+}
