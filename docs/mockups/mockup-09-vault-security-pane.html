@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+<!--
+  Mockup 09 — Settings > Vault and Security pane (auto-lock, erase-after-
+  failed-attempts OFF and ARMED states, destroy card). REPLACES the prior
+  copy: emoji lock glyph -> inline SVG.
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -90,7 +102,7 @@ button.danger-fill{background:var(--danger-bg);border:1px solid var(--danger-bor
       <span class="field-label">minutes</span>
       <button>Save</button>
     </div>
-    <p class="status">🔒 Locks after 60 minutes of inactivity — the setup wizard is exempt.
+    <p class="status"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Locks after 60 minutes of inactivity — the setup wizard is exempt.
     0 means never lock.</p>
   </div>
 

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!--
+  Fingerprint two-tier display — LAYOUT + FORMAT REFERENCE, RATIFIED
+  2026-08-01: 30-digit voice form + 256-bit hex full form, one hash.
+  All fingerprint values are fabricated placeholders (in-file note).
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 13A — Verify as modal overlay</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --bg-inset:#1A1A1C;
+  --fg:#E8E8EA; --muted:#9A9AA0; --border:#3A3A3E;
+  --accent-text:#8FBAF0; --accent-border:#2E5A8E; --accent-bg:#1C2A3E;
+  --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#141416;color:var(--fg);
+  font:13.5px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.win{width:960px;height:640px;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.titlebar{text-align:center;padding:8px;font-weight:600;font-size:13px;background:#161618;
+  border-bottom:1px solid var(--border)}
+.menubar{display:flex;gap:18px;padding:5px 12px;font-size:12.5px;
+  border-bottom:1px solid var(--border)}
+.body-row{display:flex;flex:1;min-height:0}
+.rail{width:48px;background:#161618;border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:14px}
+.rail .icon{width:30px;height:30px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:15px;color:var(--muted)}
+.rail .icon.active{background:var(--accent-bg);color:var(--accent-text)}
+.rail .spacer{flex:1}
+.list{width:250px;border-right:1px solid var(--border);display:flex;flex-direction:column}
+.list h3{margin:0;padding:14px 14px 8px;font-size:15px}
+.search{margin:0 12px 10px;background:var(--bg-inset);border:1px solid var(--border);
+  border-radius:6px;padding:6px 10px;color:var(--muted);font-size:12.5px}
+.conv{padding:10px 14px;display:flex;flex-direction:column;gap:2px;
+  border-left:2px solid transparent}
+.conv.active{background:var(--bg-raised);border-left-color:var(--accent-fill)}
+.conv .top{display:flex;justify-content:space-between;align-items:center}
+.conv .name{font-weight:600;font-size:13.5px}
+.conv .time{color:var(--muted);font-size:11px}
+.conv .preview{color:var(--muted);font-size:12px}
+.badge-nv{font-size:10px;color:var(--accent-text);border:1px solid var(--accent-border);
+  border-radius:4px;padding:0 5px;line-height:15px;white-space:nowrap}
+.thread{flex:1;display:flex;flex-direction:column;min-width:0}
+.thread-head{display:flex;align-items:center;gap:10px;padding:10px 16px;
+  border-bottom:1px solid var(--border)}
+.thread-head .name{font-weight:600;font-size:14px}
+.verify-btn{background:transparent;border:1px solid var(--accent-border);
+  color:var(--accent-text);border-radius:5px;padding:3px 10px;font-size:11.5px;cursor:pointer}
+.msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:62%;padding:8px 12px;border-radius:10px;font-size:13.5px}
+.msg.them{background:var(--bg-raised);align-self:flex-start;border-bottom-left-radius:3px}
+.msg.me{background:var(--accent-bg);border:1px solid var(--accent-border);
+  align-self:flex-end;border-bottom-right-radius:3px}
+.meta{display:flex;gap:6px;justify-content:flex-end;margin-top:3px;font-size:10.5px;color:var(--muted)}
+.meta .delivered{color:var(--accent-text)}
+.composer{display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--border)}
+.composer input{flex:1;background:var(--bg-inset);border:1px solid var(--border);
+  border-radius:18px;padding:9px 14px;color:var(--fg);font-size:13.5px}
+.composer button{background:var(--accent-fill);border:1px solid var(--accent-fill);
+  color:var(--accent-fill-text);border-radius:18px;padding:0 18px;font-size:13.5px;
+  font-weight:500;cursor:pointer}
+.statusbar{border-top:1px solid var(--border);background:#161618;color:var(--muted);
+  font-size:12px;padding:5px 14px}
+
+/* overlay */
+.overlay{position:absolute;inset:0;background:rgba(10,10,12,0.66);
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(1px)}
+.modal{width:430px;background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  padding:28px;box-shadow:0 12px 40px rgba(0,0,0,0.5)}
+.modal h2{margin:0 0 6px;font-size:19px}
+.modal .muted{color:var(--muted);margin:0 0 20px;font-size:13px}
+.field-label{color:var(--muted);font-size:12px;display:block;margin-bottom:6px}
+.code-card{background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;
+  padding:14px 18px;text-align:center}
+.code-card .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:16px;letter-spacing:1.5px;white-space:nowrap}
+.block{margin-top:16px}
+.modal button.primary{width:100%;font-size:13.5px;font-weight:500;padding:10px;
+  border-radius:6px;cursor:pointer;background:var(--accent-fill);
+  border:1px solid var(--accent-fill);color:var(--accent-fill-text);margin-top:22px}
+.modal button.ghost{width:100%;font-size:12.5px;padding:8px;border-radius:6px;cursor:pointer;
+  background:transparent;border:1px solid var(--border);color:var(--muted);margin-top:8px}
+
+.fp{font-family:ui-monospace,Menlo,monospace;font-size:17px;letter-spacing:1px;line-height:1.7;word-spacing:10px}
+.fpfull{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;letter-spacing:0.5px;line-height:1.65;color:var(--text-muted);word-spacing:6px}
+.reveal{background:none;border:none;color:var(--text-accent);font-size:12.5px;cursor:pointer;padding:0;margin-top:10px;font-family:inherit}
+.statelbl{font-size:13px;color:var(--text-muted);margin:26px 0 8px;font-weight:600}
+.wrap{max-width:460px;margin:20px auto;padding:0 12px}
+.modal{position:static;margin:0 0 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="statelbl">RATIFIED 2026-08-01 · State A — verify screen (voice form: 30 digits, 6×5)</p>
+<div class="modal">
+  <h2>Verify Ben</h2>
+  <p class="muted">Do this together, on a call or in person. Read your fingerprint aloud, group by
+  group, while Ben checks it against the one his screen shows for you. Then swap: Ben
+  reads his, and you check it against Ben’s fingerprint below. If both match, you’re
+  really talking to each other. If even one character differs, stop — and don’t share
+  anything sensitive here.</p>
+  <div><span class="field-label">Your fingerprint</span>
+    <div class="code-card"><div class="fp">48291 07365 51482<br>90173 66204 18859</div></div></div>
+  <div class="block"><span class="field-label">Ben's fingerprint</span>
+    <div class="code-card"><div class="fp">21744 90055 38216<br>07491 55830 62978</div></div></div>
+  <button class="reveal">Show full fingerprints ▾</button>
+  <button class="primary">Both fingerprints match</button>
+  <button class="ghost">They don't match</button>
+</div>
+<p class="statelbl">State B — full fingerprints revealed (same hash, 256-bit hex form, for in-person byte comparison)</p>
+<div class="modal">
+  <h2>Verify Ben</h2>
+  <div><span class="field-label">Your fingerprint</span>
+    <div class="code-card"><div class="fp">48291 07365 51482<br>90173 66204 18859</div>
+    <div class="fpfull" style="margin-top:10px;border-top:0.5px solid var(--border);padding-top:10px">3F0A 91C4 77DE 02B5&nbsp;&nbsp;A6E1 4C90 BB27 D3F8<br>1094 EE62 5A0D C471&nbsp;&nbsp;88F2 06B9 3D5C E7A1</div></div></div>
+  <div class="block"><span class="field-label">Ben's fingerprint</span>
+    <div class="code-card"><div class="fp">21744 90055 38216<br>07491 55830 62978</div>
+    <div class="fpfull" style="margin-top:10px;border-top:0.5px solid var(--border);padding-top:10px">C81D 2E9F 40A3 76BB&nbsp;&nbsp;5D07 F1C8 923E 6A40<br>0B57 D9E4 1F82 CA36&nbsp;&nbsp;74A9 E05B 8C13 F6D2</div></div></div>
+  <p class="muted" style="font-size:12px">The digits above are the short voice form of the same fingerprint. Use the full
+  form to compare byte-by-byte in person, or over a channel you already trust.</p>
+  <button class="reveal">Hide full fingerprints ▴</button>
+  <button class="primary">Both fingerprints match</button>
+  <button class="ghost">They don't match</button>
+</div>
+<p class="muted" style="font-size:11.5px;border-top:0.5px solid var(--border);padding-top:10px;margin-top:18px">
+LAYOUT + FORMAT REFERENCE (RATIFIED 2026-08-01) — values are fabricated placeholders; both renderings derive from one
+domain-separated, versioned hash of the identity bundle. 30 digits ≈ 100-bit display strength (voice form);
+64 hex = full 256-bit form. No check character — users compare, they don’t transcribe.</p>
+</div>
+</body>
+</html>

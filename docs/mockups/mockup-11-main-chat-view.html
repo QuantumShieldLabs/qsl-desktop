@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!--
+  Mockup 11 — main chat view: three-pane layout, conversation open,
+  queued-message relay warning.
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 11 — Main chat view (three-pane, conversation open)</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --bg-inset:#1A1A1C;
+  --fg:#E8E8EA; --muted:#9A9AA0; --border:#3A3A3E;
+  --accent-text:#8FBAF0; --accent-border:#2E5A8E; --accent-bg:#1C2A3E;
+  --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF;
+  --ok:#7BC48A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#141416;color:var(--fg);
+  font:13.5px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.win{width:960px;height:640px;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;display:flex;flex-direction:column;overflow:hidden}
+.titlebar{text-align:center;padding:8px;font-weight:600;font-size:13px;background:#161618;
+  border-bottom:1px solid var(--border)}
+.menubar{display:flex;gap:18px;padding:5px 12px;font-size:12.5px;color:var(--fg);
+  border-bottom:1px solid var(--border)}
+.body-row{display:flex;flex:1;min-height:0}
+/* rail */
+.rail{width:48px;background:#161618;border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:14px}
+.rail .icon{width:30px;height:30px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:15px;color:var(--muted);cursor:pointer}
+.rail .icon.active{background:var(--accent-bg);color:var(--accent-text)}
+.rail .spacer{flex:1}
+/* list pane */
+.list{width:250px;border-right:1px solid var(--border);display:flex;flex-direction:column}
+.list h3{margin:0;padding:14px 14px 8px;font-size:15px}
+.search{margin:0 12px 10px;background:var(--bg-inset);border:1px solid var(--border);
+  border-radius:6px;padding:6px 10px;color:var(--muted);font-size:12.5px}
+.conv{padding:10px 14px;display:flex;flex-direction:column;gap:2px;cursor:pointer;
+  border-left:2px solid transparent}
+.conv.active{background:var(--bg-raised);border-left-color:var(--accent-fill)}
+.conv .top{display:flex;justify-content:space-between;align-items:center}
+.conv .name{font-weight:600;font-size:13.5px}
+.conv .time{color:var(--muted);font-size:11px}
+.conv .preview{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.badge-nv{font-size:10px;color:var(--accent-text);border:1px solid var(--accent-border);
+  border-radius:4px;padding:0 5px;line-height:15px;white-space:nowrap}
+/* thread pane */
+.thread{flex:1;display:flex;flex-direction:column;min-width:0}
+.thread-head{display:flex;align-items:center;gap:10px;padding:10px 16px;
+  border-bottom:1px solid var(--border)}
+.thread-head .name{font-weight:600;font-size:14px}
+.msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:62%;padding:8px 12px;border-radius:10px;font-size:13.5px;position:relative}
+.msg.them{background:var(--bg-raised);align-self:flex-start;border-bottom-left-radius:3px}
+.msg.me{background:var(--accent-bg);border:1px solid var(--accent-border);
+  align-self:flex-end;border-bottom-right-radius:3px}
+.meta{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:3px;
+  font-size:10.5px;color:var(--muted)}
+.meta .state{letter-spacing:-1px}
+.meta .state.delivered{color:var(--accent-text)}
+.stuck{align-self:flex-end;max-width:62%;font-size:11.5px;color:var(--accent-text);
+  display:flex;gap:8px;align-items:center;margin-top:-4px}
+.stuck a{color:var(--accent-text);text-decoration:underline;cursor:pointer}
+.daysep{align-self:center;color:var(--muted);font-size:11px;padding:2px 10px}
+.sysline{width:fit-content;margin:6px auto;font-size:11px;color:var(--text-dim,var(--text-muted));background:var(--bg-inset);border:1px solid var(--border);border-radius:999px;padding:3px 12px;}
+/* composer */
+.composer{display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--border)}
+.composer input{flex:1;background:var(--bg-inset);border:1px solid var(--border);
+  border-radius:18px;padding:9px 14px;color:var(--fg);font-size:13.5px}
+.composer button{background:var(--accent-fill);border:1px solid var(--accent-fill);
+  color:var(--accent-fill-text);border-radius:18px;padding:0 18px;font:inherit;
+  font-size:13.5px;font-weight:500;cursor:pointer}
+/* status bar */
+.statusbar{border-top:1px solid var(--border);background:#161618;color:var(--muted);
+  font-size:12px;padding:5px 14px;display:flex;gap:8px;align-items:center}
+.statusbar .sb-accent{color:var(--accent-text)}
+</style>
+</head>
+<body>
+
+<div class="win">
+  <div class="titlebar">QuantumShield Chat</div>
+  <div class="menubar"><span>File</span><span>Edit</span><span>View</span><span>Help</span></div>
+  <div class="body-row">
+
+    <div class="rail">
+      <div class="icon active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 5h16v11H8l-4 4z"/></svg></div>
+      <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 15.2c2.7.3 5.5 2 5.5 4.8"/></svg></div>
+      <div class="spacer"></div>
+      <div class="icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></svg></div>
+    </div>
+
+    <div class="list">
+      <h3>Chats</h3>
+      <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg> Search</div>
+      <div class="conv active">
+        <div class="top"><span class="name">Maria</span><span class="time">10:24</span></div>
+        <div class="preview">Sounds good — see you then ✓✓</div>
+      </div>
+      <div class="conv">
+        <div class="top"><span style="display:flex;gap:6px;align-items:center"><span class="name">Ben</span><span class="badge-nv">Not verified</span></span><span class="time">Fri</span></div>
+        <div class="preview">Got the invite, thanks!</div>
+      </div>
+      <div class="conv">
+        <div class="top"><span class="name">Legal Aid Desk</span><span class="time">Thu</span></div>
+        <div class="preview">Documents received.</div>
+      </div>
+    </div>
+
+    <div class="thread">
+      <div class="thread-head">
+        <span class="name">Maria</span>
+      </div>
+      <div class="msgs">
+        <div class="daysep">Jul 29</div>
+        <div class="sysline"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Secure channel with Maria established</div>
+        <div class="daysep">Today</div>
+        <div class="msg them">Can you make Thursday instead?</div>
+        <div class="msg me">Thursday works. Same place?
+          <div class="meta"><span>10:21</span><span class="state delivered">✓✓</span></div>
+        </div>
+        <div class="msg them">Yes. Bring the folder if you can.</div>
+        <div class="msg me">Sounds good — see you then
+          <div class="meta"><span>10:24</span><span class="state delivered">✓✓</span></div>
+        </div>
+        <div class="msg me">One more thing — should I invite Dana?
+          <div class="meta"><span>10:26</span><span class="state">✓</span></div>
+        </div>
+        <div class="msg me">She has the older copies
+          <div class="meta"><span>10:27</span><span class="state">○</span></div>
+        </div>
+        <div class="stuck">⚠ Queued 2 min — relay unreachable · <a>Retry now</a></div>
+      </div>
+      <div class="composer">
+        <input placeholder="Message Maria">
+        <button>Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar"><span class="sb-accent">●</span> 1 message queued — relay unreachable</div>
+</div>
+
+</body>
+</html>

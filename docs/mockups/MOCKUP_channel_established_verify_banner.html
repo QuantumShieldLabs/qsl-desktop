@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+  Channel-established verify banner — States 0/1/2 (Slice-4 candidate).
+  RATIFIED 2026-08-01 (Slice-4 session); the in-file notes block is part
+  of the ratified record.
+  Failure states S-F1..S-F5 were ruled 2026-08-08 and are drawn in the
+  companion FAILURE STATES mockup; this file shows the success path only.
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
+-->
+<html lang="en" data-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QSL mockup — channel-established verify banner (Slice 4 candidate)</title>
+<style>
+  :root{
+    /* PLACEHOLDER TOKENS ONLY — layout authority, NOT the shipped palette.
+       A real lane swaps these for QSL's shipped design tokens. Never read a hex from here. */
+    --surface-2:#ffffff; --surface-1:#f5f4ef; --border:rgba(0,0,0,0.10); --radius:8px;
+    --text-primary:#1f1f1c; --text-muted:#83827c;
+    --bg-accent:#e6f1fb; --text-accent:#0c447c; --border-accent:#85b7eb;
+    --bg-warning:#faeeda; --text-warning:#854f0b;
+    --bg-success:#eaf3de; --text-success:#3b6d11;
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --surface-2:#2c2c2a;--surface-1:#232321;--border:rgba(255,255,255,0.12);
+      --text-primary:#f1efe8;--text-muted:#9a988f;
+      --bg-accent:#0c447c;--text-accent:#b5d4f4;--border-accent:#185fa5;
+      --bg-warning:#633806;--text-warning:#fac775;--bg-success:#27500a;--text-success:#c0dd97; }
+  }
+  body{font-family:var(--font-sans);color:var(--text-primary);background:var(--surface-1);margin:0;padding:24px;}
+  .wrap{max-width:520px;margin:0 auto;}
+  .label{font-size:13px;color:var(--text-muted);margin:0 0 6px;}
+  .frame{background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:28px;}
+  .hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border);}
+  .av{width:34px;height:34px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--text-accent);}
+  .nm{margin:0;font-size:14px;font-weight:500;}
+  .sub{margin:0;font-size:12px;color:var(--text-muted);}
+  .chip{font-size:12px;padding:3px 9px;border-radius:var(--radius);display:flex;align-items:center;gap:4px;}
+  .banner{background:var(--bg-accent);border-bottom:0.5px solid var(--border-accent);padding:11px 14px;display:flex;align-items:center;gap:11px;}
+  .btn{font-family:inherit;font-size:13px;background:transparent;border:0.5px solid var(--border);border-radius:var(--radius);padding:6px 12px;cursor:pointer;color:inherit;}
+  .thread{padding:16px 14px;display:flex;flex-direction:column;gap:12px;min-height:120px;}
+  .sysmsg{align-self:center;font-size:11px;color:var(--text-muted);background:var(--surface-1);border:0.5px solid var(--border);border-radius:var(--radius);padding:4px 12px;display:flex;align-items:center;gap:6px;}
+  .in{align-self:flex-start;max-width:78%;background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;border-top-left-radius:3px;padding:9px 12px;font-size:14px;}
+  .out{align-self:flex-end;max-width:78%;background:var(--bg-accent);color:var(--text-accent);border-radius:12px;border-top-right-radius:3px;padding:9px 12px;font-size:14px;}
+  .ts{display:block;font-size:11px;color:var(--text-muted);margin-top:3px;}
+  .composer{border-top:0.5px solid var(--border);padding:9px 12px;display:flex;align-items:center;gap:9px;}
+  .field{flex:1;height:34px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--surface-1);display:flex;align-items:center;padding:0 12px;font-size:13px;color:var(--text-muted);}
+  .icbtn{background:transparent;border:none;cursor:pointer;color:inherit;padding:6px 9px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="label">State 0 — establishing (auto-poll pending; composer disabled)</p>
+  <div class="frame">
+    <div class="hdr">
+      <div class="av">D</div>
+      <div style="flex:1;"><p class="nm">Dana</p><p class="sub"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Establishing secure channel…</p></div>
+      <span class="chip" style="color:var(--text-warning);background:var(--bg-warning);">Not verified</span>
+    </div>
+    <div class="thread">
+      <div class="sysmsg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Establishing secure channel…</div>
+    </div>
+    <div class="composer" style="opacity:0.55;">
+      <div class="field">Establishing secure channel…</div>
+      <button class="icbtn" aria-label="Send" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+
+  <p class="label">State 1 — established, not yet verified (banner + permanent record line)</p>
+  <div class="frame">
+    <div class="hdr">
+      <div class="av">D</div>
+      <div style="flex:1;"><p class="nm">Dana</p><p class="sub"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> post-quantum secure</p></div>
+      <button class="chip" style="color:var(--text-warning);background:var(--bg-warning);border:0.5px solid var(--border);cursor:pointer;font-family:inherit;">Not verified — Verify</button>
+    </div>
+    <div class="banner">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      <div style="flex:1;min-width:0;">
+        <p style="margin:0;font-size:13px;font-weight:500;color:var(--text-accent);">Crypto channel established</p>
+        <p style="margin:0;font-size:12px;color:var(--text-accent);">Please verify Dana's fingerprint to confirm no one is in the middle.</p>
+      </div>
+      <button class="btn" style="border-color:var(--border-accent);color:var(--text-accent);white-space:nowrap;">Verify</button>
+      <button class="icbtn" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="thread">
+      <div class="sysmsg"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Secure channel with Dana established — Aug 1</div>
+      <div class="in">Hey — got your invite, we're connected.<span class="ts">9:24</span></div>
+    </div>
+    <div class="composer"><div class="field">Message Dana…</div><button class="icbtn" aria-label="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div>
+  </div>
+
+  <p class="label">State 2 — verified (banner gone; record line remains)</p>
+  <div class="frame">
+    <div class="hdr">
+      <div class="av">D</div>
+      <div style="flex:1;"><p class="nm">Dana</p><p class="sub"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> post-quantum secure</p></div>
+      <span class="chip" style="color:var(--text-success);background:var(--bg-success);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg> Verified</span>
+    </div>
+    <div class="thread">
+      <div class="sysmsg"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> Secure channel with Dana established — Aug 1</div>
+      <div class="in">Hey — got your invite, we're connected.<span class="ts">9:24</span></div>
+      <div class="out">Verified you. All set.<span class="ts" style="color:var(--text-accent);opacity:0.75;">9:26 ✓✓</span></div>
+    </div>
+    <div class="composer"><div class="field">Message Dana…</div><button class="icbtn" aria-label="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div>
+  </div>
+
+  <p style="font-size:12px;color:var(--text-muted);border-top:0.5px solid var(--border);padding-top:12px;">
+    LAYOUT AUTHORITY ONLY. Colors are placeholder tokens — a real lane swaps in shipped design tokens; never read a hex from this file.
+    RATIFIED 2026-08-01 (Slice-4 session): banner clears on Verify OR the x — dismissing does NOT verify; the Not-verified chip and unverified-thread styling (mockup 12) persist until a real verify.
+    The gray record line is PERMANENT history with the date; it appears on both sides and never leaves.
+    Composer is disabled during State 0 and comes alive when the channel commits.
+    Verification uses ACCENT, never red (red is reserved for irreversible vault-loss).
+    Term is "fingerprint" everywhere. The Not-verified header chip is a BUTTON from State 1 onward (opens the verify modal, same flow as the banner Verify); in State 0 it is an inert status — verification is impossible before the peer identity is ingested. The system line is never attributable to either party as a typed message.
+  </p>
+
+</div>
+</body>
+</html>
