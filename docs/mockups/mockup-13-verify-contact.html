@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!--
+  Mockup 13 — verify a contact (compare fingerprints, standalone form).
+  Fingerprint display form per MOCKUP_fingerprint_two_tier_RATIFIED.html
+  (RATIFIED 2026-08-01).
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 13 — Verify a contact (compare fingerprints)</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --bg-inset:#1A1A1C;
+  --fg:#E8E8EA; --muted:#9A9AA0; --border:#3A3A3E;
+  --accent-text:#8FBAF0; --accent-border:#2E5A8E; --accent-bg:#1C2A3E;
+  --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#141416;color:var(--fg);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
+.card{width:470px;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:32px}
+h2{margin:0 0 6px;font-size:20px}
+.muted{color:var(--muted);margin:0 0 22px;font-size:13.5px}
+.field-label{color:var(--muted);font-size:12.5px;display:block;margin-bottom:6px}
+.fp{font-family:ui-monospace,Menlo,monospace;font-size:17px;letter-spacing:1px;line-height:1.7;word-spacing:10px}
+.reveal{background:none;border:none;color:var(--text-accent);font-size:12.5px;cursor:pointer;padding:0;margin-top:10px;font-family:inherit}
+.code-card{background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;
+  padding:16px 20px;text-align:center}
+.code-card .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:17px;letter-spacing:1.5px;white-space:nowrap}
+.block{margin-top:20px}
+.hint{color:var(--muted);font-size:12.5px;margin:8px 0 0}
+button.primary{width:100%;font:inherit;font-size:14px;font-weight:500;padding:10px 16px;
+  border-radius:6px;cursor:pointer;background:var(--accent-fill);
+  border:1px solid var(--accent-fill);color:var(--accent-fill-text);margin-top:24px}
+button.ghost{width:100%;font:inherit;font-size:13px;padding:8px 16px;border-radius:6px;
+  cursor:pointer;background:transparent;border:1px solid var(--border);
+  color:var(--muted);margin-top:10px}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Verify Ben</h2>
+  <p class="muted">Do this together, on a call or in person. Read your fingerprint aloud, group by
+      group, while Ben checks it against the one his screen shows for you. Then swap: Ben
+      reads his, and you check it against Ben’s fingerprint below. If both match, you’re
+      really talking to each other. If even one character differs, stop — and don’t share
+      anything sensitive here.</p>
+
+  <div>
+    <span class="field-label">Your fingerprint</span>
+    <div class="code-card"><div class="fp">48291 07365 51482<br>90173 66204 18859</div></div>
+  </div>
+
+  <div class="block">
+    <span class="field-label">Ben's fingerprint</span>
+    <div class="code-card"><div class="fp">21744 90055 38216<br>07491 55830 62978</div></div>
+  <button class="reveal">Show full fingerprints ▾</button>
+  </div>
+
+  <button class="primary">Both fingerprints match</button>
+  <button class="ghost">They don't match</button>
+</div>
+
+</body>
+</html>

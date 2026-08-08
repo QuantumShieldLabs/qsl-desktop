@@ -1586,3 +1586,85 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     the NA-0702 record chain: RBANK_NA0702_001 (brief) → STOP_NA0702_001
     (formalization; the FORK B measurement) → RBANK_NA0702_002 (R174) →
     STOP_NA0702_002 (promotion PR #1716) → this lane's execution stop.
+
+- **ID:** D-0028
+  - **Status:** Accepted
+  - **Date:** 2026-08-08
+  - **Lane:** spine **NA-0703 / D638 as amended (A1, A2-as-corrected)**
+    (directive `QSL-DIR-2026-08-08-638_na0703_mockup_refresh_ratified_designs.md`,
+    sha256 `570bfcce61951fdd9550590b26c340dd10fcd2778e9654e9583aa246725943d3`,
+    124 lines = 84-line base (cmp-verified) + Amendment A2-as-corrected per
+    R177/R178; spine decision **D-1343**).
+  - **Decision:** **The ratified GUI designs land in `docs/mockups/` as repo
+    truth — 10 adopted, 5 replaced, indexed by a new README, every file
+    provenance-marked and sanitized.** The OPERATOR REVIEWED EVERY COMMITTED
+    MOCKUP INDIVIDUALLY (A1 review gate: exact bytes in a review directory,
+    per-file verdicts, bytes frozen at approval by manifest sha; R179/R180).
+    Adopted: mockups 11/12/13/13a/14/15 (chat era), 08b, the
+    channel-established banner (States 0/1/2, ratified 2026-08-01, success
+    path only — its header points at the companion), the channel-establishment
+    FAILURE STATES S-F1..S-F5 (ruled 2026-08-08), and the fingerprint
+    two-tier RATIFIED reference. Replaced (each delta measured and named in
+    its commit): 07 (superseded `QSCFP-` form → two-tier), 07b (HYBRID, see
+    below), 09 (emoji lock → inline SVG), 06e/06e2 (relay-explainer paragraph
+    + placeholder example values; D610/D-0010 lineage carried in the headers).
+    Unchanged and current: 08, 10. The operator-side early files 01–05 are
+    SUPERSEDED-HISTORY and never ship (02/03/05 carry live tailnet literals).
+  - **⚠ NA-0680 FINDING 3 STANDS (this entry records the resolution):** the
+    2026-07-26 operator ruling (this file, the D-0016 lane record at
+    DECISIONS.md:1025) that the "Show technical details" disclosure is
+    REMOVED from onboarding is REAFFIRMED — the operator's F5 verdict at
+    NA-0703 R179 was HOLD on the delivered 07b's disclosure restoration. The
+    2026-08-01 mockup ratification advanced the fingerprint FORMAT ONLY
+    (two-tier voice form + 256-bit hex reference). The committed 07b is a
+    HYBRID built on the CURRENT repo Finding-3 form with exactly four change
+    regions (provenance header · one `.fp` CSS rule · two-tier code card ·
+    `e.g. Alex`), its rejection of the disclosure MEASURED: every
+    disclosure-identifying needle 0 over the hybrid with each needle proven
+    able to fire on the delivered copy first (STOP_NA0703_004 §4; R180).
+  - **The four-site operator-name sanitization (A2.1' as corrected by R178
+    §3), base → after:** the whole-tree tracked case-insensitive
+    operator-name count (the A2·2 needle) moves **4 → 0** — the four sites:
+    `docs/mockups/mockup-07-identity-pane.html:50` (a filled field, now
+    `value="Alex"`) · `docs/mockups/mockup-07b-onboarding-identity.html:46`
+    and `ui/index.html:55` (placeholders, now `placeholder="e.g. Alex"`) ·
+    `src-tauri/tests/design_polish.rs:251` (the same placeholder string
+    inside the R-6 assertion; string literal only, the assertion's property
+    and message untouched). ⚠ The before-literals are deliberately NOT
+    respelled here — prose spelling a literal that a whole-tree gate counts
+    would trip the gate it records (the D625 §0b.3 class); the literal
+    base values are preserved in the operator-side NA-0703 record
+    (STOP_003 §4, STOP_004). The ui and test edits land in ONE commit (they pin each
+    other); the C-PIN control ran pre-commit as ordered: ui edit alone →
+    `identity_step_orders_name_before_code` RED at exactly the :251
+    assertion (24 passed / 1 failed, exit 101, log preserved) → test edit →
+    25/25 green. Honest limit (R177 §3.5, stated in the PR body): the name
+    is removed from CURRENT truth; the string remains in public commit
+    history, which no lane rewrites.
+  - **Sanitization delta (recorded in full at STOP_NA0703_003 §4):** invite
+    code tail → same-length `Example…` string (14/15) · `Dana Krol` → `Dana`
+    + avatar `DK` → `D` (banner, failure-states) · the four operator-name sites
+    above · KEPT with explicit class calls: Ben/Maria (first-name-class),
+    message bodies (fictional), fingerprints (fabricated per the RATIFIED
+    artifact's own note), `relay.example.org:8443`, `/home/user/
+    relay-ca-root.crt`, the 08b example passphrase.
+  - **Claim boundary:** the committed set is the ratified design as of this
+    lane, sanitized with its delta recorded, indexed, provenance-marked; the
+    repo no longer carries a mockup contradicting ratified design (scoped to
+    the classified set). NOT claimed: mockups match any shipped screen
+    (layout authority only; tokens are the colour authority); Slice-4 design
+    settled; any behavioural change (the one ui/ line is a placeholder
+    string); the promotion-three count (this lane's spine PR is
+    record-only). Mockup 03's empty-states content has no successor in the
+    delivered set — filed as a design gap, not this lane's work; the
+    rail-toggle pattern of operator-side mockup 02 is filed on the spine
+    ledger (R180 §2.5) so it is not lost when 02 stays operator-side.
+  - **References:** spine D-1343; NA-0680 Finding 3 (DECISIONS.md:1025,
+    STANDING); D610/D-0010 (06e lineage); the NA-0703 record chain:
+    RBANK_NA0703_001 (brief) → RBANK_002 (A1) → STOP_001 (formalization; the
+    packet-absent and repo-newer premise corrections) → RBANK_003 (R177) →
+    STOP_002 (the R16 fourth-site catch) → RBANK_004 (R178: A2' ratified,
+    F8 corrected) → STOP_003 (Phase A: 22 classified, review directory) →
+    RBANK_005 (R179: operator verdicts, F5 HOLD) → STOP_004 (the 07b
+    hybrid) → RBANK_006 (R180: hybrid COMMIT, Phase B) → this lane's
+    execution stop.
