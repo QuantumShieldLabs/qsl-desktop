@@ -248,7 +248,7 @@ fn identity_step_orders_name_before_code() {
          (got name={name} code={code} tech={tech} action={cont})"
     );
     assert!(
-        step.contains(r#"placeholder="e.g. Victor""#),
+        step.contains(r#"placeholder="e.g. Alex""#),
         "the empty name field carries a placeholder"
     );
     assert!(

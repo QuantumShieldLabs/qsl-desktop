@@ -1,35 +1,17 @@
 <!DOCTYPE html>
 <!--
-  Reference markup for the NA-0674 Server pane redesign — Appendix A of the
-  operator-approved lane intent, the token-set state. Spine directive D610;
-  qsl-desktop D-0010.
-
-  LAYOUT AND STRUCTURE ONLY. Colour comes from the shipped design tokens
-  ([F.1-COLOUR], docs/DESIGN_SPEC_AppendixF.md); this file's palette is NOT
-  binding, and reading a hex out of it into the build is a STOP.
-
-  DELTA FROM THE INTENT APPENDIX (D610 F3R, operator-ruled 2026-07-25).
-  This repository is PUBLIC and the captured markup used a private host as its
-  illustrative example, so exactly two values were replaced with the
-  placeholders the shipped pane already uses:
-    the relay address    ->  https://relay.example.net
-    the CA file path     ->  /path/to/ca.pem
-  Nothing else differs. The originals are deliberately NOT reproduced here —
-  restating them in the record would republish exactly what the substitution
-  removes. They are recoverable from the intent, whose sha is pinned in D610.
-
-  Source appendix sha256, as extracted from the intent BEFORE the two
-  substitutions: fb3c98aba928196bd1dff8783648db4b476c0f1eb5bb945836b332e6477dc8db
-
-  Known, sanctioned divergences from the SHIPPED pane, recorded so this file is
-  not misread as a defect report — see D-0010 and Appendix F:
-    * the summary reads "(optional)"; the shipped pane uses R-D3's wording
-    * the CA path input is drawn populated; the app cannot know the stored path
-      (relay_ca_file_show returns configured + path_hash only)
-    * the dirty helper and a results block are drawn together; that state is
-      unreachable by construction (F1R)
-    * section padding is 30px; the shipped pane uses --sp-6 (32px) per F2R
-    * the <title> still says "06D" — left exactly as captured
+  Mockup 06E — Settings > Server (relay) pane, populated state. Lineage:
+  D610 Appendix A / desktop D-0010 (see this path's git history for the
+  original capture record). REPLACES that copy: new relay-explainer
+  paragraph; illustrative values are placeholders
+  (relay.example.org:8443, /home/user/relay-ca-root.crt).
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
 -->
 <html lang="en">
 <head>
@@ -76,13 +58,13 @@ a.rm{color:var(--accent-text);font-size:12.5px;text-decoration:underline;cursor:
 
 <div class="frame">
   <h2>Relay</h2>
-  <p class="muted">The relay carries your encrypted messages. It can't read them.</p>
+  <p class="muted">A relay is a simple courier: it stores and forwards sealed envelopes that it can never open, and your device detects and rejects anything tampered with. Your keys and your trust decisions never leave this device &mdash; even the person running the relay sees only encrypted data.</p>
 
   <div class="section">
     <div class="stack">
       <div>
         <span class="field-label">Relay address</span>
-        <input type="text" class="mono" value="https://relay.example.net">
+        <input type="text" class="mono" value="https://relay.example.org:8443">
       </div>
       <div style="margin-top:8px">
         <span class="field-label">Access token</span>
@@ -99,7 +81,7 @@ a.rm{color:var(--accent-text);font-size:12.5px;text-decoration:underline;cursor:
         <p class="hint">If the operator runs their own certificate authority, add their CA certificate file so this app can verify the connection. The file's path is read at connection time; it is stored in your vault.</p>
         <div>
           <span class="field-label">CA certificate file path</span>
-          <input type="text" class="mono" value="/path/to/ca.pem">
+          <input type="text" class="mono" value="/home/user/relay-ca-root.crt">
         </div>
         <p class="hint">CA certificate file set (8e5853f2) — <a class="rm">remove it</a>.</p>
       </div>

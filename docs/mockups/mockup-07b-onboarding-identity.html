@@ -1,4 +1,20 @@
 <!DOCTYPE html>
+<!--
+  Mockup 07B — onboarding identity step ("This is you").
+  Fingerprint display: two-tier voice form per
+  MOCKUP_fingerprint_two_tier_RATIFIED.html (RATIFIED 2026-08-01) — the
+  2026-08-01 ratification advanced the fingerprint FORMAT ONLY.
+  NA-0680 Finding 3 (operator ruling 2026-07-26, desktop DECISIONS.md) STANDS,
+  reaffirmed at NA-0703 (R179): the technical-details disclosure stays OUT of
+  onboarding; identity detail belongs where it is acted on (mockup 07).
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -26,6 +42,7 @@ button.primary{width:100%;font:inherit;font-size:14px;font-weight:500;padding:10
   border-radius:6px;cursor:pointer;background:var(--accent-fill);
   border:1px solid var(--accent-fill);color:var(--accent-fill-text);margin-top:22px}
 details summary{cursor:pointer;color:var(--accent-text);font-size:13.5px;list-style:revert}
+.fp{font-family:ui-monospace,Menlo,monospace;font-size:16px;letter-spacing:1px;line-height:1.7;word-spacing:9px}
 .code-card{background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;
   padding:18px 22px;text-align:center;margin-top:4px}
 .code-card .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -43,14 +60,14 @@ details summary{cursor:pointer;color:var(--accent-text);font-size:13.5px;list-st
 
   <div>
     <span class="field-label">Your name</span>
-    <input type="text" placeholder="e.g. Victor" value="">
+    <input type="text" placeholder="e.g. Alex" value="">
     <p class="hint" style="margin-top:6px">Stored only on this device — never sent anywhere.</p>
   </div>
 
   <div class="block">
     <span class="field-label">Your verification code</span>
     <div class="code-card">
-      <div class="code">39C8-BAAA-CEE6-1D8C-Z</div>
+      <div class="fp">48291 07365 51482<br>90173 66204 18859</div>
     </div>
     <p class="hint" style="margin-top:10px">When you add a contact, you'll compare codes — over a
     call or in person — to confirm you're really talking to each other. Built to stay secure even

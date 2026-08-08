@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<!--
+  Channel establishment FAILURE STATES S-F1..S-F5 (ruled 2026-08-08).
+  Companion to States 0/1/2 in MOCKUP_channel_established_verify_banner.html.
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
+-->
+<html lang="en" data-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QSL mockup — channel establishment FAILURE STATES S-F1..S-F5 (ruled 2026-08-08)</title>
+<style>
+  :root{
+    /* PLACEHOLDER TOKENS ONLY — layout authority, NOT the shipped palette.
+       A real lane swaps these for QSL's shipped design tokens. Never read a hex from here. */
+    --surface-2:#ffffff; --surface-1:#f5f4ef; --border:rgba(0,0,0,0.10); --radius:8px;
+    --text-primary:#1f1f1c; --text-muted:#83827c;
+    --bg-accent:#e6f1fb; --text-accent:#0c447c; --border-accent:#85b7eb;
+    --bg-warning:#faeeda; --text-warning:#854f0b;
+    --bg-success:#eaf3de; --text-success:#3b6d11;
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --surface-2:#2c2c2a;--surface-1:#232321;--border:rgba(255,255,255,0.12);
+      --text-primary:#f1efe8;--text-muted:#9a988f;
+      --bg-accent:#0c447c;--text-accent:#b5d4f4;--border-accent:#185fa5;
+      --bg-warning:#633806;--text-warning:#fac775;--bg-success:#27500a;--text-success:#c0dd97; }
+  }
+  body{font-family:var(--font-sans);color:var(--text-primary);background:var(--surface-1);margin:0;padding:24px;}
+  .wrap{max-width:520px;margin:0 auto;}
+  .label{font-size:13px;color:var(--text-muted);margin:0 0 6px;}
+  .frame{background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:28px;}
+  .hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border);}
+  .av{width:34px;height:34px;border-radius:50%;background:var(--bg-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--text-accent);}
+  .nm{margin:0;font-size:14px;font-weight:500;}
+  .sub{margin:0;font-size:12px;color:var(--text-muted);}
+  .chip{font-size:12px;padding:3px 9px;border-radius:var(--radius);display:flex;align-items:center;gap:4px;}
+  .banner{background:var(--bg-accent);border-bottom:0.5px solid var(--border-accent);padding:11px 14px;display:flex;align-items:center;gap:11px;}
+  .btn{font-family:inherit;font-size:13px;background:transparent;border:0.5px solid var(--border);border-radius:var(--radius);padding:6px 12px;cursor:pointer;color:inherit;}
+  .thread{padding:16px 14px;display:flex;flex-direction:column;gap:12px;min-height:120px;}
+  .sysmsg{align-self:center;font-size:11px;color:var(--text-muted);background:var(--surface-1);border:0.5px solid var(--border);border-radius:var(--radius);padding:4px 12px;display:flex;align-items:center;gap:6px;}
+  .in{align-self:flex-start;max-width:78%;background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;border-top-left-radius:3px;padding:9px 12px;font-size:14px;}
+  .out{align-self:flex-end;max-width:78%;background:var(--bg-accent);color:var(--text-accent);border-radius:12px;border-top-right-radius:3px;padding:9px 12px;font-size:14px;}
+  .ts{display:block;font-size:11px;color:var(--text-muted);margin-top:3px;}
+  .composer{border-top:0.5px solid var(--border);padding:9px 12px;display:flex;align-items:center;gap:9px;}
+  .field{flex:1;height:34px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--surface-1);display:flex;align-items:center;padding:0 12px;font-size:13px;color:var(--text-muted);}
+  .icbtn{background:transparent;border:none;cursor:pointer;color:inherit;padding:6px 9px;}
+  .banner.warn{background:var(--bg-warning);border-bottom-color:var(--text-warning);}
+  .banner p{margin:0;}
+  .bl{font-size:13px;font-weight:500;}
+  .bs{font-size:12px;opacity:0.9;margin-top:2px !important;}
+  .btnrow{display:flex;gap:8px;flex-shrink:0;align-items:center;}
+  .btn.primary{border-color:var(--border-accent);color:var(--text-accent);background:var(--surface-2);}
+  .note{font-size:12px;color:var(--text-muted);margin:-20px 0 26px;padding-left:2px;}
+  .rule{font-size:11px;color:var(--text-muted);border-left:2px solid var(--border);padding-left:8px;margin:-20px 0 26px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="label" style="font-size:14px;color:var(--text-primary);font-weight:500;margin-bottom:14px;">
+  Channel establishment — FAILURE STATES (S-F1 … S-F5), ruled 2026-08-08.<br>
+  <span style="font-weight:400;color:var(--text-muted);font-size:12.5px;">
+  Companion to States 0/1/2 in MOCKUP_channel_established_verify_banner.html. Layout authority only —
+  placeholder tokens, never read a hex from here. INVARIANTS, all five states: the composer is NEVER
+  enabled (fail closed, no downgrade path) · Retry appears only where retrying is the actual remedy ·
+  accent/warning treatment only, NEVER red (red is reserved for irreversible vault-loss ceremonies) ·
+  the word is RELAY, never Server.</span></p>
+
+  <p class="label">S-F1 — relay unreachable (Retry + Cancel invite; keeps polling underneath)</p>
+  <div class="frame">
+    <div class="hdr">
+      <div class="av">D</div>
+      <div style="flex:1;"><p class="nm">Dana</p><p class="sub"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Establishing secure channel&hellip;</p></div>
+      <span class="chip" style="color:var(--text-warning);background:var(--bg-warning);">Not verified</span>
+    </div>
+    <div class="banner warn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <div style="flex:1;">
+        <p class="bl">Can&rsquo;t reach the relay</p>
+        <p class="sub bs">Your invite is fine. This device can&rsquo;t reach the relay right now — check your connection, or the relay may be down.</p>
+      </div>
+      <div class="btnrow"><button class="btn primary">Retry</button><button class="btn">Cancel invite</button></div>
+    </div>
+    <div class="thread">
+      <div class="sysmsg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Invite sent · no secure channel yet</div>
+    </div>
+    <div class="composer" style="opacity:0.55;">
+      <div class="field">Can&rsquo;t send until the channel is established</div>
+      <button class="icbtn" aria-label="Send" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+  <p class="rule">Your side of the problem. Nothing is wrong with the invite or the contact. Retry appears the MOMENT an attempt fails — not only after the 60–90s timeout; the timeout only changes the wording from “Establishing…” to this.</p>
+
+  <p class="label">S-F2 — waiting for them to accept (a NORMAL state, not an error)</p>
+  <div class="frame">
+    <div class="hdr">
+      <div class="av">D</div>
+      <div style="flex:1;"><p class="nm">Dana</p><p class="sub"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Invite delivered to the relay</p></div>
+      <span class="chip" style="color:var(--text-warning);background:var(--bg-warning);">Not verified</span>
+    </div>
+    <div class="banner warn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <div style="flex:1;">
+        <p class="bl">Waiting for them to accept</p>
+        <p class="sub bs">Delivered to the relay. Nothing happens until they open your invite — that can take days, and this will keep waiting.</p>
+      </div>
+      <div class="btnrow"><button class="btn">Cancel invite</button></div>
+    </div>
+    <div class="thread">
+      <div class="sysmsg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Invite sent · no secure channel yet</div>
+    </div>
+    <div class="composer" style="opacity:0.55;">
+      <div class="field">Can&rsquo;t send until they accept</div>
+      <button class="icbtn" aria-label="Send" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+  <p class="rule">No Retry: there is nothing to retry. Polling never stops. For legal and medical users a multi-day wait here is ordinary, so the copy must not read as failure.</p>
+
+  <p class="label">S-F3 — invite expired (New invite + Cancel invite; NO Retry)</p>
+  <div class="frame">
+    <div class="hdr">
+      <div class="av">D</div>
+      <div style="flex:1;"><p class="nm">Dana</p><p class="sub">Expired · single-use, time-limited</p></div>
+      <span class="chip" style="color:var(--text-warning);background:var(--bg-warning);">Not verified</span>
+    </div>
+    <div class="banner warn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <div style="flex:1;">
+        <p class="bl">This invite expired</p>
+        <p class="sub bs">Invites are single-use and time-limited. Create a new one and send it to them again.</p>
+      </div>
+      <div class="btnrow"><button class="btn primary">New invite</button><button class="btn">Cancel invite</button></div>
+    </div>
+    <div class="thread">
+      <div class="sysmsg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Invite sent · no secure channel yet</div>
+    </div>
+    <div class="composer" style="opacity:0.55;">
+      <div class="field">Can&rsquo;t send on an expired invite</div>
+      <button class="icbtn" aria-label="Send" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+  <p class="rule">Retry would fail identically forever, so it is not offered. Expiry is checked against the local clock before any network contact.</p>
+
+  <p class="label">S-F4 — invite can&rsquo;t be used (used OR revoked — MERGED in the UI, distinguished in the local log)</p>
+  <div class="frame">
+    <div class="hdr">
+      <div class="av">D</div>
+      <div style="flex:1;"><p class="nm">Dana</p><p class="sub">No longer redeemable</p></div>
+      <span class="chip" style="color:var(--text-warning);background:var(--bg-warning);">Not verified</span>
+    </div>
+    <div class="banner warn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <div style="flex:1;">
+        <p class="bl">This invite can&rsquo;t be used</p>
+        <p class="sub bs">It was already redeemed, or it was revoked. If you didn&rsquo;t expect that, create a new invite and share it through a channel you trust.</p>
+      </div>
+      <div class="btnrow"><button class="btn primary">New invite</button><button class="btn">Cancel invite</button></div>
+    </div>
+    <div class="thread">
+      <div class="sysmsg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Invite sent · no secure channel yet</div>
+    </div>
+    <div class="composer" style="opacity:0.55;">
+      <div class="field">Can&rsquo;t send on this invite</div>
+      <button class="icbtn" aria-label="Send" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+  <p class="rule">RULED: the UI does not tell the user which. A user-visible distinction between used and revoked is a relay-probeable state. The local log records the real cause.</p>
+
+  <p class="label">S-F5 — secure channel could not be established (DIFFERENT IN KIND: bug or attack)</p>
+  <div class="frame">
+    <div class="hdr">
+      <div class="av">D</div>
+      <div style="flex:1;"><p class="nm">Dana</p><p class="sub">Handshake did not produce a verified channel</p></div>
+      <span class="chip" style="color:var(--text-warning);background:var(--bg-warning);">Not verified</span>
+    </div>
+    <div class="banner warn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <div style="flex:1;">
+        <p class="bl">Couldn&rsquo;t establish a secure channel</p>
+        <p class="sub bs">The exchange completed but did not produce a verified channel. Nothing was sent, and no messages can be sent on this contact. Don&rsquo;t retry — contact them another way and start over with a fresh invite.</p>
+      </div>
+      <div class="btnrow"><button class="btn">Copy details</button><button class="btn">Cancel invite</button></div>
+    </div>
+    <div class="thread">
+      <div class="sysmsg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3a9 9 0 1 0 9 9"/></svg> Invite sent · no secure channel yet</div>
+    </div>
+    <div class="composer" style="opacity:0.55;">
+      <div class="field">Sending is disabled on this contact</div>
+      <button class="icbtn" aria-label="Send" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    </div>
+  </div>
+  <p class="rule">NO Retry, ever — retrying an attack or a bug is not a remedy, and this state must never look like a network hiccup. Rendered in WARNING/accent, not red, per the Slice-4 ruling. “Copy details” yields local diagnostic text for a bug report; it sends nothing.</p>
+
+  <p class="label" style="margin-top:4px;">Cancel invite — the confirm step (all five states)</p>
+  <div class="frame" style="padding:16px 16px 14px;">
+    <p class="nm" style="margin-bottom:6px;">Cancel this invite?</p>
+    <p class="sub" style="margin-bottom:4px;">It will be revoked so nobody can redeem it later, and this pending chat will be removed.</p>
+    <p class="sub" style="margin-bottom:14px;">Relay unreachable — it will be revoked here now, and the relay will be told when it&rsquo;s reachable.</p>
+    <div class="btnrow"><button class="btn primary">Cancel invite</button><button class="btn">Keep waiting</button></div>
+  </div>
+  <p class="rule">RULED: Cancel invite REVOKES, it does not merely delete a local record — the revoke_token kills the relay slot so a late redemption is impossible. When the relay is unreachable the local revoke still happens, the relay revoke is queued, and the copy says so plainly. The client already refuses a late redemption of a locally-revoked invite even if the relay lies.</p>
+
+</div>
+</body>
+</html>

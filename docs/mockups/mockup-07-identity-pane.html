@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+<!--
+  Mockup 07 — Settings > Identity pane. REPLACES the pre-two-tier copy:
+  fingerprint display form per MOCKUP_fingerprint_two_tier_RATIFIED.html
+  (RATIFIED 2026-08-01; superseded QSCFP- form removed).
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+  Adopted into repo truth by NA-0703 (desktop D-0028) after operator
+  per-file review; the sanitization delta is recorded in the NA-0703
+  Phase-A stop-file.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -29,6 +41,8 @@ details summary{cursor:pointer;color:var(--accent-text);font-size:14px;list-styl
 .section{padding:var(--sect-pad) 0}
 .section:first-of-type{padding-top:8px}
 .section + .section{border-top:1px solid var(--border)}
+.fp{font-family:ui-monospace,Menlo,monospace;font-size:17px;letter-spacing:1px;line-height:1.7;word-spacing:10px}
+.reveal{background:none;border:none;color:var(--text-accent);font-size:12.5px;cursor:pointer;padding:0;margin-top:10px;font-family:inherit}
 .code-card{background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;
   padding:18px 22px;text-align:center;max-width:470px}
 .code-card .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -47,7 +61,7 @@ details summary{cursor:pointer;color:var(--accent-text);font-size:14px;list-styl
   <div class="section">
     <span class="field-label">Your name</span>
     <div style="display:flex;gap:10px;align-items:center;max-width:470px">
-      <input type="text" value="Victor" style="flex:1">
+      <input type="text" value="Alex" style="flex:1">
       <button>Save</button>
     </div>
     <p class="hint" style="margin-top:6px">Stored only on this device — never sent anywhere.</p>
@@ -57,7 +71,7 @@ details summary{cursor:pointer;color:var(--accent-text);font-size:14px;list-styl
   <div class="section">
     <span class="field-label">Verification code</span>
     <div class="code-card">
-      <div class="code">39C8-BAAA-CEE6-1D8C-Z</div>
+      <div class="fp">48291 07365 51482<br>90173 66204 18859</div>
     </div>
     <p class="hint" style="margin-top:10px;max-width:470px">Compare this code with a contact — over a call or in
       person — to confirm you're really talking to each other. Built to stay secure even against
@@ -70,8 +84,8 @@ details summary{cursor:pointer;color:var(--accent-text);font-size:14px;list-styl
       <summary>Show technical details</summary>
       <div style="margin-top:12px;display:flex;flex-direction:column;gap:var(--gap-field)">
         <div>
-          <span class="field-label">Full fingerprint</span>
-          <div class="fp-box mono">QSCFP-39c8baaacee61d8cd76e2a0954558c85</div>
+          <span class="field-label">Full fingerprint (256-bit — same hash as the digits above)</span>
+          <div class="fp-box mono" style="line-height:1.7">3F0A 91C4 77DE 02B5&nbsp;&nbsp;A6E1 4C90 BB27 D3F8<br>1094 EE62 5A0D C471&nbsp;&nbsp;88F2 06B9 3D5C E7A1</div>
         </div>
         <p class="hint">Post-quantum hybrid: ML-KEM-768 (key agreement) + ML-DSA-65 (signatures)</p>
       </div>
