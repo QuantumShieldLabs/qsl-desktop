@@ -42,9 +42,9 @@ pub struct AppState {
 /// Item 15 (D597): handles to the two state-dependent File entries. R1:
 /// disabling for live state is honesty, not a placeholder — both entries
 /// are wired and enabled exactly while an unlocked surface is showing.
-struct MenuHandles {
-    settings: MenuItem<tauri::Wry>,
-    lock_now: MenuItem<tauri::Wry>,
+struct MenuHandles<R: tauri::Runtime> {
+    settings: MenuItem<R>,
+    lock_now: MenuItem<R>,
 }
 
 /// Item 10 (D598/E.1) as amended by round 4a (D601/F1): ONE MODE PER PRE-MAIN
@@ -204,9 +204,9 @@ pub fn size_for(mode: WindowMode, measured_content: Option<f64>) -> (f64, f64) {
     (w, height_for(mode, measured_content))
 }
 
-fn apply_window_mode(
-    app: &tauri::AppHandle,
-    w: &tauri::WebviewWindow<tauri::Wry>,
+fn apply_window_mode<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    w: &tauri::WebviewWindow<R>,
     mode: WindowMode,
     measured_content: Option<f64>,
 ) {
@@ -250,9 +250,13 @@ fn apply_window_mode(
 /// motivated this fix. `None` means "not a pre-main surface" (or not
 /// measurable), and the table governs alone.
 #[tauri::command]
-fn ui_surface_changed(app: tauri::AppHandle, surface: String, content_height: Option<f64>) {
+fn ui_surface_changed<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    surface: String,
+    content_height: Option<f64>,
+) {
     let unlocked = surface == "scr-main" || surface == "scr-settings";
-    if let Some(h) = app.try_state::<MenuHandles>() {
+    if let Some(h) = app.try_state::<MenuHandles<R>>() {
         let _ = h.settings.set_enabled(unlocked);
         let _ = h.lock_now.set_enabled(unlocked);
     }
@@ -313,6 +317,52 @@ pub(crate) fn create_private_dir(p: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// NA-0700 (D-0025): the run-path composition — managed state plus the EXACT
+/// `invoke_handler` command set — applied to a caller-supplied builder, so the
+/// IPC replay harness registers the same commands on the mock runtime that
+/// `run()` registers on Wry. The handler list below is the one place the
+/// registered set is written; `run()` composes through here.
+pub fn configure_builder<R: tauri::Runtime>(
+    builder: tauri::Builder<R>,
+    app_state: AppState,
+) -> tauri::Builder<R> {
+    builder
+        .manage(app_state)
+        .manage(WindowModeState(Mutex::new(None)))
+        .manage(AppliedHeight(Mutex::new(None)))
+        .invoke_handler(tauri::generate_handler![
+            commands::launch_state,
+            commands::cli_vault_present,
+            commands::vault_create,
+            commands::identity_ensure,
+            commands::identity_show,
+            commands::unlock_attempt,
+            commands::lock_now,
+            commands::protection_status,
+            commands::wipe_arm,
+            commands::wipe_disarm,
+            commands::settings_get,
+            commands::settings_set,
+            commands::destroy_vault,
+            commands::erase_all,
+            commands::marker_stats,
+            commands::core_busy,
+            commands::app_info,
+            // slice B (D609 GATE 2): server connectivity — thin forwarders onto
+            // the qsc surface, every qsc call through the serial blocking gate.
+            commands::relay_config_get,
+            commands::relay_config_set,
+            commands::relay_test,
+            commands::relay_token_set,
+            commands::relay_token_clear,
+            commands::relay_token_show,
+            commands::relay_ca_file_set,
+            commands::relay_ca_file_clear,
+            commands::relay_ca_file_show,
+            ui_surface_changed,
+        ])
+}
+
 pub fn run() {
     let data_dir = paths::app_data_dir().expect("app data dir unresolvable");
     bootstrap(&data_dir).expect("bootstrap failed");
@@ -320,10 +370,7 @@ pub fn run() {
         data_dir,
         gw: CoreGateway::default(),
     };
-    tauri::Builder::default()
-        .manage(app_state)
-        .manage(WindowModeState(Mutex::new(None)))
-        .manage(AppliedHeight(Mutex::new(None)))
+    configure_builder(tauri::Builder::default(), app_state)
         .setup(|app| {
             // Item 15 (D597): the native menu — the pinned tauri 2 core
             // menu API only; WORKING entries only, nothing unbuilt.
@@ -417,37 +464,6 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![
-            commands::launch_state,
-            commands::cli_vault_present,
-            commands::vault_create,
-            commands::identity_ensure,
-            commands::identity_show,
-            commands::unlock_attempt,
-            commands::lock_now,
-            commands::protection_status,
-            commands::wipe_arm,
-            commands::wipe_disarm,
-            commands::settings_get,
-            commands::settings_set,
-            commands::destroy_vault,
-            commands::erase_all,
-            commands::marker_stats,
-            commands::core_busy,
-            commands::app_info,
-            // slice B (D609 GATE 2): server connectivity — thin forwarders onto
-            // the qsc surface, every qsc call through the serial blocking gate.
-            commands::relay_config_get,
-            commands::relay_config_set,
-            commands::relay_test,
-            commands::relay_token_set,
-            commands::relay_token_clear,
-            commands::relay_token_show,
-            commands::relay_ca_file_set,
-            commands::relay_ca_file_clear,
-            commands::relay_ca_file_show,
-            ui_surface_changed,
-        ])
         .run(tauri::generate_context!())
         .expect("error while running qsl-desktop");
 }
