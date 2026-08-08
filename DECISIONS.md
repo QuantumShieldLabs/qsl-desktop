@@ -1453,3 +1453,66 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     inventory-by-name discipline); R108/R109/R111 (harness joins the existing
     `rust` job, no new CI context), R115, R119–R122, R130–R158 via the banked
     NA-0700 record.
+
+- **ID:** D-0026
+  - **Status:** Accepted
+  - **Date:** 2026-08-08
+  - **Lane:** spine **NA-0701 / D636 as amended (A1 + A2)** (directive
+    `QSL-DIR-2026-08-08-636_na0701_gui_input_driver_lane.md`, sha256
+    `4999eeb147c79d68cf3bcd44ca24b56feffd38b42c1f390cea2bd1f5bc82c9c5`, 140
+    lines = base + A1; amendment A2
+    `QSL-DIR-2026-08-08-636_na0701_gui_input_driver_lane_A2.md`, sha256
+    `4223768ea7fc0642f6e980885667b212b50f1c9b78996e5996ac3ed9ce2bf556`; spine
+    decision **D-1341**).
+  - **Decision:** **The desktop gains a rendered-DOM GUI input driver**:
+    WebDriver clicks, keystrokes, and verbatim reads over the RUNNING app —
+    real `POST /session` against the debug binary through
+    `xvfb-run → dbus-run-session → tauri-driver` (PINNED `--version 2.0.6
+    --locked`) — cargo-wrapped as six `#[ignore]`-marked tests in
+    `src-tauri/tests/gui_driver.rs` (`na0701_gui_{a..f}_*`; inventory
+    106 → 112 BY NAME) executed for real by the new NON-REQUIRED `gui-driver`
+    CI job (`timeout-minutes: 30`; evidence uploaded EVERY run via the one
+    new major-pinned `actions/upload-artifact@v4`). The harness
+    (`src-tauri/tests/harness/`: the probe's client EVOLVED per R112 +
+    `runner.py` + six scenario seeds quoting source BYTES as
+    selector+literal pairs) carries as numbered duties: the A2.1 run root
+    (`QSLD_GUI_RUN_ROOT`, default repo-local `target/gui_driver_runs/<utc>/`;
+    the shared cargo cache is never a data home), the A1.1 standing isolation
+    bracket (pre/post real-`$HOME` census byte-identical; destructive steps
+    REFUSED without the pre-census), two independent port-0 probes with a
+    recorded 3-attempt retry, NEITHER automation env (R164 §3 — the pinned
+    driver injects both), bounded polls only (zero sleeps; the erase
+    countdown is POLLED, 26 distinct values observed), teardown on every
+    exit path via the MEASURED pgid with a comm-name survivor census, and
+    json.dumps verdict JSONL frozen before the manifest (R164 §5).
+  - **What it caught before landing (findings FILED, not fixed):** the
+    erase-form error write skips the R-14 window resize — after a wrong
+    ceremony phrase both `#btn-erase` and `#btn-erase-cancel` click centers
+    fall outside the card clip and WebDriver measures
+    element-not-interactable (ENG row on the spine ledger; F-E therefore
+    runs the R170 Option-1 third-launch shape, and the fix-lane's acceptance
+    includes restoring the in-place wrong→correct click).
+  - **Controls (SR-06; six perturbations, red observed, cmp-identical
+    restores under the REBUILD BRACKET — `frontendDist: "../ui"` embeds the
+    assets, so a ui/ perturbation without a rebuild is a silent no-op, R171
+    §2):** F-A h1 one-char → {F-A} · F-B :263 gate flip → {ALL SIX} (the
+    shared A1.11 preamble propagates; ratified R171 3.1) · F-C :465 template
+    one-char → {F-C} · F-D :207 arg-key one-char → **{F-C, F-D, F-E}**
+    (settings.json is an S2 CONJUNCT at `state.rs:75`; ratified R172 2.1
+    after the consumer-census instrument, R172 2.2) · F-E :522 operator flip
+    → {F-E} with the full 8-row set matching its written prediction at zero
+    delta · F-F :1405 event-name one-char → {F-F settings leg}. Plus the P9
+    liveness pair every run.
+  - **Claim boundary (A1.22):** real click/type/read over the six flows and
+    the measured census (7 screens · 30 buttons · 14 inputs · 6 panes),
+    reaching 6 of 7 screens; `scr-wiped` presence-asserted only; native GTK
+    menus/WM stay operator-flown (F-F proves the FE listen handlers +
+    `app.emit` plumbing via execute/sync, ZERO IPC change, commands stay 27);
+    `destroy_vault` end-to-end and armed-wipe are FILED successors;
+    perceptual diff deferred severable; macOS/Windows not claimed;
+    required-status promotion is the operator's later act.
+  - **References:** spine D-1341 (the lane's record half + the ENG filing);
+    D-0025/ENG-0075 (inventory-by-name discipline); the NA-0701 sealed
+    record: STOP_002 (probe, R164), STOP_007 (Phase 0, R169), STOP_008 (the
+    R-14 catch, R170), STOP_009/STOP_010 (the red-set corrections, R171/R172);
+    rulings R163–R172 banked as RBANK_NA0701_002–013.

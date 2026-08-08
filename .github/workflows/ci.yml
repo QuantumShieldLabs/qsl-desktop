@@ -136,3 +136,67 @@ jobs:
       # accept every future unmaintained or unsound crate silently.
       - name: cargo audit
         run: cargo audit --deny warnings
+
+  # NA-0701 / D636-as-amended (spine D-1341, desktop D-0026). THE GUI INPUT
+  # DRIVER: WebDriver clicks, keystrokes, and verbatim reads over the RUNNING
+  # app, so a behavioral GUI defect fails a test instead of waiting for the
+  # operator's live flight (it caught one before landing: the erase-form
+  # error write skips the R-14 window resize — ENG row on the spine ledger).
+  #
+  # NON-REQUIRED at landing (the NA-0698 pattern): a brand-new CI surface —
+  # the program's first GUI job — earns trust before it can block merges; the
+  # named future-required anchor is the OPERATOR's branch-protection act
+  # after consecutive greens across real lanes. Standard runner only.
+  #
+  # THE RECIPE IS PER-PRODUCER (SR-20 ext). Everything the box measured is
+  # re-measured here — including the R164 §3 fact that the HARNESS sets
+  # NEITHER automation env (the pinned tauri-driver injects both itself,
+  # webdriver.rs:50-51). THIS JOB'S FIRST GREEN IS A FINDING, NOT AN
+  # ASSUMPTION: the producer-identity step below exists to be diffed against
+  # the box record (docs/testing/gui_driver.md carries the split).
+  gui-driver:
+    name: gui-driver
+    runs-on: ubuntu-24.04
+    # The D636 wall-clock STOP threshold, WITH teeth (A1.12): the measured
+    # workflow default before this job was NO timeout anywhere (GitHub 360m).
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: system deps (tauri v2 build + the WebDriver stack)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            webkit2gtk-driver xvfb dbus
+      - uses: dtolnay/rust-toolchain@stable
+      # PINNED --version 2.0.6 --locked: any bump is a LANE, not a drift —
+      # the injection behavior above is corroborated at exactly this version.
+      - name: tauri-driver (pinned)
+        run: cargo install tauri-driver --version 2.0.6 --locked
+      - name: producer identity (recorded EVERY run; diffed against the box)
+        run: |
+          rustc --version
+          dpkg-query -W webkit2gtk-driver libwebkit2gtk-4.1-0 || true
+          cargo install --list | grep -A1 tauri-driver
+          echo "runner-image=$ImageOS/$ImageVersion"
+      - name: debug build (the binary the driver drives)
+        run: cargo build
+      # SERIALIZED (--test-threads=1): one app instance at a time — the
+      # NA-0700 C4 race lesson. The #[ignore] rows run FOR REAL here; the
+      # wrapper strips QSLD_CONTINUE_ON_FAIL (R171 3.4), and this invocation
+      # sets no harness env at all.
+      - name: the six flows
+        run: cargo test --test gui_driver -- --ignored --test-threads=1
+      # Evidence EVERY run, pass or fail: verdict JSONL + run logs + censuses
+      # + screenshots + MANIFEST.json, all under the A2.1 run root (repo-local
+      # target/ on this runner). The ONE new third-party action, major-pinned
+      # to match the measured house style (checkout@v5 + dtolnay are the only
+      # other actions in this workflow).
+      - name: evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gui-driver-evidence
+          path: target/gui_driver_runs/
+          if-no-files-found: warn

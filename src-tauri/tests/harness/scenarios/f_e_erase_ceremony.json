@@ -1,0 +1,222 @@
+{
+ "scenario": "na0701_gui_e_erase_ceremony",
+ "destructive": true,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0701-fe-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0701-fe-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-len",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-match",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "poll_hidden",
+   "screen": "scr-wizard-vault"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FE"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "teardown"
+  },
+  {
+   "op": "launch"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-unlock"
+  },
+  {
+   "op": "file_present",
+   "path": "qsld-data/qsc/vault.qsv",
+   "poll": 5
+  },
+  {
+   "op": "file_present",
+   "path": "qsld-data/settings.json",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "A1.1 presence-before rows measured immediately before #link-forgot - a total isolation lapse reds HERE instead of greening the residue rows"
+  },
+  {
+   "op": "click",
+   "sel": "#link-forgot",
+   "guard": "destructive"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-erase"
+  },
+  {
+   "op": "read_text",
+   "sel": "#scr-erase h1",
+   "literal": "Erase everything"
+  },
+  {
+   "op": "read_text",
+   "sel": "#erase-form .muted",
+   "literal": "Permanently erases this vault and this app's settings from this computer — this cannot be undone."
+  },
+  {
+   "op": "read_text",
+   "sel": "#erase-form .instruction",
+   "literal": "Type erase everything to confirm"
+  },
+  {
+   "op": "type",
+   "sel": "#erase-phrase",
+   "text": "erase nothing"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-erase"
+  },
+  {
+   "op": "read_text",
+   "sel": "#erase-error",
+   "literal": "Type exactly: erase everything"
+  },
+  {
+   "op": "file_present",
+   "path": "qsld-data/qsc/vault.qsv",
+   "poll": 1
+  },
+  {
+   "op": "file_present",
+   "path": "qsld-data/settings.json",
+   "poll": 1
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#erase-countdown",
+   "prop": "className",
+   "expect": "hidden"
+  },
+  {
+   "op": "note",
+   "text": "wrong phrase blocked at the :522 gate, NOTHING erased (the blocks-wrong-phrase row). OPTION-1 SHAPE (R170 §3, citing STOP_NA0701_008): the in-place correct-phrase click is UNEXECUTABLE against the real app - the erase-error write skips the R-14 resize and clips both ceremony buttons (ENG row rides the spine PR); the corrected shape relaunches for a clean scr-erase. The boot-to-unlock below is itself a STRONGER nothing-was-erased instrument: protection_status still finds the vault after wrong-phrase + relaunch."
+  },
+  {
+   "op": "teardown"
+  },
+  {
+   "op": "launch"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-unlock"
+  },
+  {
+   "op": "file_present",
+   "path": "qsld-data/qsc/vault.qsv",
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#link-forgot",
+   "guard": "destructive"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-erase"
+  },
+  {
+   "op": "type",
+   "sel": "#erase-phrase",
+   "text": "erase everything"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-erase",
+   "guard": "destructive"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#erase-form",
+   "prop": "className",
+   "expect": "hidden",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#erase-countdown",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "countdown_commit"
+  },
+  {
+   "op": "dir_exists_empty",
+   "path": "qsld-data/qsc",
+   "poll": 10
+  },
+  {
+   "op": "file_absent",
+   "path": "qsld-data/settings.json",
+   "poll": 10
+  },
+  {
+   "op": "note",
+   "text": "residue per A1.3: qsc/ EXISTS-and-EMPTY (create_private_dir :310 after remove_dir_all :304), settings.json ABSENT (:308); the .tmp row is destroy-scoped and rides the successor; the profile dir itself remains"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}

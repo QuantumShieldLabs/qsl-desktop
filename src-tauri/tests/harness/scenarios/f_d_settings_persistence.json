@@ -1,0 +1,123 @@
+{
+ "scenario": "na0701_gui_d_settings_persistence",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0701-fd-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0701-fd-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-len",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-match",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "poll_hidden",
+   "screen": "scr-wizard-vault"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FD"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "file_present",
+   "path": "qsld-data/settings.json",
+   "poll": 10
+  },
+  {
+   "op": "note",
+   "text": "F4.5 settled by measurement: settings.json first appears at identity-done's saveSettings (main.js:383)"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-settings"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
+   "op": "click",
+   "sel": "[data-pane=\"vault\"]"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-vault",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 10
+  },
+  {
+   "op": "clear_type",
+   "sel": "#autolock-min",
+   "text": "7"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-autolock-save"
+  },
+  {
+   "op": "json_field_eq",
+   "file": "qsld-data/settings.json",
+   "key": "autolock_minutes",
+   "expect": 7,
+   "poll": 10
+  },
+  {
+   "op": "note",
+   "text": "on-disk writer settings.rs save() :61-62 (atomic tmp+rename); serde key autolock_minutes"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}

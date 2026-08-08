@@ -1,0 +1,480 @@
+{
+ "scenario": "na0701_gui_a_read_census",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-erase",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-main",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-settings",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-unlock",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-wiped",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-wizard-identity",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-wizard-vault",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#pane-about",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#pane-appearance",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#pane-identity",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#pane-notifications",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#pane-server",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#pane-vault",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-add-contact",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-alias-save",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-attempts-dismiss",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-autolock-save",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-destroy",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-destroy-cancel",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-destroy-open",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-erase",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-erase-cancel",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-erase-countdown-cancel",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-identity-done",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-rail-chats",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-rail-contacts",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-rail-contacts-s",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-relay-save",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-relay-test",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-settings",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-unlock",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-vault-create",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-wipe-arm",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-wipe-disarm",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-wiped-restart",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-main [aria-label=\"Chats\"]",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-settings [aria-label=\"Settings\"]",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "[data-pane=\"identity\"]",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "[data-pane=\"server\"]",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "[data-pane=\"vault\"]",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "[data-pane=\"appearance\"]",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "[data-pane=\"notifications\"]",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "[data-pane=\"about\"]",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#vault-pass",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#vault-confirm",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#alias-input",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#unlock-pass",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#erase-phrase",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#settings-alias",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#relay-url",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#relay-token",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#relay-ca-path",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#wipe-limit",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#wipe-ack",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#autolock-min",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#destroy-pass",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#destroy-phrase",
+   "expect": 1
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": true
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": true
+  },
+  {
+   "op": "read_tc",
+   "sel": "#scr-unlock h1",
+   "literal": "Unlock"
+  },
+  {
+   "op": "read_tc",
+   "sel": "#scr-erase h1",
+   "literal": "Erase everything"
+  },
+  {
+   "op": "read_tc",
+   "sel": "#scr-wiped h1",
+   "literal": "Vault erased"
+  },
+  {
+   "op": "note",
+   "text": "scr-wiped rows above are PRESENCE-class (document-wide, hidden-safe textContent instrument); its display path (armed wipe) is NOT claimed this lane (A1.2)."
+  },
+  {
+   "op": "read_text",
+   "sel": "#scr-wizard-vault h1",
+   "literal": "Create your vault"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0701-fa-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0701-fa-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-len",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-match",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "poll_hidden",
+   "screen": "scr-wizard-vault"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FA"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "read_text",
+   "sel": "#scr-main .welcome-title",
+   "literal": "Welcome to QuantumShield Chat"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-settings"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
+   "op": "read_text",
+   "sel": "#scr-settings .settings-rail header",
+   "literal": "Settings"
+  },
+  {
+   "op": "click",
+   "sel": "[data-pane=\"server\"]"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-server",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 10
+  },
+  {
+   "op": "click",
+   "sel": "[data-pane=\"vault\"]"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-vault",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 10
+  },
+  {
+   "op": "click",
+   "sel": "[data-pane=\"appearance\"]"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-appearance",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 10
+  },
+  {
+   "op": "click",
+   "sel": "[data-pane=\"notifications\"]"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-notifications",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 10
+  },
+  {
+   "op": "click",
+   "sel": "[data-pane=\"about\"]"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-about",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 10
+  },
+  {
+   "op": "click",
+   "sel": "[data-pane=\"identity\"]"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-identity",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 10
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}
