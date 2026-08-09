@@ -349,11 +349,11 @@ fn destroy_requires_correct_passphrase_then_lands_s0() {
     qsc::vault::vault_init_with_passphrase("destroy-pass").expect("init");
     lock(None);
 
-    let bad = qsc::vault::protection::DestroyConfirmToken::confirm_with_passphrase("wrong");
+    let bad = qsc::vault::protection::DestroyConfirmToken::confirm("wrong");
     assert!(qsc::vault::protection::destroy_with_passphrase("wrong", bad).is_err());
     assert!(paths::vault_file(tmp.path()).exists());
 
-    let good = qsc::vault::protection::DestroyConfirmToken::confirm_with_passphrase("destroy-pass");
+    let good = qsc::vault::protection::DestroyConfirmToken::confirm("destroy-pass");
     qsc::vault::protection::destroy_with_passphrase("destroy-pass", good).expect("destroy");
     assert!(!paths::vault_file(tmp.path()).exists());
     assert_eq!(resolve_launch_state(tmp.path()), LaunchState::S0);

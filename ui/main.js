@@ -463,6 +463,14 @@ byId("btn-unlock").addEventListener("click", async () => {
       observedFailedUnlocks = r.failed_unlocks;
       if (r.retry_after_s > 0) startCountdown(r.retry_after_s, r.failed_unlocks);
       else setUnlockFeedback("reject", `Wrong passphrase. Failed attempts: ${r.failed_unlocks}.`);
+    } else if (r.kind === "version_unsupported") {
+      // NA-0705: the vault was written by an older version. A distinct cause gets its
+      // own words — never "Wrong passphrase", which is what the user would otherwise be
+      // told while entering the correct one.
+      setUnlockFeedback(
+        "reject",
+        "This vault was created by an older version of the app and can't be opened by this one. Your passphrase was not the problem.",
+      );
     } else if (r.kind === "delayed") {
       observedFailedUnlocks = r.failed_unlocks;
       startCountdown(r.retry_after_s, r.failed_unlocks);
@@ -1456,6 +1464,8 @@ function unlockErrorText(e) {
 // The DESTROY pane. `vault_locked` here is a WRONG PASSPHRASE — see above.
 function destroyErrorText(e) {
   return plainError(e, {
+    vault_version_unsupported:
+      "This vault was created by an older version of the app, so this one can't open or destroy it. Nothing was destroyed.",
     vault_locked: "That passphrase doesn't match. Nothing was destroyed.",
     confirm_phrase_mismatch: "The confirmation phrase doesn't match. Nothing was destroyed.",
     vault_erase_failed:
