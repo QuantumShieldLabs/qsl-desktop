@@ -1668,3 +1668,81 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     RBANK_005 (R179: operator verdicts, F5 HOLD) → STOP_004 (the 07b
     hybrid) → RBANK_006 (R180: hybrid COMMIT, Phase B) → this lane's
     execution stop.
+
+- **ID:** D-0029
+  - **Status:** Accepted
+  - **Date:** 2026-08-09
+  - **Lane:** desktop **NA-0705 / D640 as amended (A1, A2)**
+    (directive `QSL-DIR-2026-08-09-640_na0705_qsc_pin_bump_A2.md`,
+    sha256 `4c5ae91a733823225a2574bbc138b710b3bd46daf7a55b6977f2e25058925a21`,
+    236 lines = base + A1 + A2, precedence A2 > A1 > base; spine decision
+    **D-1344**).
+  - **Decision:** **The desktop's `qsc` pin advances `ab5041cd` → `32e572c7`,
+    and because that crosses the `QSCV01` → `QSCV02` vault-format HARD BREAK
+    (no migration, no dual-format read — spine D628 Ruling 2), the desktop
+    now CLASSIFIES the on-disk envelope BEFORE it touches the guarded vault
+    paths, on BOTH doors.**
+  - **Why it is not optional.** `qsc` names the refusal correctly
+    (`vault_version_unsupported`) at both of its parse sites, but
+    `vault/protection.rs:156` collapses every `Err` into one branch, counts a
+    failed attempt at `:175`, and at an armed wipe-after-N limit erases the
+    vault at `:180`. Measured on a real build at the new pin, before the
+    remediation: three CONSECUTIVE **CORRECT** passphrases against a `QSCV01`
+    vault produced `rejected`, `rejected`, `wiped` with `vault_exists=false`
+    and `failed_unlocks` 0→1. The user is told "Wrong passphrase" while
+    entering the right one, and the vault is destroyed.
+  - **What was built.** `commands.rs::vault_version_state()` classifies through
+    `qsc::adversarial::vault_format::classify_vault_magic` (qsc's one owner of
+    magic recognition), reading only the 6 magic bytes of
+    `paths::vault_file(data_dir)`. On `KnownOld`, **`unlock_attempt_impl` and
+    `destroy_vault_impl` return the refusal WITHOUT CALLING the guarded or
+    destroy path at all** — the classification GATES the call, it does not
+    interpret its result, because the counting and the wipe happen inside the
+    call. New `UnlockDto::VersionUnsupported`; `ui/main.js` gains one honest
+    state per door and never says "Wrong passphrase" for this cause.
+    `unlock_attempt_impl` was extracted first as a behaviour-preserving seam
+    (body moved verbatim) so the instrument had something to be red against.
+  - **Both doors, because destroy reaches it independently.** At the new pin
+    `destroy_with_passphrase` peeks the envelope through the same parser
+    BEFORE examining the passphrase, so a pre-flight on unlock alone would have
+    closed one of two. Found by the commissioned SR-15 read (F-2), not by this
+    seat.
+  - **The instrument (`src-tauri/tests/na0705_qscv01_refusal.rs`, 5 tests).**
+    A `QSCV02` vault with its 6-byte magic rewound to `QSCV01` — faithful,
+    because the version arm sits before any key derivation. Asserts, for BOTH
+    doors: the refusal is named and distinct, `failed_unlocks` does NOT
+    increment, and with wipe armed at N, N correct-passphrase attempts do NOT
+    wipe. **Watched RED before the remediation existed** (pre-registered red
+    set 3 red / 2 green-at-base, measured exactly; the destroy pins were green
+    at base and are recorded as regression pins rather than manufactured red),
+    then green. ⚠ No other gate in this lane can fail on this defect: the
+    compile passes (no signature moved), and the suite, the gui-driver flows
+    and the rig e2e walk all create FRESH vaults.
+  - **`confirm(typed)` was READ, not renamed into.** `confirm_with_passphrase`
+    no longer exists at the new pin (the compile break, `commands.rs:265` +
+    `tests/slice_a_flows.rs:352`/`:356`). The replacement constructor is
+    value-neutral; what the commitment must equal is decided at the destroy
+    site by a runtime branch on the peeked `key_source`. The desktop passes the
+    passphrase, and that is correct ONLY because it can never hold a keychain
+    vault (no `features` key, qsc `default = []`, `keyring` absent from
+    `Cargo.lock`). **That precondition rides as a comment at the call site**, as
+    does `vault_create`'s S0 file-existence precondition (`state.rs:71`), which
+    is why that guard call needs no pre-flight.
+  - **Also carried.** `commands.rs`' "1:1 rendering" comment corrected —
+    `ServerInfoDoc` gained three invite limits the DTO does not surface (filed,
+    not built). `na0700_ipc_replay.rs` creates its dirs at **0700**, matching
+    `create_private_dir`: it claimed to replicate `bootstrap()` and did not, and
+    under `umask 0002` its 0775 dirs were refused by `enforce_safe_parents` at
+    the new pin. The product was right; the replication was not.
+  - **Claim boundary.** The desktop links `qsc` at `32e572c7` and builds; the
+    suite is green BY NAME at 118 / 111-0-7. **NOT claimed:** any GUI messaging
+    capability (still zero messaging commands), a receive loop, any Slice-4 UI,
+    or that the suite covers the bumped messaging code. The keychain-addressing
+    break at the new pin is real for the spine and **nil for the desktop**
+    (compiled out) — an explicit non-claim.
+  - **Record chain:** brief RBANK_001 → STOP_001 (formalization + divergence
+    table) → RBANK_002 (R185) → RBANK_003 (R186) → the commissioned SR-15 read
+    (FINDINGS, 14 findings, banked RBANK_005/006) → RBANK_004 (R187: 14/14
+    dispositioned, A2) → STOP_002 (the A2 fold) → RBANK_007 (R188: execute) →
+    RBANK_008 (R189: rig authority) → STOP_003 (halt at the edit-set boundary)
+    → RBANK_009 (R190: one file admitted) → this lane's execution stop.

@@ -11,6 +11,65 @@ use std::fs;
 use std::path::Path;
 use tauri::State;
 
+/// NA-0705 (D640 §2c(i), A2.2) — THE VAULT-VERSION PRE-FLIGHT.
+///
+/// The qsc bump crossed a `QSCV01` -> `QSCV02` envelope break that is a HARD BREAK:
+/// no migration, no dual-format read (D628 Ruling 2). qsc names the refusal correctly
+/// (`vault_version_unsupported`) at both of its parse sites — but `unlock_guarded`
+/// collapses EVERY `Err` into one branch (`protection.rs:156`), counts a failed attempt
+/// (`:175`) and, at an armed limit, WIPES THE VAULT (`:180`). Measured before this
+/// pre-flight existed: three CORRECT passphrases against a `QSCV01` vault produced
+/// `rejected`, `rejected`, `wiped` — the vault destroyed by the right passphrase.
+///
+/// ⚠ THEREFORE: on a recognized-but-old envelope the desktop MUST NOT CALL
+/// `unlock_guarded` AT ALL (R185 §2.3). Classification GATES the call; it does not
+/// interpret its result. The same gate is owed on the destroy door, which reaches the
+/// same refusal by an independent route (F-2).
+///
+/// The class fix — teaching the guard itself to distinguish non-passphrase errors — is
+/// filed as a spine successor and is NOT this lane's (R187 §3 F-2 / Q8.5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VaultVersionState {
+    /// No vault file — nothing to classify (the S0/S1 case).
+    Absent,
+    /// `QSCV02`: the format this build reads and writes.
+    Current,
+    /// `QSCV01`: written by an older build. Unreadable here, and refusing it by name
+    /// is the only honest answer.
+    KnownOld,
+    /// Present but unreadable or unrecognized — deliberately NOT treated as `KnownOld`.
+    Unknown,
+}
+
+/// Classify the on-disk envelope through qsc's ONE owner of magic recognition
+/// (D-1334), reading only the 6 magic bytes. `paths::vault_file` and the file
+/// `unlock_guarded` opens provably resolve to the same path: the desktop sets
+/// `QSC_CONFIG_DIR` once at `lib.rs:306`, and qsc's `config_dir()` keeps that at top
+/// precedence (verified byte-identical across the bump, SR-15 F-7).
+pub fn vault_version_state(data_dir: &Path) -> VaultVersionState {
+    use qsc::adversarial::vault_format::{classify_vault_magic, VaultMagicClass};
+    let path = paths::vault_file(data_dir);
+    let Ok(bytes) = fs::read(&path) else {
+        return if path.exists() {
+            VaultVersionState::Unknown
+        } else {
+            VaultVersionState::Absent
+        };
+    };
+    if bytes.len() < 6 {
+        return VaultVersionState::Unknown;
+    }
+    match classify_vault_magic(&bytes[..6]) {
+        VaultMagicClass::Current => VaultVersionState::Current,
+        VaultMagicClass::KnownOld => VaultVersionState::KnownOld,
+        VaultMagicClass::Unknown => VaultVersionState::Unknown,
+    }
+}
+
+/// The one error code both doors return for a recognized-but-old envelope — the same
+/// name qsc uses, so the desktop never invents a second vocabulary for one cause.
+pub const VAULT_VERSION_UNSUPPORTED: &str = "vault_version_unsupported";
+
 /// The two deliberate typed phrases. The forgotten-passphrase erase is
 /// app-level file removal ONLY and must never masquerade as the tokened core
 /// destroy; each has its own distinct phrase.
@@ -52,6 +111,10 @@ pub enum UnlockDto {
         retry_after_s: u64,
     },
     Wiped,
+    /// NA-0705: the vault was written by an older build (`QSCV01`). A distinct cause
+    /// gets a distinct name — this is NOT a passphrase failure and must never be
+    /// rendered as one.
+    VersionUnsupported,
 }
 
 #[derive(Serialize)]
@@ -115,6 +178,14 @@ pub async fn vault_create(
     }
     st.gw
         .call(move || -> Result<(), String> {
+            // NA-0705 (F-10): this guard call needs NO version pre-flight, and the reason
+            // is a precondition worth writing down rather than rediscovering. The wizard
+            // that reaches `vault_create` is reachable ONLY from launch state S0, and
+            // `resolve_launch_state` returns S0 only when `vault_file(data_dir)` does NOT
+            // exist (`state.rs:71`) — so no envelope, old or otherwise, can be present.
+            // The vault unlocked below is the one created on the line above.
+            // ⚠ If a future change ever lets the wizard be reached with a vault file
+            // present, this route silently reopens and owes the same pre-flight.
             qsc::vault::vault_init_with_passphrase(&passphrase).map_err(|e| e.to_string())?;
             match qsc::vault::protection::unlock_guarded(&passphrase).map_err(|e| e.to_string())? {
                 qsc::vault::protection::GuardedUnlockOutcome::Unlocked => Ok(()),
@@ -150,10 +221,25 @@ pub async fn unlock_attempt(
     st: State<'_, AppState>,
     passphrase: String,
 ) -> Result<UnlockDto, String> {
+    let data = st.data_dir.clone();
     st.gw
-        .call(move || {
+        .call(move || unlock_attempt_impl(&data, &passphrase))
+        .await
+}
+
+/// NA-0705 (D640 A2.2): the unlock decision as a plain function, mirroring
+/// `destroy_vault_impl` — the seam the QSCV01 refusal instrument drives.
+pub fn unlock_attempt_impl(data_dir: &Path, passphrase: &str) -> Result<UnlockDto, String> {
+    {
+        // ⚠ DOOR 1. The pre-flight GATES the guard — it does not interpret its result.
+        // Reaching `unlock_guarded` with a QSCV01 envelope is what burns an attempt and,
+        // at an armed limit, wipes the vault.
+        if vault_version_state(data_dir) == VaultVersionState::KnownOld {
+            return Ok(UnlockDto::VersionUnsupported);
+        }
+        {
             use qsc::vault::protection::GuardedUnlockOutcome as O;
-            match qsc::vault::protection::unlock_guarded(&passphrase).map_err(|e| e.to_string())? {
+            match qsc::vault::protection::unlock_guarded(passphrase).map_err(|e| e.to_string())? {
                 O::Unlocked => Ok(UnlockDto::Unlocked),
                 O::Rejected {
                     failed_unlocks,
@@ -171,8 +257,8 @@ pub async fn unlock_attempt(
                 }),
                 O::Wiped { .. } => Ok(UnlockDto::Wiped),
             }
-        })
-        .await
+        }
+    }
 }
 
 #[tauri::command]
@@ -262,7 +348,25 @@ pub async fn destroy_vault(
 /// mirroring erase; the `.tmp` staging sibling (the settings.rs write path)
 /// goes with it.
 pub fn destroy_vault_impl(data_dir: &Path, passphrase: &str) -> Result<(), String> {
-    let token = qsc::vault::protection::DestroyConfirmToken::confirm_with_passphrase(passphrase);
+    // ⚠ DOOR 2 (NA-0705, F-2). Destroy reaches the same version refusal by an
+    // INDEPENDENT route: at the new pin `destroy_with_passphrase` peeks the envelope
+    // through the same parser BEFORE it examines the passphrase. Gating here means the
+    // desktop owns the refusal and its name, rather than depending on the ordering of
+    // qsc's internals to produce it.
+    if vault_version_state(data_dir) == VaultVersionState::KnownOld {
+        return Err(VAULT_VERSION_UNSUPPORTED.to_string());
+    }
+    // NA-0705 (D640 A2.1): the constructor is now value-neutral — `confirm(typed)` just
+    // carries what the human typed, and what the commitment must EQUAL is decided at the
+    // destroy site by a runtime branch on the peeked `key_source`: keychain vaults
+    // (`== 2`) require the literal VAULT_DESTROY_INTENT_PHRASE, every other vault requires
+    // the passphrase. Passing the passphrase here is correct ONLY under this precondition:
+    // ⚠ THE DESKTOP CAN NEVER HOLD A KEYCHAIN VAULT — it declares `qsc` with no `features`
+    // key, qsc's `default = []`, and `keyring` is absent from Cargo.lock, so the whole
+    // `#[cfg(feature = "keychain")]` region is compiled out. If that ever changes, this
+    // value-identical line becomes silently wrong (it would earn
+    // `vault_destroy_confirm_mismatch`) and must pass the intent phrase instead.
+    let token = qsc::vault::protection::DestroyConfirmToken::confirm(passphrase);
     qsc::vault::protection::destroy_with_passphrase(passphrase, token)
         .map_err(|e| e.to_string())?;
     let sf = paths::settings_file(data_dir);
@@ -361,8 +465,16 @@ pub struct ServerInfoDocDto {
     pub min_client_version: Option<String>,
 }
 
-/// A 1:1 rendering of `qsc::transport::RelayServerInfoOutcome` for the FE —
-/// NOT a re-classification (R1). `auth_mode` is "open" | "bearer".
+/// A rendering of `qsc::transport::RelayServerInfoOutcome` for the FE — NOT a
+/// re-classification (R1). `auth_mode` is "open" | "bearer".
+///
+/// ⚠ NA-0705 (F-4): this stopped being 1:1 at the qsc bump. `ServerInfoDoc` gained
+/// three invite-related limits — `invite_max_expiry_secs`, `invite_max_slots`,
+/// `max_invite_bundle_bytes` — which this DTO does not carry, so the Server pane shows
+/// 10 of the relay's 13 advertised fields. Nothing breaks (every wire field carries
+/// `#[serde(default)]`, so an older relay's document still parses and still reaches
+/// `Reachable`); surfacing the three is Server-pane design work and is FILED, not done
+/// here. The comment is corrected so the claim matches the code.
 #[derive(Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RelayTestDto {

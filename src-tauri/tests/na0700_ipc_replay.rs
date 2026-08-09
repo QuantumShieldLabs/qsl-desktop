@@ -21,6 +21,14 @@ type MockWebview = tauri::WebviewWindow<tauri::test::MockRuntime>;
 /// Drive one command through tauri's real IPC ingestion. `Ok` carries the
 /// serialized response as JSON (the wire shape the FE receives); `Err` carries
 /// the IPC rejection.
+/// The 0700 half of `create_private_dir` (lib.rs) — the step this harness has to
+/// perform for its replication of `bootstrap()` to be true. See the call sites below.
+fn create_private_dir_0700(p: &std::path::Path) -> std::io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::create_dir_all(p)?;
+    std::fs::set_permissions(p, std::fs::Permissions::from_mode(0o700))
+}
+
 fn invoke(wv: &MockWebview, cmd: &str, args: Value) -> Result<Value, String> {
     let body = match args {
         Value::Null => tauri::ipc::InvokeBody::default(),
@@ -72,10 +80,19 @@ fn all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes() {
     // bootstrap()'s steps minus install_panic_redaction_hook: the hook is
     // production behaviour (qsc-owned, tested there) and in a test binary it
     // redacts every assertion panic into `panic_redacted`, which destroys
-    // diagnosability. Env + policy + routing are replicated exactly.
-    std::fs::create_dir_all(&data_dir).expect("data dir");
+    // diagnosability. Dirs, env, policy and routing are replicated exactly.
+    //
+    // ⚠ NA-0705 (D640, R190): the dirs are created at 0700 because that is what
+    // `create_private_dir` (lib.rs) actually does — `create_dir_all` PLUS
+    // `set_permissions(0o700)`. This harness previously used bare `create_dir_all`
+    // while claiming to replicate bootstrap, which under a 002 umask yields 0775.
+    // Latent at the old qsc pin; at the bumped pin the replaced vault path resolver
+    // carries a real `ConfigSource` into `enforce_safe_parents`, which refuses a
+    // group-writable config dir — `vault_create` failed with `unsafe_parent_perms`.
+    // The product was right; the replication was not.
+    create_private_dir_0700(&data_dir).expect("data dir");
     let qsc_dir = data_dir.join("qsc");
-    std::fs::create_dir_all(&qsc_dir).expect("qsc dir");
+    create_private_dir_0700(&qsc_dir).expect("qsc dir");
     std::env::set_var("QSC_CONFIG_DIR", &qsc_dir);
     qsc::output::init_output_policy(false);
     qsc::output::set_marker_routing(qsc::output::MarkerRouting::InApp);
