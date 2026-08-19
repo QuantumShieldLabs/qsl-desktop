@@ -1746,3 +1746,111 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     dispositioned, A2) → STOP_002 (the A2 fold) → RBANK_007 (R188: execute) →
     RBANK_008 (R189: rig authority) → STOP_003 (halt at the edit-set boundary)
     → RBANK_009 (R190: one file admitted) → this lane's execution stop.
+
+- **ID:** D-0030
+  - **Status:** Accepted
+  - **Date:** 2026-08-19
+  - **Lane:** desktop **NA-0748 / Phase 1 Lane 1** — the `qsc` pin bump, executing the
+    Director's ruling **`R360`** of 2026-08-19 (banked verbatim under SR-14 as this turn's
+    FIRST ACT at `RULING_NA0748_R360_SR15_DISPOSED_SEALS_V2_BUILD_AUTHORIZED_20260819.md`,
+    sha256 `d623d743452ab1e27b4f9fee989e47fd34d88fa21f2cfe1e4b8d329367cb55b3`, 94 lines /
+    7526 bytes, mode 444), which disposed the commissioned SR-15 cold read
+    (`FINDINGS_SR15_NA0748_READ_20260819T051013Z.md`, sha256
+    `b24ad2911739dc716e70a96018c26290d1a92f8441a85fb5a25db5f6d65459ba`, 593 lines — sha
+    verified by this seat against the ruling's citation) and amended the seals to **v2**.
+    Spine decision **D-1389** (qsl-protocol `e917e7e8`).
+  - **Decision:** **The desktop's `qsc` pin advances `32e572c7` → `e917e7e8`, crossing 154
+    commits / 10.33 days of the invite–handshake–transport repair arc, with ZERO `.rs`
+    edits.** The whole edit is one `rev` value in `src-tauri/Cargo.toml` and the
+    **root** `Cargo.lock` regenerated. `ENG-0207` is the ruled disposition (BUMP-THE-PIN);
+    the fingerprint format is **NOT** changed here — that is the named successor `qsc` lane,
+    and **V3 exists to prove this lane did not move it**.
+  - **⚠ The path in the governing brief did not exist.** The brief's §1.8 and V1's first seal
+    named `src-tauri/Cargo.lock`, which has **never existed in this repo's history** (0
+    commits; positive control: the root `Cargo.lock`, 4 commits). The read caught it as its
+    single BLOCKER; `R360` §1 accepted it as the Director's own and amended item 8 to the
+    **ROOT** lock. Re-verified independently by this seat before acting.
+  - **The seals, v2 — every arm measured.**
+    - **V1 BUILD+LOCK — HIT.** `cargo build` and `cargo test --no-run` both exit 0 at the
+      target pin. The lock diff is **+2/−2**, exactly the `qsc` and `quantumshield_refimpl`
+      `source` lines. Package census **461 → 461: 0 added, 0 removed, 0 version-changed** —
+      so the F-4 hazard (the last two bumps each moved transitive dependencies) **did not
+      materialise**, reported as a measurement rather than assumed. `aws-lc-rs` **ABSENT
+      before and after** (D-0007's gate class), against a positive control confirming `ring`
+      present in both.
+    - **V2 VAULT CONTINUITY — HIT.** A vault **created at the old pin** (zero failed
+      attempts; passphrase from a file, so a typo could not void the ceremony) **unlocks at
+      the new pin**: `event=vault_unlock ok=true state=unlocked`, rc 0. Magic bytes read
+      **directly from disk** are byte-identical either side — `QSCV02` (`51 53 43 56 30 32
+      01 10 …`) — as is `vault status` (`present=true key_source=passphrase`) and the unlock
+      output. **Negative control:** a wrong passphrase is **refused** (rc 1), proving the
+      unlock validates; the vault re-unlocks cleanly afterwards, so the control did not
+      damage the evidence. **Tamper control refuted** (last-byte mutation). The old-pin vault
+      is preserved as evidence. ⚠ Per `R360` §4, `vault_version_state` was **not** the
+      capture — it has no route (F-9); the magic bytes are the classifier's own input.
+    - **V3 FINGERPRINT INVARIANCE — the fingerprint arm HIT; the verification-code arm a
+      MISS OF THE ANTECEDENT, stated.** Identity was **ensured at the old pin before
+      capture**, and the capture is **PRESENT**: `identity_fp=QSCFP-df7a1df77a49335cbd1e142a2eed24bd`
+      (38 chars, non-empty). Re-read at the new pin on the **same vault**: byte-identical —
+      indeed the **entire `identity_show` output** compares identical, tamper control
+      refuted. ⚠ **The verification code could not be captured at all**: its only in-crate
+      callers are `handshake` paths requiring a peer, the CLI never emits it, and the one
+      desktop test that computes it builds a **fresh tempdir identity per run**, so it is not
+      comparable across pins. Per `R360` §4's own instruction this is recorded as a **MISS of
+      the antecedent**, not papered over. **Compensating evidence, with its limits stated:**
+      `format_verification_code_from_fingerprint` is byte-identical at both revs and is a
+      **pure function of the fingerprint string**, whose only dependency `IDENTITY_FP_PREFIX`
+      is also identical — so an identical fingerprint necessarily yields an identical code.
+      That is a proof about the mechanism, **not** a captured value.
+    - **V4 HARNESS — HIT.** All six `na0701_gui_a..f` **PASS** at the new pin via the
+      documented runner, 82.95 s, corroborated from the harness's **own artifacts** rather
+      than the cargo summary. **Per-scenario step counts 96 / 20 / 28 / 25 / 52 / 21 = 242**,
+      against the 242-step baseline — **deviation 0** (F-17's requirement). `gui_c_lock_unlock`
+      passing is the separately-named **desktop-path** unlock evidence `R360` §4 V2 requires.
+      ⚠ One difference outside the seal, reported: `gui_c`'s MANIFEST artifact count is **56**
+      where Phase 0 recorded **57**; steps (28) and jsonl rows (29) are unchanged.
+    - **V5 SUITE — HIT.** The old-pin baseline ran **FIRST**, per the ordering clause, and
+      captured the **TEST-NAME LIST** (F-7), not counts: **118 names**. At the new pin the
+      list is **118**, with **0 baseline names missing** and 0 added. Compared **per NAME**,
+      every verdict is identical (`diff` empty): **111 ok / 7 ignored / 0 failed** at both
+      pins, suite rc 0 both times. The already-red branch did not apply.
+    - **V6 IDS — HIT.** `D-0030` derived at the edit: max `D-0029`, **0** declarations and
+      **0** mentions repo-wide, positive control `D-0029` = 1, negative control `D-0031` = 0.
+    - **V7 GATES — the audit review discharged; the PR contexts are recorded at the stop.**
+  - **The `.cargo/audit.toml` review, owed by the file's own header — DISCHARGED, with
+    before/after (`R360` §3).** `cargo audit` at the **old-pin** lock: 518 dependencies, **0
+    vulnerabilities**, **17** distinct advisory IDs firing. At the **regenerated** lock: 518
+    dependencies, **0 vulnerabilities**, **17** firing. The waiver list carries **17** IDs.
+    **Symmetric difference EMPTY in both directions, before and after** — no waived ID has
+    stopped appearing (so nothing is deleted) and no new advisory appeared (so no waiver is
+    added, and no STOP is triggered). `cargo audit --deny warnings`, exactly as CI runs it,
+    exits **0**. ⇒ **`.cargo/audit.toml` is NOT edited by this lane**, because the only edit
+    `R360` §3 authorises is the deletion of a stale ID and there is none.
+    ⚠ **Flagged, not done:** the file's header still reads *"Reviewed: 2026-07-25 (NA-0677).
+    Next review owed: at the next qsl-desktop dependency bump"*, and that bump is this one.
+    Refreshing that date is **outside** the scoped authorisation, which permits deletion
+    only; `R360` §3 places the review's record in **this** D-record instead. The header is
+    left to the Director rather than self-authorised.
+  - **Facts of record carried from the read (`R360` §5).** `decode_failed` no longer
+    collapses distinct reject reasons, and the `--self-label` → `--as` CLI rename landed in
+    the arc — **both measured unreachable from this consumer** (the desktop imports no
+    `qsc::invite::*` and no `qsc::handshake::*` path), and both strengthen `ENG-0206`'s
+    typed-surface case. **Nine truly-`pub fn` signatures CHANGED** in the bump, every one
+    `self_label: &str` → `Option<&str>`, all in `invite`/`handshake` and therefore
+    unreachable here; **0 removed**; and the four items an earlier instrument called "public
+    additions" are **`pub(crate)`**, i.e. not public surface at all.
+  - **Claim boundary.** The desktop links `qsc` at `e917e7e8` and builds; the suite is green
+    **by name** at 118 / 111-0-7 and the GUI harness at 6/6 / 242 steps. **NOT claimed:** any
+    GUI messaging capability, any Slice-4 UI, any receive loop, or that this suite exercises
+    the bumped invite/handshake/transport code — it does not reach it. The fingerprint
+    **format** is unchanged and provably so; `ENG-0205`'s repair is the successor lane.
+    `ENG-0207` closes with this bump; `ENG-0202`..`0206`, `ENG-0142`'s remainder, `ENG-0194`
+    and `ENG-0197`..`0199` stay OPEN. Zero `.rs` edits; `gui_driver`'s `#[ignore]` untouched
+    (7 markers, unchanged); no cargo feature enabled; no test added, edited or weakened;
+    `EXPECTED_TEST_INVENTORY.txt` unchanged and its gate green (the read proved it
+    growth-only-safe and this lane moves no test).
+  - **Record chain:** the Director's brief (banked, sha `89f165c4…`) → STOP 001 (the
+    promotion PR, cleared, merged as `e917e7e8`) → STOP 002 (the formalization package,
+    seals v1) → the commissioned SR-15 read (**FINDINGS**, 17 findings, 1 BLOCKER) →
+    **`R360`** (findings disposed, enumeration amended, seals **v2**, the build authorised)
+    → this lane's execution stop.
