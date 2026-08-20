@@ -661,7 +661,9 @@ mod tests {
     fn fixture() -> qsc::identity::IdentityPublicRecord {
         qsc::identity::IdentityPublicRecord {
             kem_pk: (0..1184usize).map(|i| ((i * 7 + 13) % 256) as u8).collect(),
-            sig_pk: (0..1952usize).map(|i| ((i * 11 + 29) % 256) as u8).collect(),
+            sig_pk: (0..1952usize)
+                .map(|i| ((i * 11 + 29) % 256) as u8)
+                .collect(),
         }
     }
 
@@ -677,7 +679,10 @@ mod tests {
         let fp = qsc::identity::identity_fingerprint_from_identity(&rec.kem_pk, &rec.sig_pk);
         let voice = qsc::identity::identity_voice_form(&fp);
         let dto = identity_dto(&rec);
-        assert_eq!(dto.fingerprint, fp, "the DTO's fingerprint must BE the qsc value");
+        assert_eq!(
+            dto.fingerprint, fp,
+            "the DTO's fingerprint must BE the qsc value"
+        );
         assert_eq!(
             dto.verify_code, voice,
             "the DTO's verify_code must BE the qsc voice form"
