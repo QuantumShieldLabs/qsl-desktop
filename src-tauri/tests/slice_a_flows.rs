@@ -54,7 +54,7 @@ fn c_prime_deferred_path_to_honest_disconnected() {
     let rec = qsc::identity::identity_ensure(SELF_LABEL).expect("identity");
     let fp = qsc::identity::identity_fingerprint_from_identity(&rec.kem_pk, &rec.sig_pk);
     assert!(!fp.is_empty());
-    let code = qsc::identity::format_verification_code_from_fingerprint(&fp);
+    let code = qsc::identity::identity_voice_form(&fp);
     assert!(!code.is_empty());
 
     // relaunch resolves S2. Slice B adds a Server pane, but this flow never

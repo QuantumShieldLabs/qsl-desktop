@@ -1854,3 +1854,98 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     seals v1) → the commissioned SR-15 read (**FINDINGS**, 17 findings, 1 BLOCKER) →
     **`R360`** (findings disposed, enumeration amended, seals **v2**, the build authorised)
     → this lane's execution stop.
+
+- **ID:** D-0031
+  - **Status:** Accepted
+  - **Date:** 2026-08-20
+  - **Lane:** desktop **NA-0750 / PIN-BUMP-2** — the desktop meets the `qsl-fp-v1` fingerprint,
+    executing the Director's ruling **`R365`** of 2026-08-20 (banked verbatim under SR-14 as this
+    turn's FIRST ACT at `RULING_NA0750_R365_ALL_SIX_ASKS_RULED_EXECUTION_AUTHORIZED_20260820T023019Z.md`,
+    sha256 `f41d6951b6c313a6be655fdd99d03cbf332db13c72957aba7a6aeac60da0fbc1`, 95 lines / 7383
+    bytes, mode 444), which ruled all six of STOP 001's asks. Spine decision **D-1392**
+    (qsl-protocol `7180fb88`).
+  - **Decision:** **The desktop's `qsc` pin advances `e917e7e8` → `7180fb88`, and the two
+    on-screen identity values become the RATIFIED TWO TIERS.** `identity_dto`'s retired call
+    `format_verification_code_from_fingerprint` becomes `identity_voice_form`, so `verify_code`
+    is now the **30-digit voice form** and `fingerprint` is the **64-hex full form** with no
+    `QSCFP-` prefix. **The DTO field NAMES do not change, which is what holds `ui/main.js` at
+    ZERO bytes** — all three JS consumers (`:356`, `:652`, `:653`) are pure `textContent`
+    pass-throughs and were measured as such before the edit.
+  - ⚠ **THE BREAK WAS AT TWO CALL SITES, NOT ONE — and the correction was MEASURED, not argued.**
+    The formalization brief's §0 said *"the retired published API's ONE desktop caller"*. The
+    sweep found **two**: `src-tauri/src/commands.rs:145` and `src-tauri/tests/slice_a_flows.rs:57`.
+    W0 proved it at build time **in two stages**, because stage 1 was a **NON-RESULT** for the
+    second site rather than a miss: `cargo check` aborted at the lib error and never compiled the
+    integration-test target (`slice_a_flows` = **0** occurrences in the whole log). Repairing site
+    1 alone removed the blocking antecedent, and the staged red then named site 2 exactly. ⇒ *an
+    instrument that cannot reach a site reports nothing about it; say NON-RESULT, not PASS.*
+    Both sites feed `identity_voice_form` from `identity_fingerprint_from_identity` — the
+    **combined** route, which is the only sanctioned one.
+  - ⛳ **AND THE ROUTING CONSTRAINT IS ENFORCED BY CONSTRUCTION, NOT BY DISCIPLINE.** The defect
+    NA-0749 warned about — a voice form over a **single-key** fingerprint — is **unreachable from
+    this consumer**: `identity_fingerprint_from_pk` and `hs_sig_fingerprint` measure **ZERO files**
+    in `qsc/src` at `7180fb88`, NA-0749's redesign having removed them outright. The only public
+    fingerprint-producing functions are `identity_fingerprint_from_identity` and
+    `identity_voice_form`. *"Unreachable by construction" is a stronger statement than "not done",
+    and the two are not collapsed here.*
+  - **The seals — every arm measured, and every accepting arm carries a control that FIRED.**
+    **W0** the compile red, in two stages, both captured verbatim. **W1** the values: fingerprint
+    `4cb507ef…5b62ad98` (64 lowercase hex) and verify_code `752204175629941029783252236085` (30
+    ASCII digits) on a **deterministic** fixture — no vault, no keygen, no I/O — asserted by
+    equality, never `contains`; three source mutations (re-route the voice tier, swap the DTO
+    fields, re-introduce the prefix) each turned the suite RED, every restore `cmp`-identical.
+    **W2** the INVERSION of NA-0748's V3: the values MOVED off `QSCFP-4527910e…` /
+    `4527-910E-41BB-92B4-V`, and **both old values are pinned inside the test as the thing that
+    must not reappear**, so a green-in-the-old-form is impossible. **W3** vault continuity: a
+    vault created at the OLD pin unlocks at the NEW one (`vault_unlock ok=true state=unlocked`),
+    `vault.qsv` and the identity record are **byte-identical by sha256 either side**, magic stays
+    `QSCV02`, `kem_pk`/`sig_pk` are byte-identical, and the fingerprint **moves** — a byte-identical
+    fingerprint here would have been a STOP. **W4** `cargo test` rc 0, 15 targets / 114 passed / 0
+    failed / 8 ignored, inventory 118 → 122 with **ZERO removed**, and the GUI harness **7/7** with
+    the six pre-existing scenarios reproducing NA-0748's baseline **exactly** (96/20/28/25/52/21 =
+    242, delta **+0**).
+  - ⚠ **A SEALED DESCRIPTOR MEASURED FALSE AND IS CORRECTED HERE RATHER THAN QUIETLY SATISFIED.**
+    The brief called the retired rendering *"the 16-char form"*. Measured at the old pin, the
+    rendered code is **21 characters** — `4527-910E-41BB-92B4-V`, i.e. 16 Crockford payload
+    characters plus four hyphens plus a check character. **16 is the PAYLOAD length, not the
+    rendered length**, and a needle asserting 16 would have returned a false result in either
+    direction. The on-screen seal is therefore a SHAPE,
+    `^[0-9A-Z]{4}(-[0-9A-Z]{4}){3}-[0-9A-Z]$`, asserted absent from `document.body.innerText`.
+  - ⚠ **A CONTROL THAT COULD NOT DISCRIMINATE, CAUGHT AND REPAIRED.** W3's first unlock arms were
+    invoked with `--unlock-passphrase-file` (the vault-open source) where `--passphrase-file` (the
+    credential under validation) was required; **both the correct and the wrong passphrase then
+    returned rc 1**, and the negative control proved nothing. Repaired and re-run, the arms differ
+    (`vault_unlock ok=true` vs `code=vault_locked`). *A control that cannot discriminate is the
+    finding, not the result it printed.*
+  - **The `.cargo/audit.toml` header line — DISCHARGED, the deferral D-0030 recorded.** D-0030
+    flagged that the header still read *"Reviewed: 2026-07-25 (NA-0677)"* while recording NA-0748's
+    actual review (518 dependencies, 0 vulnerabilities, 17 advisories firing before and after,
+    symmetric difference empty both ways) and left the refresh to the Director rather than
+    self-authorising it. **`R365` §5 rules REPLACE IN PLACE**, and the line now reads
+    *"Reviewed: 2026-08-19 (NA-0748)"* — one value, nothing else in that file.
+    ⚠ **The re-trigger is RECORDED, NOT ACTED ON:** the file's own clause names *"the next
+    qsl-desktop dependency bump"*, and this lane is that bump. The delta since the 2026-08-19
+    review is **one in-house rev** (`qsc` `e917e7e8` → `7180fb88`); the lock moved **+2/−2**, being
+    only the two `source =` rev lines, with `[[package]]` entries **518 → 518**, distinct names
+    **461 → 461** and **no package's version moved** — measured on the `(name, version)` MULTISET,
+    not a name-keyed dict, because a dict keyed by name silently keeps only the last version and
+    could not have seen a change inside a duplicated name. **Review remains owed per the file's own
+    clause at the next dependency-SET change, or 2026-10-25, whichever comes first.**
+  - **Claim boundary.** The desktop links `qsc` at `7180fb88`, builds, and its full suite and GUI
+    harness are green **on ONE machine, the build box**. The harness proves the on-screen value's
+    **shape**, never its **legibility** — `textContent` reads identically whether the element is
+    clipped or not. The rendered voice form is nearly twice the retired code's length (30 digits
+    against 21 characters); `ui/main.js:300 fitCode()` shrinks 17px→11px and then applies a
+    `.wrapped` modifier, and that mechanism is already covered by `design_round2.rs:93` and
+    `design_round3.rs:645` — **both of which assert the mechanism's presence, not that any given
+    value fits.** No CSS or HTML byte is changed by this lane.
+  - **What this lane did NOT touch.** Zero `qsc` source bytes (the fingerprint is frozen); zero
+    `ui/*.html`, `ui/*.css` and `ui/main.js` bytes; zero `.github/**`; zero `scripts/ci/**` —
+    including `EXPECTED_TEST_INVENTORY.txt`, because the gate was measured from its own bytes to
+    be **asymmetric** (`ADDED` is informational; only `MISSING` exits 1), and it ran **rc 0**
+    printing the four new tests as allowed. No mockup byte, no new dependency, no cargo feature,
+    no test weakened, skipped or deleted.
+  - **Record chain:** the Director's brief (banked verbatim under SR-14 before anything consumed
+    it, sha `924f8135…`) → the id sweep run BEFORE the banking → **STOP 001** (premises (a)–(i)
+    measured, six ruling asks, sha `f501fb20…`) → **`R365`** (all six ruled, §3.8 REFUSED,
+    execution authorised) → this lane's execution.

@@ -1,0 +1,131 @@
+{
+ "scenario": "na0750_gui_g_fingerprint_two_tier",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0750-fg-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0750-fg-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-len",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#req-match",
+   "prop": "className",
+   "expect": "req ok",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "poll_hidden",
+   "screen": "scr-wizard-vault"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FG"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-settings"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
+   "op": "click",
+   "sel": "[data-pane=\"identity\"]"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-identity",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 10
+  },
+  {
+   "op": "note",
+   "text": "Every shape assertion below runs AFTER the settings identity pane is reached, so no step races the render. #identity-code retains the wizard's rendered value (nothing clears it), which is what makes the cross-pane arm meaningful."
+  },
+  {
+   "op": "exec",
+   "script": "return /^[0-9]{30}$/.test(document.getElementById('settings-code').textContent);",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return /^[0-9a-f]{64}$/.test(document.getElementById('settings-fp').textContent);",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return document.getElementById('settings-fp').textContent.indexOf('QSCFP') === -1;",
+   "expect": true
+  },
+  {
+   "op": "note",
+   "text": "W2 on screen: the RETIRED grouped, check-charactered form (measured at the old pin as 4527-910E-41BB-92B4-V, 21 rendered chars) must appear NOWHERE in the rendered document. The brief called this the '16-char form'; 16 is the PAYLOAD length, not the rendered length."
+  },
+  {
+   "op": "exec",
+   "script": "return !/[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]/.test(document.body.innerText);",
+   "expect": true
+  },
+  {
+   "op": "note",
+   "text": "Cross-pane arm (R365 section 3, seat's discretion): ADDED. The existing ops express it with no engine edit and no stash — one exec compares both slots directly."
+  },
+  {
+   "op": "exec",
+   "script": "return document.getElementById('identity-code').textContent === document.getElementById('settings-code').textContent;",
+   "expect": true
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}
