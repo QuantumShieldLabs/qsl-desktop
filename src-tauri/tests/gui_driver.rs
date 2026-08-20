@@ -148,3 +148,17 @@ fn na0701_gui_e_erase_ceremony() {
 fn na0701_gui_f_menu_event_substitutes() {
     run_scenario("f_f_menu_event_substitutes");
 }
+
+// NA-0750 (D-0031): the on-screen half of W1. The harness proves SHAPE and PRESENCE —
+// 30 ASCII digits and 64 lowercase hex by anchored regex — plus the ABSENCE of the
+// retired grouped form. The VALUE is proven by the in-crate test in commands.rs; the
+// harness cannot assert it, because a scenario compares against literals and the
+// harness vault's identity is generated fresh on every run (R365 §3).
+//
+// ⚠ CLAIM BOUNDARY: this proves the value's shape ON SCREEN, never its legibility —
+// `textContent` reads the same whether the element is clipped or not.
+#[test]
+#[ignore]
+fn na0750_gui_g_fingerprint_two_tier() {
+    run_scenario("f_g_fingerprint_two_tier");
+}

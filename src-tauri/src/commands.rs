@@ -142,7 +142,7 @@ pub struct AppInfoDto {
 
 fn identity_dto(rec: &qsc::identity::IdentityPublicRecord) -> IdentityDto {
     let fp = qsc::identity::identity_fingerprint_from_identity(&rec.kem_pk, &rec.sig_pk);
-    let code = qsc::identity::format_verification_code_from_fingerprint(&fp);
+    let code = qsc::identity::identity_voice_form(&fp);
     IdentityDto {
         fingerprint: fp,
         verify_code: code,
@@ -640,4 +640,99 @@ pub async fn relay_ca_file_show(st: State<'_, AppState>) -> Result<RelayCaStatus
             }
         })
         .await)
+}
+
+// NA-0750 (D-0031): the DTO-value instrument for the `qsl-fp-v1` fingerprint.
+//
+// ⚠ IN-CRATE BY NECESSITY, ruled at R365 §4 (ask D, option β). `identity_dto` is
+// private, so an integration test under src-tauri/tests/ cannot reach it, and widening
+// its visibility for a test's benefit was refused. This is the measured house pattern
+// (settings.rs, markers.rs).
+//
+// The fixture is DETERMINISTIC — fixed bytes, no vault, no keygen, no I/O — because a
+// generated identity differs on every run, which would make a before/after comparison
+// differ for the wrong reason and pass vacuously.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ML-KEM-768 / ML-DSA-65 public-key-sized fixture. The byte values are arbitrary
+    /// but FIXED, so every figure asserted below is reproducible by anyone.
+    fn fixture() -> qsc::identity::IdentityPublicRecord {
+        qsc::identity::IdentityPublicRecord {
+            kem_pk: (0..1184usize).map(|i| ((i * 7 + 13) % 256) as u8).collect(),
+            sig_pk: (0..1952usize).map(|i| ((i * 11 + 29) % 256) as u8).collect(),
+        }
+    }
+
+    /// W1(i): `identity_dto` returns EXACTLY what qsc computes for the same record.
+    /// Equality on the extracted values, never `contains`.
+    ///
+    /// ⚠ The routing constraint carried from NA-0749: the voice tier reaches the
+    /// COMBINED identity fingerprint and nothing else. `fp` here comes from
+    /// `identity_fingerprint_from_identity`, which is the sanctioned route.
+    #[test]
+    fn identity_dto_returns_exactly_the_qsc_computed_pair() {
+        let rec = fixture();
+        let fp = qsc::identity::identity_fingerprint_from_identity(&rec.kem_pk, &rec.sig_pk);
+        let voice = qsc::identity::identity_voice_form(&fp);
+        let dto = identity_dto(&rec);
+        assert_eq!(dto.fingerprint, fp, "the DTO's fingerprint must BE the qsc value");
+        assert_eq!(
+            dto.verify_code, voice,
+            "the DTO's verify_code must BE the qsc voice form"
+        );
+    }
+
+    /// W1 shape, both tiers of the ratified design: 64 lowercase hex with no prefix,
+    /// and exactly 30 ASCII digits.
+    ///
+    /// ⚠ The 30-digit assertion is also what catches a regression into
+    /// `identity_voice_form`'s documented `""` sentinel, which it returns for any input
+    /// that is not a well-formed FULL form.
+    #[test]
+    fn identity_dto_shapes_are_the_ratified_two_tiers() {
+        let dto = identity_dto(&fixture());
+        assert_eq!(dto.fingerprint.len(), 64, "full form is 64 hex characters");
+        assert!(
+            dto.fingerprint
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
+            "full form must be LOWERCASE hex, got {}",
+            dto.fingerprint
+        );
+        assert!(
+            !dto.fingerprint.starts_with("QSCFP-"),
+            "the QSCFP- prefix is retired"
+        );
+        assert_eq!(dto.verify_code.len(), 30, "voice form is exactly 30 digits");
+        assert!(
+            dto.verify_code.bytes().all(|b| b.is_ascii_digit()),
+            "voice form must be ASCII digits only, got {}",
+            dto.verify_code
+        );
+    }
+
+    /// W2 — NA-0748's V3 seal, INVERTED: across this pin bump the values MUST CHANGE.
+    ///
+    /// Both baselines were measured at the OLD pin `e917e7e8` on this exact fixture.
+    /// Asserting only the NEW shape would pass against the old format too for the
+    /// fingerprint's prefix check alone, so the old values are pinned here as the thing
+    /// that must not reappear — a green in the old form would be a false pass.
+    #[test]
+    fn w2_the_values_moved_off_the_retired_format() {
+        const OLD_FP: &str = "QSCFP-4527910e41bb92b4478d95ad8b42eee0";
+        const OLD_CODE: &str = "4527-910E-41BB-92B4-V";
+        let dto = identity_dto(&fixture());
+        assert_ne!(dto.fingerprint, OLD_FP, "the fingerprint must MOVE");
+        assert_ne!(dto.verify_code, OLD_CODE, "the verification code must MOVE");
+        assert!(
+            !dto.fingerprint.contains("QSCFP"),
+            "no QSCFP token survives in the full form"
+        );
+        assert!(
+            !dto.verify_code.contains('-'),
+            "the grouped, check-charactered form is gone"
+        );
+    }
 }
