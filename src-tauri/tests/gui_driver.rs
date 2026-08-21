@@ -162,3 +162,15 @@ fn na0701_gui_f_menu_event_substitutes() {
 fn na0750_gui_g_fingerprint_two_tier() {
     run_scenario("f_g_fingerprint_two_tier");
 }
+
+// NA-0752 (D-0033): the status footer reports the desk's typed state. The
+// harness drives the TWO states it genuinely can — no relay configured, and a
+// relay configured — and asserts the footer's EXACT ruled copy by equality on
+// extracted text. The three undrivable rows are presence-asserted in
+// design_polish.rs (seal F1b), which says in its own doc that presence is not
+// behaviour.
+#[test]
+#[ignore]
+fn na0752_gui_h_status_footer_truth() {
+    run_scenario("f_h_status_footer_truth");
+}

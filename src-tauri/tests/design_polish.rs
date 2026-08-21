@@ -1116,3 +1116,78 @@ fn erase_error_has_exactly_one_writer_and_it_resizes() {
         "the error element starts EMPTY; that is why writing it changes height"
     );
 }
+
+/// NA-0752 (D-0033; seal F1b, ruled at R374) — THE THREE UNDRIVABLE FOOTER
+/// SENTENCES ARE PRESENT, AND THEIR ARMS ARE WIRED.
+///
+/// ⚠⚠ THIS TEST PROVES **PRESENCE**, NEVER **BEHAVIOUR**, and the distinction is
+/// the whole reason it exists rather than a scenario. Three rows of the ruled
+/// status-footer table cannot be driven end-to-end by the GUI harness, each for
+/// a measured structural reason: `missing_home` is unreachable while
+/// `bootstrap()` sets `QSC_CONFIG_DIR` before the runtime exists;
+/// `unsafe_parent` needs the app's own 0700 qsc dir chmodded mid-session, and no
+/// harness op writes or chmods the profile; the footer lives INSIDE `scr-main`
+/// so it is never on screen while the vault is locked; and `unrecognized`
+/// requires an EIGHTH upstream reason string, i.e. it is untestable by
+/// construction. The two DRIVABLE rows are asserted for real, by equality on
+/// extracted text, in `f_h_status_footer_truth`.
+///
+/// The desk-side behaviour these rows render IS proven where it lives:
+/// `na0751_facade_locked_control.rs:141-174` asserts `ConnectReason::VaultLocked`
+/// on a fabricated blob with both arms shown to differ. This test closes the
+/// remaining gap — that the FOOTER still carries the sentence and still routes
+/// the reason to it.
+///
+/// THE REGRESSION IT MUST CATCH: a refactor that drops an arm, or silently
+/// reworded copy, leaving a row that can never render. Both are invisible to
+/// the scenario, because the scenario never reaches these rows.
+#[test]
+fn na0752_the_three_undrivable_footer_sentences_are_present_and_wired() {
+    let js = ui_file("main.js");
+
+    // The sentences, as CONST DECLARATIONS — not merely as text somewhere in the
+    // file. A string that survived only inside a comment would satisfy a naive
+    // `contains` and render nothing.
+    for (name, sentence) in [
+        (
+            "STATUS_FOOTER_STORAGE",
+            "Storage problem — check Settings › Vault.",
+        ),
+        ("STATUS_FOOTER_LOCKED", "Locked — unlock to connect."),
+        (
+            "STATUS_FOOTER_UNKNOWN",
+            "Status unknown — please report this.",
+        ),
+    ] {
+        let decl = format!("const {name} = \"{sentence}\";");
+        assert!(
+            js.contains(&decl),
+            "the ruled sentence must exist as the `{name}` declaration, verbatim: {decl}"
+        );
+    }
+
+    // And each arm is WIRED: the reason tokens the desk actually emits must be
+    // matched against, or the sentence is present and unreachable.
+    let f = js
+        .find("function statusFooterLine")
+        .expect("the footer mapping is ONE named pure function");
+    let body = &js[f..f + js[f..].find("\n}").expect("function end")];
+    for token in [
+        "missing_home",
+        "unsafe_parent",
+        "vault_locked",
+        "unrecognized",
+    ] {
+        assert!(
+            body.contains(&format!("\"{token}\"")),
+            "`{token}` must be matched inside statusFooterLine, or its row is dead copy"
+        );
+    }
+
+    // The residual arm is reached by a desk that did not answer at all, which is
+    // how a typed IPC failure avoids rendering as silence.
+    assert!(
+        body.contains("reason === null"),
+        "a rejected invoke must land on the honest tripwire, not on an empty footer"
+    );
+}
