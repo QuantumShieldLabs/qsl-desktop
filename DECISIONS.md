@@ -1949,3 +1949,76 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     it, sha `924f8135…`) → the id sweep run BEFORE the banking → **STOP 001** (premises (a)–(i)
     measured, six ruling asks, sha `f501fb20…`) → **`R365`** (all six ruled, §3.8 REFUSED,
     execution authorised) → this lane's execution.
+
+- **ID:** D-0032
+  - **Status:** Accepted
+  - **Date:** 2026-08-21
+  - **Lane:** desktop **NA-0751 / SLICE 4 PHASE 1** — the desktop meets the gateway spine,
+    executing the Director's GO of 2026-08-21 (banked verbatim under SR-14 as this turn's FIRST
+    ACT, with the id sweep run BEFORE the banking per WF-0087, at
+    `NOTE_NA0751_DESKTOP_GO_EXECUTE_R372_1E_20260821T140000Z.md`, sha256
+    `9143a65aa0755f23e14fb0c04667220c4473fa6e813c5f0646102db2c6e71f73`, 22 lines / 1880 bytes,
+    mode 444), which ordered `R372` §1(e) against the amended stack. Spine decision **D-1393**
+    (qsl-protocol `9dcded4d`).
+  - **Decision:** **The desktop's `qsc` pin advances `7180fb88` → `9dcded4d`, and twelve
+    pass-through wrappers over `qsc::facade` become the Slice-4 gateway surface.** Six DTOs
+    mirror the facade's types; every wrapper is one `st.gw.call` around one facade verb, so the
+    `commands.rs:1` invariant — every qsc call through the CoreGateway, on the blocking gate,
+    strictly serially — holds for the new surface exactly as for the old. Registration goes from
+    **26 to 38** commands. **Zero `ui/**` bytes:** the spine has no screens, and this half ships
+    none.
+  - ⚠ **THE ERROR SET IS THIRTY-EIGHT, NOT TWENTY-SIX, AND THE DESKTOP SEALS IT AT ITS OWN
+    BOUNDARY.** `FacadeError::Store` fans out over `ErrorCode::as_str`, so the pinned set is 25
+    non-`Store` variants + 13 `Store` codes. `ErrorDto` carries the facade's stable `as_wire`
+    discriminant and **not** `{e:?}`: a Debug rendering is a Rust detail that can change without
+    the wire contract changing, and the front end string-matches on this value. The test
+    converts all 38 through the DESKTOP's own `From` impl — not the facade's `as_wire`, which the
+    protocol side already seals — asserts 38 distinct, and asserts **`lock_upgrade_refused`**
+    survives to the boundary, that being the single code the `Store` variant exists to keep
+    reachable. A **mutation control** renames that discriminant and asserts the set then DIFFERS,
+    so the pin can go red.
+  - ⚠ **A MISS, RECORDED RATHER THAN SMOOTHED: THE FACADE WAS RIGHT AND THE TEST WAS WRONG.**
+    The first `connect_status` assertion expected `vault_locked` on a locked fresh profile and
+    measured **`missing_seed`**. The facade's own `ConnectStatus` doc states the rule — *"ORDER
+    IS LOAD-BEARING, and it is NOT 'check the lock first' … reporting `VaultLocked` would SHADOW
+    the operative fact"* — and a fresh profile has no seed, a fact unlocking does not cure. The
+    expectation had been written from the mechanism it wanted to demonstrate rather than from the
+    state the rig produces. **The corrected assertion is STRICTLY STRONGER:** a facade that
+    checked the lock first would now return `vault_locked` here and go RED. The override arm
+    itself stays sealed protocol-side across two binaries with `count == 7` over the union.
+  - **Two scope decisions, stated rather than silent:**
+    - **`facade::invite_list_at` is DELIBERATELY NOT EXPOSED.** It is a clock-injection seam for
+      deterministic tests; reaching it through IPC would let the front end choose the time an
+      expiry is judged against. Twelve wrappers, not thirteen.
+    - **`invite_redeem` / `invite_accept` / `invite_finish` are exposed but exercised only on
+      their reachable error arms**, because a genuine drive needs a SECOND PARTY — the same
+      residual `D-1393` files, with the invite screen lanes as the named successor.
+  - **Security invariants introduced/changed:**
+    - No new networking surface: every wrapper is a pass-through to a verb that already existed.
+    - The gateway's single-flight serialization is PRESERVED and is load-bearing —
+      `facade::invite_revoke`'s doc relies on a screen calling `invite_list` after an error, and
+      that sequence is sound only because both wrappers run inside `gw.call`.
+    - The clock-injection seam is unreachable from the front end (above).
+  - **Alternatives considered:**
+    - DTOs in a new module (rejected: the brief's item 13 and the tree's own convention both put
+      DTOs in `commands.rs`; inventing structure is what three protocol-side reads refused).
+    - `Result<_, String>` with `{e:?}` (rejected: a Debug rendering is not a wire contract).
+  - **Implications for spec/impl/tests:**
+    - `src-tauri/tests/na0751_gateway_surface.rs` — 5 tests: all twelve commands through real
+      IPC on the mock runtime with the real generated context; the `ErrorDto` wire shape; the 38
+      with its mutation control; the residual payload; and a **liveness control** proving the
+      registration seal discriminates — an unregistered command returns an IPC rejection with no
+      `code` key while a registered one returns a typed `ErrorDto`, both arms on one rig.
+    - Suite: 15 targets / 114 passed / 0 failed / 8 ignored → **16 / 119 / 0 / 8**; delta
+      **+1 target, +5 tests, +0 ignored**, fully accounted.
+  - **References:** spine `D-1393` (`9dcded4d`); `R372` §1(e); the Director's GO
+    (`9143a65a…`); STOP 011 §9b for the 38-member set carried verbatim; `ENG-0209` remains OPEN
+    and is load-bearing on the facade's `W8` drive — any successor closing it revisits that seal.
+  - **NOT CLAIMED:** that a Slice-4 screen exists (none ships here) · that the three second-party
+    invite verbs are genuinely exercised · that the GUI harness step count changed (this half
+    touches zero scenario bytes) · that `ENG-0209` is closed.
+  - **Record chain:** the Director's GO (banked verbatim under SR-14 before anything consumed it,
+    sha `9143a65a…`, id sweep run FIRST per WF-0087) → the new protocol main re-derived by this
+    seat bare and unpiped against the NAMED `github` remote (`9dcded4d`, true merge commit,
+    parents `{3293c39a, cfb58c90}`, §0's figure NOT adopted) → the baseline run to COMPLETION
+    before any edit → this lane's execution.

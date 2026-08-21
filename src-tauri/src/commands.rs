@@ -642,6 +642,319 @@ pub async fn relay_ca_file_show(st: State<'_, AppState>) -> Result<RelayCaStatus
         .await)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NA-0751 (D-0032) — THE SLICE-4 GATEWAY SURFACE.
+//
+// Twelve pass-through wrappers over `qsc::facade`, the typed spine that landed on
+// protocol main `9dcded4d`. They CALL; they never decide: every wrapper is one
+// `st.gw.call` around one facade verb, so the module-doc invariant above (rules b
+// and d — every qsc call through the CoreGateway, on the blocking gate, strictly
+// serially) holds for the new surface exactly as it does for the old.
+//
+// ⚠ THE SERIALIZATION IS LOAD-BEARING, not incidental. `facade::invite_revoke`'s own
+// doc records that on error the local revoke MAY already have committed, and that a
+// screen tells the outcomes apart by calling `invite_list` AFTER the error — "two
+// calls the surface already carries, serialized by the desktop gateway's single
+// flight". That sequence is only sound because both wrappers run inside `gw.call`.
+//
+// ⚠ `facade::invite_list_at` is DELIBERATELY NOT EXPOSED. It is a clock-injection
+// seam for deterministic tests; reaching it through IPC would let the front end
+// choose the time an expiry is judged against. The desktop ships `invite_list` only.
+
+/// One facade failure, as the front end receives it.
+///
+/// `code` is the facade's own stable wire discriminant — one of the pinned THIRTY-EIGHT
+/// (25 non-`Store` variants + `Store`'s 13-member fan-out over `ErrorCode::as_str`).
+/// It is NOT `{e:?}`: a Debug rendering is a Rust detail that may change without the
+/// wire contract changing, and the front end string-matches on this value.
+///
+/// ⚠ THE SET IS 38, NOT 26, because `Store` fans out. One of those thirty-eight,
+/// `lock_upgrade_refused`, is the code the `Store` variant exists to keep reachable —
+/// collapsing `Store` to a single discriminant would make it unreachable to a GUI.
+#[derive(Serialize)]
+pub struct ErrorDto {
+    pub code: String,
+    /// Carried for `FacadeError::Other` alone — the residual's payload. `None` for every
+    /// named variant, so a screen cannot accidentally render a detail that is not there.
+    pub detail: Option<String>,
+}
+
+impl From<qsc::facade::FacadeError> for ErrorDto {
+    fn from(e: qsc::facade::FacadeError) -> ErrorDto {
+        let code = e.as_wire().to_string();
+        let detail = match &e {
+            qsc::facade::FacadeError::Other(s) => Some(s.clone()),
+            _ => None,
+        };
+        ErrorDto { code, detail }
+    }
+}
+
+/// The two renderings of one fingerprint — `facade::FingerprintPair`.
+#[derive(Serialize)]
+pub struct FingerprintDto {
+    pub full: String,
+    pub voice: String,
+}
+
+impl From<&qsc::facade::FingerprintPair> for FingerprintDto {
+    fn from(p: &qsc::facade::FingerprintPair) -> FingerprintDto {
+        FingerprintDto {
+            full: p.full.clone(),
+            voice: p.voice.clone(),
+        }
+    }
+}
+
+/// `facade::ConnectStatus`.
+///
+/// ⚠ `ConnectState` and `ContactState` are the two facade enums with NO `as_wire` of
+/// their own, so their wire strings are minted HERE and are this module's contract.
+/// Every other enum on this surface is rendered by the facade's own `as_wire`, and
+/// those strings are the protocol's to change, not the desktop's.
+#[derive(Serialize)]
+pub struct ConnectStatusDto {
+    pub state: String,
+    pub reason: String,
+}
+
+fn connect_state_wire(s: qsc::facade::ConnectState) -> &'static str {
+    match s {
+        qsc::facade::ConnectState::Active => "active",
+        qsc::facade::ConnectState::Inactive => "inactive",
+    }
+}
+
+fn contact_state_wire(s: qsc::facade::ContactState) -> &'static str {
+    match s {
+        qsc::facade::ContactState::Pinned => "pinned",
+        qsc::facade::ContactState::Verified => "verified",
+        qsc::facade::ContactState::Changed => "changed",
+        qsc::facade::ContactState::Unverified => "unverified",
+    }
+}
+
+/// `facade::ContactSummary`. `fingerprint` is `Option` because typed ABSENCE is the
+/// honest answer for a contact whose stored value is not a 64-hex fingerprint — the
+/// facade's `W8` seal. A screen that renders `null` as a blank row is correct; one that
+/// renders a placeholder string is not.
+#[derive(Serialize)]
+pub struct ContactDto {
+    pub alias: String,
+    pub fingerprint: Option<FingerprintDto>,
+    pub pinned: bool,
+    pub blocked: bool,
+    pub state: String,
+}
+
+impl From<&qsc::facade::ContactSummary> for ContactDto {
+    fn from(c: &qsc::facade::ContactSummary) -> ContactDto {
+        ContactDto {
+            alias: c.alias.clone(),
+            fingerprint: c.fingerprint.as_ref().map(FingerprintDto::from),
+            pinned: c.pinned,
+            blocked: c.blocked,
+            state: contact_state_wire(c.state).to_string(),
+        }
+    }
+}
+
+/// `facade::ContactRequestSummary`.
+#[derive(Serialize)]
+pub struct ContactRequestDto {
+    pub alias: String,
+    pub state: String,
+    pub device_id: Option<String>,
+    pub seen_at: Option<u64>,
+}
+
+impl From<&qsc::facade::ContactRequestSummary> for ContactRequestDto {
+    fn from(r: &qsc::facade::ContactRequestSummary) -> ContactRequestDto {
+        ContactRequestDto {
+            alias: r.alias.clone(),
+            state: r.state.as_wire().to_string(),
+            device_id: r.device_id.clone(),
+            seen_at: r.seen_at,
+        }
+    }
+}
+
+/// `facade::InviteSummary`.
+#[derive(Serialize)]
+pub struct InviteDto {
+    pub invite_id: String,
+    pub state: String,
+    pub expiry: u64,
+    pub revocable: bool,
+}
+
+impl From<&qsc::facade::InviteSummary> for InviteDto {
+    fn from(i: &qsc::facade::InviteSummary) -> InviteDto {
+        InviteDto {
+            invite_id: i.invite_id.clone(),
+            state: i.state.as_wire().to_string(),
+            expiry: i.expiry,
+            revocable: i.revocable,
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn connect_status(
+    st: State<'_, AppState>,
+    peer: String,
+) -> Result<ConnectStatusDto, ErrorDto> {
+    st.gw
+        .call(move || {
+            let s = qsc::facade::connect_status(&peer);
+            Ok(ConnectStatusDto {
+                state: connect_state_wire(s.state).to_string(),
+                reason: s.reason.as_wire().to_string(),
+            })
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn contact_list(st: State<'_, AppState>) -> Result<Vec<ContactDto>, ErrorDto> {
+    st.gw
+        .call(move || {
+            let rows = qsc::facade::contact_list()?;
+            Ok(rows.iter().map(ContactDto::from).collect())
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn contact_requests(st: State<'_, AppState>) -> Result<Vec<ContactRequestDto>, ErrorDto> {
+    st.gw
+        .call(move || {
+            let rows = qsc::facade::contact_requests()?;
+            Ok(rows.iter().map(ContactRequestDto::from).collect())
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn contact_request_accept(
+    st: State<'_, AppState>,
+    alias: String,
+) -> Result<(), ErrorDto> {
+    st.gw
+        .call(move || Ok(qsc::facade::contact_request_accept(&alias)?))
+        .await
+}
+
+#[tauri::command]
+pub async fn contact_request_ignore(
+    st: State<'_, AppState>,
+    alias: String,
+) -> Result<(), ErrorDto> {
+    st.gw
+        .call(move || Ok(qsc::facade::contact_request_ignore(&alias)?))
+        .await
+}
+
+#[tauri::command]
+pub async fn contact_request_block(st: State<'_, AppState>, alias: String) -> Result<(), ErrorDto> {
+    st.gw
+        .call(move || Ok(qsc::facade::contact_request_block(&alias)?))
+        .await
+}
+
+#[tauri::command]
+pub async fn invite_list(st: State<'_, AppState>) -> Result<Vec<InviteDto>, ErrorDto> {
+    st.gw
+        .call(move || {
+            let rows = qsc::facade::invite_list()?;
+            Ok(rows.iter().map(InviteDto::from).collect())
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn invite_create(
+    st: State<'_, AppState>,
+    self_label: Option<String>,
+    relay: String,
+    ttl_secs: u64,
+) -> Result<String, ErrorDto> {
+    st.gw
+        .call(move || {
+            Ok(qsc::facade::invite_create(
+                self_label.as_deref(),
+                &relay,
+                ttl_secs,
+            )?)
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn invite_redeem(
+    st: State<'_, AppState>,
+    code: String,
+    alias: String,
+    self_label: Option<String>,
+) -> Result<String, ErrorDto> {
+    st.gw
+        .call(move || {
+            Ok(qsc::facade::invite_redeem(
+                &code,
+                &alias,
+                self_label.as_deref(),
+            )?)
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn invite_accept(
+    st: State<'_, AppState>,
+    self_label: Option<String>,
+    invite_id: String,
+    alias: String,
+    max: usize,
+) -> Result<Option<String>, ErrorDto> {
+    st.gw
+        .call(move || {
+            Ok(qsc::facade::invite_accept(
+                self_label.as_deref(),
+                &invite_id,
+                &alias,
+                max,
+            )?)
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn invite_finish(
+    st: State<'_, AppState>,
+    self_label: Option<String>,
+    alias: String,
+    relay: String,
+    max: usize,
+) -> Result<bool, ErrorDto> {
+    st.gw
+        .call(move || {
+            Ok(qsc::facade::invite_finish(
+                self_label.as_deref(),
+                &alias,
+                &relay,
+                max,
+            )?)
+        })
+        .await
+}
+
+#[tauri::command]
+pub async fn invite_revoke(st: State<'_, AppState>, invite_id: String) -> Result<(), ErrorDto> {
+    st.gw
+        .call(move || Ok(qsc::facade::invite_revoke(&invite_id)?))
+        .await
+}
+
 // NA-0750 (D-0031): the DTO-value instrument for the `qsl-fp-v1` fingerprint.
 //
 // ⚠ IN-CRATE BY NECESSITY, ruled at R365 §4 (ask D, option β). `identity_dto` is

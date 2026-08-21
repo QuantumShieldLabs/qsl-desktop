@@ -359,6 +359,21 @@ pub fn configure_builder<R: tauri::Runtime>(
             commands::relay_ca_file_set,
             commands::relay_ca_file_clear,
             commands::relay_ca_file_show,
+            // NA-0751 (D-0032) — the Slice-4 gateway surface, twelve pass-through
+            // wrappers over `qsc::facade`. `invite_list_at` is deliberately absent:
+            // it is a clock-injection seam and must not be reachable from the front end.
+            commands::connect_status,
+            commands::contact_list,
+            commands::contact_requests,
+            commands::contact_request_accept,
+            commands::contact_request_ignore,
+            commands::contact_request_block,
+            commands::invite_list,
+            commands::invite_create,
+            commands::invite_redeem,
+            commands::invite_accept,
+            commands::invite_finish,
+            commands::invite_revoke,
             ui_surface_changed,
         ])
 }
