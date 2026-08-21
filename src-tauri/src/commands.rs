@@ -255,7 +255,24 @@ pub fn unlock_attempt_impl(data_dir: &Path, passphrase: &str) -> Result<UnlockDt
                     failed_unlocks,
                     retry_after_s,
                 }),
-                O::Wiped { .. } => Ok(UnlockDto::Wiped),
+                O::Wiped { .. } => {
+                    // NA-0753 (R376 §1; ENG-0217, desktop D-0034): the armed
+                    // "Erase vault after failed attempts" wipe runs inside qsc,
+                    // which owns only its OWN directory — correct by design, and
+                    // exactly why the app-level residue is ours to clear. Shape A,
+                    // mirroring `destroy_vault_impl`: `settings.json` AND its
+                    // `.tmp` staging sibling, so no prior-profile value (the relay
+                    // address, the display alias) crosses the wipe boundary —
+                    // the D597 item-13 rule ENG-0048 enforces on the other two
+                    // vault-destroying sites.
+                    let sf = paths::settings_file(data_dir);
+                    for p in [sf.clone(), sf.with_extension("json.tmp")] {
+                        if p.exists() {
+                            fs::remove_file(&p).map_err(|e| e.to_string())?;
+                        }
+                    }
+                    Ok(UnlockDto::Wiped)
+                }
             }
         }
     }

@@ -27,15 +27,15 @@
     {"op": "poll_visible", "screen": "scr-settings"},
     {"op": "click", "sel": "[data-pane=\"server\"]"},
     {"op": "prop_eq", "sel": "#pane-server", "prop": "className", "expect": "pane", "poll": 10},
-    {"op": "clear_type", "sel": "#relay-url", "text": "https://relay.example.test"},
+    {"op": "clear_type", "sel": "#relay-url", "text": "https://relay.example.test:8443"},
     {"op": "click", "sel": "#btn-relay-save"},
-    {"op": "json_field_eq", "file": "qsld-data/settings.json", "key": "relay_url", "expect": "https://relay.example.test", "poll": 10},
+    {"op": "json_field_eq", "file": "qsld-data/settings.json", "key": "relay_url", "expect": "https://relay.example.test:8443", "poll": 10},
     {"op": "note", "text": "The commit is proven ON DISK before the footer is read, so a footer miss cannot be blamed on an unsaved relay. normalize_relay_endpoint is Url::parse().to_string() minus a trailing slash - measured identity for this input."},
 
     {"op": "click", "sel": "#btn-rail-chats"},
     {"op": "poll_visible", "screen": "scr-main"},
     {"op": "note", "text": "STATE 2 - relay configured. btn-rail-chats re-runs enterMain (main.js:616), which is the EXISTING event point the footer reuses; no new wiring and no timer."},
-    {"op": "read_text", "sel": "#status-line", "literal": "Ready. Relay: https://relay.example.test", "poll": 15},
+    {"op": "read_text", "sel": "#status-line", "literal": "Ready. Relay: https://relay.example.test:8443", "poll": 15},
 
     {"op": "note", "text": "NOT DRIVEN HERE, each for a measured structural reason. ROW 1 storage: missing_home is unreachable while bootstrap() sets QSC_CONFIG_DIR before the runtime exists (lib.rs:302-311), and unsafe_parent needs the app's own 0700 qsc dir chmodded mid-session - no harness op writes or chmods the profile. ROW 2 locked: this footer lives INSIDE scr-main (index.html:156) and every lock path navigates to scr-unlock, so it is not on screen while locked; and reaching vault_locked needs a fabricated session blob no harness op can write - the DESK-side behaviour is already sealed protocol-side by na0751_facade_locked_control.rs:141-174. ROW 3 unrecognized: untestable by construction (an EIGHTH upstream reason string). All three sentences are presence-asserted in design_polish.rs (seal F1b)."},
     {"op": "teardown"}

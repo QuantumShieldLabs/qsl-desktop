@@ -348,12 +348,44 @@ function updateIdentityContinue() {
 }
 byId("alias-input").addEventListener("input", updateIdentityContinue);
 
+// NA-0753 (R377 §1; design bank v2 item 2) — THE VERIFICATION CODE IS READ
+// ALOUD, so it renders in six 5-digit groups on BOTH surfaces (onboarding
+// "This is you" and Settings > Identity).
+//
+// PRESENTATION ONLY: the backend still returns, and every Rust value test
+// still pins, the raw 30 digits. Nothing upstream changes.
+//
+// ⚠ ONE TEXT NODE, NOT A `<br>` SPLIT, AND THE REASON IS MEASURED. Ratified
+// mockup-07:74 draws a fixed 3+3 two-line card, but `.verify-code` is
+// `white-space: nowrap; overflow: hidden` with a one-line `line-height: 1.6`,
+// and `fitCode()` only releases the clip (adding `.wrapped`) when
+// `scrollWidth > clientWidth`. A `<br>` halves each line's width, so that
+// escape could NEVER fire and the second line would clip SILENTLY — the exact
+// class `verify_code_never_clips_silently` exists to prevent. Ruled at R377
+// §1; the layout delta from the mockup is recorded in D-0034 with a
+// mockup-refresh candidate, never left silent.
+//
+// ⛳ As a single spaced line this also makes fitCode's own promise TRUE for
+// the first time: at the 11px floor `.wrapped` breaks the code at a GROUP
+// BOUNDARY (a space), which against the previous 30 bare digits had no
+// boundary to land on.
+//
+// A value that is not exactly 30 digits renders RAW rather than being
+// silently regrouped — an honest fallback beats a tidy lie about an
+// unexpected shape.
+function groupedCode(code) {
+  const raw = code == null ? "" : String(code);
+  const digits = raw.replace(/\s+/g, "");
+  if (digits.length !== 30) return raw;
+  return digits.match(/.{5}/g).join(" ");
+}
+
 async function showIdentityStep() {
   const errEl = byId("identity-error");
   errEl.textContent = "";
   try {
     const d = await invoke("identity_ensure");
-    byId("identity-code").textContent = d.verify_code;
+    byId("identity-code").textContent = groupedCode(d.verify_code);
     byId("identity-purpose").textContent = d.purpose_line;
     byId("identity-pq").textContent = d.pq_line;
     // Item 13 (F2 inventory): a NEW identity starts with an EMPTY alias —
@@ -711,7 +743,7 @@ async function refreshIdentityPane() {
   }
   empty.classList.add("hidden");
   body.classList.remove("hidden");
-  byId("settings-code").textContent = rec.verify_code;
+  byId("settings-code").textContent = groupedCode(rec.verify_code);
   byId("settings-fp").textContent = rec.fingerprint;
   // R-4: ONE merged explainer. The pane previously carried the purpose line
   // and the post-quantum line as two separate paragraphs stacked under the
@@ -1101,20 +1133,101 @@ function setServerBusy(on, label) {
 //
 // Returns null on success, or {part, message, inline} on the first failure —
 // at which point the REMAINDER IS ABANDONED (R-B1) and the probe never runs.
+// NA-0753 (R376 §3; design bank v2 item 4) — THE RELAY-ADDRESS GATE.
+//
+// ⚠ WHY IT EXISTS. The engine's `normalize_relay_endpoint` is
+// `Url::parse().to_string()` minus a trailing slash (`qsc` route.rs:71-74),
+// and `validate_relay_endpoint_url` (:50-69) applies NO host-shape check at
+// all — it requires only that a host exists and the scheme is https. WHATWG
+// URL parsing reads an ALL-DIGIT host as a packed IPv4 integer, so
+// `https://1234` is ACCEPTED and becomes `https://0.0.4.210` — a real address
+// nobody typed. The R-B5 echo then writes that back into the field, so a typo
+// silently becomes a different server. Measured and driven at NA-0753 STOP 1;
+// the ENGINE half is FILED as ENG-0218 for a guarded engine lane and is
+// deliberately NOT patched here. This gate fronts it for every user-facing
+// path: both Test and Save reach the address through `commitServerSettings`.
+//
+// ⚠ THE GATE MUST NOT USE `new URL()`. The webview's URL parser performs the
+// SAME WHATWG IPv4 expansion this gate exists to refuse, so the authority is
+// split by hand.
+//
+// ZERO silent normalization. The ONLY transform is prepending `https://` when
+// the scheme is omitted — never `http` — and it is written into the field
+// BEFORE any test runs, so the user sees what will be used.
+function relayGateCheck(raw) {
+  const typed = String(raw == null ? "" : raw).trim();
+  const EXAMPLE = "https://relay.example.org:8443";
+  if (typed === "") {
+    return { ok: false, message: "Enter your relay address, for example " + EXAMPLE };
+  }
+  let value = typed;
+  let prepended = false;
+  const scheme = value.match(/^([a-zA-Z][a-zA-Z0-9+.\-]*):\/\//);
+  if (!scheme) {
+    value = "https://" + value;
+    prepended = true;
+  } else if (scheme[1].toLowerCase() === "http") {
+    return { ok: false, message: "Use https:// — a plain http:// address isn't accepted for a relay." };
+  } else if (scheme[1].toLowerCase() !== "https") {
+    return { ok: false, message: "The address must start with https:// — for example " + EXAMPLE };
+  }
+  const authority = value.slice("https://".length).split(/[/?#]/)[0];
+  const at = authority.lastIndexOf("@");
+  const hostport = at >= 0 ? authority.slice(at + 1) : authority;
+  if (hostport === "") {
+    return { ok: false, value, prepended, message: "Enter your relay address, for example " + EXAMPLE };
+  }
+  if (hostport.startsWith("[")) {
+    // An IPv6 literal is outside the ruled shape; refuse rather than guess.
+    return { ok: false, value, prepended, message: "Type the address your relay operator gave you, for example " + EXAMPLE };
+  }
+  const colon = hostport.lastIndexOf(":");
+  const host = colon >= 0 ? hostport.slice(0, colon) : hostport;
+  const port = colon >= 0 ? hostport.slice(colon + 1) : "";
+  if (host === "") {
+    return { ok: false, value, prepended, message: "Enter your relay address, for example " + EXAMPLE };
+  }
+  // THE INTEGER-IP TRAP. A dotless LAN name (`relaybox`) is VALID; a bare
+  // number is not a server name at all.
+  if (/^[0-9]+$/.test(host)) {
+    return { ok: false, value, prepended, message: "That's a number, not a server name. Type the address your relay operator gave you, for example " + EXAMPLE };
+  }
+  if (port === "") {
+    return { ok: false, value, prepended, message: "Add the port — for example :8443" };
+  }
+  if (!/^[0-9]+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+    return { ok: false, value, prepended, message: "That port isn't valid. Add the port — for example :8443" };
+  }
+  return { ok: true, value, prepended };
+}
+
 async function commitServerSettings() {
   // (1) THE ADDRESS. Validated-and-persisted first so a malformed one blocks
   //     everything with nothing written (R-B2). Skipped when the field is
   //     empty or unchanged — an untouched field is not a validation failure.
   if (urlDirty()) {
+    // THE GATE, before any invoke — so a refusal fires no test and, when the
+    // address is untouched by the one allowed transform, leaves the field
+    // byte-identical to what was typed. Both Test and Save reach the network
+    // through here, so one insertion point covers both.
+    const gate = relayGateCheck(byId("relay-url").value);
+    if (gate.prepended) {
+      byId("relay-url").value = gate.value; // VISIBLE before any test.
+    }
+    if (!gate.ok) {
+      byId("relay-url").classList.add("invalid");
+      byId("relay-url-error").textContent = gate.message;
+      return { part: "settings", message: "", inline: true };
+    }
     try {
-      await invoke("relay_config_set", { url: byId("relay-url").value.trim() });
+      await invoke("relay_config_set", { url: gate.value });
     } catch (e) {
       const code = String(e);
       if (RELAY_ENDPOINT_CODES.some((c) => code.includes(c))) {
         // State 11: INLINE field validation, never a results card — no probe
         // was attempted, so a card would assert something untrue.
         byId("relay-url").classList.add("invalid");
-        byId("relay-url-error").textContent = "Enter a valid relay address, e.g. https://relay.example.net";
+        byId("relay-url-error").textContent = "Enter a valid relay address, for example https://relay.example.org:8443";
         return { part: "settings", message: "", inline: true };
       }
       return {
@@ -1289,7 +1402,8 @@ function renderServerOutcome(res, committed) {
     case "unreachable":
       setBanner(status, "accent", "Couldn't reach the relay");
       detail.textContent =
-        "Nothing answered at that address. Check the address, and check you're on the same network or VPN as the relay.";
+        "Nothing answered at that address. Check the address, and check you're on the same network or VPN as the relay. " +
+        "If your relay operator uses a non-standard port, include it — for example https://relay.example.org:8443.";
       break;
     case "not_a_qsl_relay":
       setBanner(status, "accent", "Not a QSL relay");
@@ -1315,7 +1429,7 @@ const RELAY_CA_CODES = ["relay_ca_file_missing", "relay_ca_file_unreadable", "re
 function renderServerError(codeStr) {
   if (RELAY_ENDPOINT_CODES.some((c) => codeStr.includes(c))) {
     byId("relay-url").classList.add("invalid");
-    byId("relay-url-error").textContent = "Enter a valid relay address, e.g. https://relay.example.net";
+    byId("relay-url-error").textContent = "Enter a valid relay address, for example https://relay.example.org:8443";
     clearServerResults();
     return;
   }
