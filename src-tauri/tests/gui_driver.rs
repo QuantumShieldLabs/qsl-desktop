@@ -174,3 +174,22 @@ fn na0750_gui_g_fingerprint_two_tier() {
 fn na0752_gui_h_status_footer_truth() {
     run_scenario("f_h_status_footer_truth");
 }
+
+// NA-0753 (D-0034): the flight fixes, plus the harness's first LIFECYCLE-shaped
+// scenario. THREE launches: configure the relay and arm erase-after-N; drive the
+// armed wipe through the real unlock UI; then relaunch onto the wiped profile and
+// prove the prior relay address survived neither the disk nor the surface.
+//
+// It also carries the gate tripwires — `https://1234` REFUSED with the field left
+// byte-identical to what was typed and no test fired, the missing port NAMED, the
+// omitted scheme prepended VISIBLY — and the grouped verification code on both
+// surfaces.
+//
+// ⚠ CLAIM BOUNDARY: the grouped code is asserted by SHAPE, not value — the harness
+// vault's identity is generated fresh every run, so a scenario literal cannot pin
+// it. The raw 30-digit value stays pinned by the Rust value tests.
+#[test]
+#[ignore]
+fn na0753_gui_i_flight_fixes() {
+    run_scenario("f_i_flight_fixes");
+}

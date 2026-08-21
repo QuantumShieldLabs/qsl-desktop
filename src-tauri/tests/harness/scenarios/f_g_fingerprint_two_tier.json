@@ -92,8 +92,17 @@
    "text": "Every shape assertion below runs AFTER the settings identity pane is reached, so no step races the render. #identity-code retains the wizard's rendered value (nothing clears it), which is what makes the cross-pane arm meaningful."
   },
   {
+   "op": "note",
+   "text": "NA-0753 (R377 section 3): STRENGTHENED, not weakened. The on-screen form became six 5-digit groups (v2 item 2), so the raw-shape needle /^[0-9]{30}$/ is replaced by TWO assertions that together pin strictly more: the GROUP shape, and the 30-digit payload recovered by stripping whitespace. Old shape: 30 bare digits. New shape: 48291 07365 51482 90173 66204 18859. The raw value itself stays pinned by the Rust value tests, untouched."
+  },
+  {
    "op": "exec",
-   "script": "return /^[0-9]{30}$/.test(document.getElementById('settings-code').textContent);",
+   "script": "return /^[0-9]{5}( [0-9]{5}){5}$/.test(document.getElementById('settings-code').textContent.replace(/\\s+/g, ' ').trim());",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return /^[0-9]{30}$/.test(document.getElementById('settings-code').textContent.replace(/\\s+/g, ''));",
    "expect": true
   },
   {

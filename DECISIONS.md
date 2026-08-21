@@ -2165,3 +2165,158 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     verbatim, R-space swept first) → the bases re-derived bare and unpiped against the NAMED
     `github` remote and verified by **sha comparison**, both mirrors having measured stale → the
     seven-scenario baseline reproduced to COMPLETION before any edit → this lane's execution.
+
+- **ID:** D-0034
+  - **Status:** Accepted
+  - **Date:** 2026-08-21
+  - **Lane:** desktop **NA-0753 / THE FLIGHT-FIXES LANE** — the four defects the operator met in
+    his first real flight, and the harness's first LIFECYCLE-shaped scenario. Executing the
+    Director's rulings **`R375`**, **`R376`** and **`R377`** (each banked verbatim under SR-14 as
+    that turn's FIRST ACT, with the R-space sweep run BEFORE each banking per WF-0087). Spine
+    decision **D-1395** (qsl-protocol `fef80bc0`). Governing design bank **v2**
+    (`RBANK_flight_fixes_design_v2_20260821.md`, sha256 `58e71cc3…405df`, 44 lines / 3347 bytes),
+    sha-VERIFIED before reading and re-confirmed pure-ASCII.
+  - ⚠⚠ **THE LANE'S HEADLINE FINDING — A THIRD VAULT-DESTROYING PATH, AND IT WAS THE OPERATOR'S
+    GHOST.** The brief and its addendum both aimed at `destroy_vault_impl` and `erase_all_impl`.
+    There is a **third**: the armed *"Erase vault after failed attempts"* feature
+    (`#btn-wipe-arm` → `wipe_after_failed_unlocks_arm`). At the limit, `qsc`'s
+    `wipe_vault_file_best_effort` (`protection.rs:551-568`) removes **`vault.qsv` only** — it
+    operates inside `config_dir()` and cannot know the app's files, **which is correct by
+    design** — and the desktop's `O::Wiped` arm merely reported the outcome. So `settings.json`
+    **survived**, carrying the previous profile's **relay address AND display alias** into the
+    next one. That is the D597 item-13 rule `ENG-0048` enforces ("no secret or prior-vault value
+    may cross a destroy/erase boundary") failing on the one path its remedy never covered.
+    **REPRODUCED, DRIVEN, before any fix**: post-wipe `data_dir` listing `["qsc",
+    "settings.json"]` with `relay_url` and `self_alias` intact and `vault.qsv` gone.
+  - ⚠ **HOW THE PATH WAS MISIDENTIFIED THREE TIMES, recorded because it is the transferable
+    lesson:** the operator said *"erase-after-failed-unlocks"*, which is **the app's own name for
+    the armed feature** (`ui/index.html:298`, `<h3>Erase vault after failed attempts</h3>`;
+    `ui/main.js:782`, `Armed — erases after N failed attempts`). It was read as a DESCRIPTION of
+    the manual "Erase everything" ceremony. **When a report's wording matches a shipped control's
+    label, suspect the control.** The addendum's (a)/(b)/(c) all measured NEGATIVE — the loader
+    has no `.tmp` fallback (`settings.rs:49-55`), `save` is write-tmp + atomic `fs::rename`
+    (`:57-64`, so no populated `.tmp` survives a success and there is no unlink to fail), and
+    erase's removal IS `?`-checked — and those negatives are **corroboration**, not dead ends:
+    they were aimed at the wrong function.
+  - **Decision (1) — THE WIPED ARM CLEARS APP-LEVEL RESIDUE.** `unlock_attempt_impl`'s
+    `O::Wiped` arm (`src-tauri/src/commands.rs`) now removes `settings.json` **and** its
+    `settings.json.tmp` staging sibling in `destroy_vault_impl`'s own **Shape A** idiom,
+    error-handled identically. **Zero `qsc` bytes**: the engine half is right as it stands.
+    Filed and resolved in the same landing as **`ENG-0217`**.
+  - **Seal:** `src-tauri/tests/na0753_armed_wipe_boundary.rs`, mirroring
+    `eng0048_destroy_boundary.rs` and pinning the SAME THREE properties: the `data_dir` listing
+    as an **EQUALITY** (`["qsc"]`, never a count), `LaunchState::S0`, and `!vault_unlocked()`.
+    **Proven BOTH ARMS:** RED at base (`["qsc", "settings.json"]`, log preserved 444), GREEN with
+    the fix.
+  - ⚠ **A MISS INSIDE THE BUILD, CORRECTED BY MEASURING AND RECORDED.** The seal's first draft
+    called `qsc::vault::protection::unlock_guarded` **directly** and stayed RED after the fix —
+    it drove the ENGINE's mechanism and never reached the app-level boundary that is the property
+    under test. Corrected to drive `unlock_attempt_impl`, exactly as the destroy seal drives
+    `destroy_vault_impl`. **The test that catches a defect must exercise the PROPERTY, not the
+    MECHANISM.**
+  - **Decision (2) — THE RELAY-ADDRESS GATE** (`ui/main.js`, `relayGateCheck`), inserted in
+    `commitServerSettings`'s `urlDirty` branch **before any `invoke`**. Both Test and Save reach
+    the network through there and both return on failure before probing, so **one** insertion
+    point covers both and guarantees no test fires on a refusal. Ruled shape: explicit scheme +
+    host + port; **all-numeric hosts REFUSED**; dotless LAN hostnames VALID; **zero silent
+    normalization** — the only transform is prepending `https://` (never `http`) when the scheme
+    is omitted, and it is written into the field **before** any test.
+  - ⚠⚠ **WHY THE GATE EXISTS, MEASURED AND DRIVEN.** `qsc`'s `validate_relay_endpoint_url`
+    (`adversarial/route.rs:50-69`) applies **no host-shape check at all**: it parses with
+    `reqwest::Url::parse` and requires only that a host exists and the scheme is `https`.
+    WHATWG URL parsing reads an all-digit host as a packed IPv4 integer, so **`https://1234` is
+    ACCEPTED and becomes `https://0.0.4.210`** — a real server nobody typed — and the R-B5 echo
+    then writes that back into the field. Driven against the same crate: `https://1234` →
+    `0.0.4.210`, `https://192` → `0.0.0.192` (independently corroborating `main.js`'s own
+    NA-0674 comment), `https://relaybox:8443` accepted, and a port-less address accepted (the
+    engine does **not** require a port — which is why the port rule is correctly a UI gate).
+    **The engine half is FILED as `ENG-0218` for a guarded engine lane and deliberately NOT
+    patched here.** `the_relay_gate_never_uses_the_webview_url_parser` pins the subtle
+    invariant: the gate splits the authority BY HAND, because the webview's own `new URL()`
+    performs the same expansion and would silently reinstate the defect.
+  - **Decision (3) — THE VERIFICATION CODE RENDERS GROUPED** on both surfaces (onboarding "This
+    is you" and Settings › Identity), as six 5-digit groups: `48291 07365 51482 90173 66204
+    18859`. Presentation only — the backend value and every Rust value test are untouched.
+  - ⚠⚠ **THE MOCKUP DELTA, ENUMERATED IN THE OPEN (ruled `R377` §1-§2, never silent).** Ratified
+    `mockup-07-identity-pane.html:74` and `mockup-07b-onboarding-identity.html:70` draw a **fixed
+    3+3 two-line split** via `<br>`. This lane ships **one text node** instead, wrapping to a
+    second line at a group boundary only when narrow. **The reason is a measured defect, not a
+    preference:** `.verify-code` is `white-space: nowrap; overflow: hidden` with a one-line
+    `line-height: 1.6`, and `fitCode()` releases the clip (adding `.wrapped`) **only** when
+    `scrollWidth > clientWidth`. A `<br>` halves each line's width, so that escape could **never
+    fire** and the second line would clip **SILENTLY** — precisely the class
+    `verify_code_never_clips_silently` exists to prevent, and it would have shipped with every
+    seal still green. **OWED: a mockup-refresh candidate** — 07/07b's code card moves to the
+    space-grouped single-node form at the next mockup-maintenance touch, keeping the mockups the
+    design of record.
+  - ⛳ **AND IT MAKES AN EXISTING PROMISE TRUE FOR THE FIRST TIME.** `fitCode`'s own comment
+    promises a wrap "at a group boundary — the operator's ruled preference", and `style.css`'s
+    below-floor comment says anywhere-break "lands on a hyphen" **for the `QSCF-XXXX-` format
+    retired at NA-0750**. Against 30 bare digits there was no boundary to land on. Spaces give it
+    one. ⚠ **The style.css comment's EXAMPLE stays stale** — that file is outside this lane's
+    enumeration, so the behaviour is now true while the prose still cites the retired format;
+    recorded as owed cosmetic work rather than fixed out of scope.
+  - **Decision (4) — THE PORT HINT** rides the `unreachable` helper, blessed sentence in the
+    **em-dash house form**: *"If your relay operator uses a non-standard port, include it — for
+    example https://relay.example.org:8443."* ⚠ The design bank carries an ASCII double-hyphen;
+    that is pure-ASCII **transport armor** adopted in `R376` §0(i), and every user-facing string
+    in this app uses the em-dash (102 occurrences in `main.js`). Ruled at `R377` §3; the
+    departure from the bank's bytes is this line. Placeholder → `https://relay.example.org:8443`;
+    both inline invalid-address errors retargeted to the same example.
+  - **THE THREE VAULT-DESTROYING SITES, for the next reader:**
+
+    | # | site | path:line | removes |
+    |---|---|---|---|
+    | 1 | `destroy_vault_impl` (tokened destroy) | `commands.rs:350` | `settings.json` + `.tmp` |
+    | 2 | `erase_all_impl` (manual "Erase everything") | `commands.rs:396` | qsc dir + `settings.json` (not `.tmp` → `ENG-0119`) |
+    | 3 | **armed erase-after-N** (`O::Wiped`) | `commands.rs` (this lane) | `vault.qsv` (qsc) **+ `settings.json` + `.tmp`** |
+
+  - **HARNESS — the first LIFECYCLE scenario.** `f_i_flight_fixes.json` drives **three launches**:
+    configure the relay and arm at the documented minimum limit of 1 → **one wrong unlock through
+    the real UI** → `scr-wiped` → `settings.json` ABSENT → teardown → **relaunch** onto the wiped
+    profile → `scr-wizard-vault` and still absent. It also carries the gate tripwires (the
+    integer-IP refusal with the field proven **byte-identical** to what was typed, the named
+    missing port, the visible scheme prepend) and the grouped code on both surfaces.
+  - ⚠ **TWO HARNESS RACES MEASURED AND CURED, both the same class.** (i) Opening the Server pane
+    calls `refreshServerPane()`, which is **async**: it clears the error and then, AFTER awaiting
+    `refreshServerState()`, assigns `#relay-url.value = savedRelayUrl`. The pane's `className`
+    flips **synchronously**, so waiting on it alone races — typing landed first and the in-flight
+    refresh wiped both field and message. Cured by settling on `#relay-token-help`, which
+    `renderTokenHelp()` writes at the END of `refreshServerState()`. (ii) Arm is gated on an
+    acknowledgement checkbox (`#wipe-ack`, `main.js:854`); without it the handler returns early
+    and **the arm silently does not happen** — the scenario's first failure was a wipe that never
+    fired because nothing was armed. The armed state is now ASSERTED (`#btn-wipe-arm` gains
+    `.hidden`), never assumed.
+  - ⚠ **AN INSTRUMENT LESSON, from the opposite side of NA-0752's.** `read_text` polls but is
+    **visibility-coupled** — WebDriver returns *rendered* text, empty for an element out of view,
+    and `#relay-url-error` sits below the fold in a long pane. NA-0752 moved `read_tc` →
+    `read_text` because `read_tc` does not poll. **`prop_eq` has both properties** — it polls AND
+    reads a property — and is the right instrument for text that may be off-screen.
+  - **COUNTS, predicted before the run then measured.** The eight prior scenarios reproduce
+    **297** (the recorded 296 **+1**, from `f_g`'s strengthening below) — predicted and confirmed
+    exactly. `f_i` emits **58**; total **355**. ⚠ **`f_i`'s figure was a MISS: 54 predicted, 58
+    measured**, and the model is corrected here rather than the number laundered — each launch
+    emits **two** rows (`launchN_ready` AND `launchN_session`), not one (**+3**), and every
+    scenario emits a terminal `isolation_bracket` row (**+1**). **Corrected model:** launch #1 =
+    4 (ready + session + the liveness pair), each later launch = 2, `isolation_bracket` = 1 per
+    scenario, `teardown` and `note` = 0, every other op = 1.
+  - **`f_g` STRENGTHENED, NOT WEAKENED** (`R377` §3). Its raw-shape needle
+    `/^[0-9]{30}$/` on `settings-code.textContent` could not survive a grouped render, so ONE
+    assertion becomes **TWO**: the GROUP shape (`^\d{5}( \d{5}){5}$` after collapsing whitespace)
+    and the 30-digit payload recovered by stripping it. Old shape and new are both stated in the
+    scenario. `f_h`'s three relay literals gain the port the gate now requires — its property
+    (the footer's two-source truth) is untouched.
+  - **Inventory** re-pinned **129 → 134**, with the control aimed **FATAL-ward**: the accepting
+    arm returns 0, and a pinned test made to disappear returns **1** ("TESTS DISAPPEARED FROM THE
+    SUITE"). Growth is informational by design; disappearance is what the pin catches.
+  - **Consequences:** `ENG-0217` filed **and resolved** in the same landing (the house
+    filed-and-resolved-with-seal shape); `ENG-0218` (engine numeric-host acceptance) and
+    `ENG-0219` (should the relay address get vault-grade treatment) FILED, never patched;
+    `ENG-0048` gains a **clarity append** beside its stale `Status: open` line pointing at its own
+    `Resolution:` — so a fourth re-close attempt cannot start the way this lane's brief did;
+    `ENG-0119` stays OPEN, with the boundary recorded: cosmetic **on the paths measured here**
+    (the loader never reads `.tmp`), crash-window interleaving unmeasured.
+  - **Claim boundary:** one machine, the build box. The harness proves the grouped code's SHAPE
+    on screen, never its legibility. The port hint is **presence-sealed**, not behaviour-driven —
+    its `unreachable` state needs a real connection that refuses, which the harness cannot drive
+    without a network dependency and a timeout. Nothing is merged by the seat; the operator merges.

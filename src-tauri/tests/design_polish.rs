@@ -1191,3 +1191,102 @@ fn na0752_the_three_undrivable_footer_sentences_are_present_and_wired() {
         "a rejected invoke must land on the honest tripwire, not on an empty footer"
     );
 }
+
+/// NA-0753 (R376 §3, R377 §3; D-0034) — THE PORT HINT, PRESENCE-SEALED.
+///
+/// ⚠ PRESENCE IS NOT BEHAVIOUR, and this seal says so in its own doc. The
+/// blessed sentence renders ONLY in the `unreachable` result state, which
+/// needs a real connection attempt to an address that refuses one — the
+/// harness cannot drive that without a network dependency and a timeout. So
+/// the sentence is pinned here by PRESENCE and by its ATTACHMENT to the
+/// unreachable branch; `f_i_flight_fixes` drives the gate, which is the arm
+/// that CAN be driven.
+///
+/// ⚠ MUST GO RED IF: the sentence is edited, drifts out of the `unreachable`
+/// case into another result state, or reverts to the design bank's ASCII
+/// double-hyphen. The bank is pure-ASCII transport armor; every user-facing
+/// string in this app uses the em-dash house form (ruled at R377 §3, and the
+/// deviation from the bank's bytes is enumerated in D-0034).
+#[test]
+fn port_hint_rides_the_unreachable_helper() {
+    let js = ui_file("main.js");
+    let hint = "If your relay operator uses a non-standard port, include it — for example https://relay.example.org:8443.";
+    assert!(
+        js.contains(hint),
+        "the blessed port-hint sentence is present"
+    );
+    let start = js
+        .find(r#"case "unreachable":"#)
+        .expect("the unreachable case");
+    let rest = &js[start..];
+    let end = rest
+        .find(r#"case "not_a_qsl_relay""#)
+        .expect("the case that follows unreachable");
+    assert!(
+        rest[..end].contains(hint),
+        "the hint must live INSIDE the unreachable branch, not merely somewhere in the file"
+    );
+    assert!(
+        !js.contains("include it -- for example"),
+        "house typography: the em-dash form ships, never the bank's ASCII armor"
+    );
+}
+
+/// NA-0753 (R376 §3; ENG-0218) — THE GATE MUST NEVER PARSE WITH `new URL()`.
+///
+/// The whole point of the relay-address gate is to refuse what WHATWG URL
+/// parsing ACCEPTS: an all-digit host is read as a packed IPv4 integer, so
+/// `https://1234` becomes `https://0.0.4.210` — a real server nobody typed.
+/// The engine does exactly that (`qsc` route.rs:50-74; FILED as ENG-0218 for a
+/// guarded engine lane, deliberately not patched here). The webview's own
+/// `new URL()` performs the SAME expansion, so "simplifying" the gate with it
+/// would silently reinstate the defect while every accepting-arm test kept
+/// passing.
+///
+/// ⚠ MUST GO RED IF: `new URL(` appears in main.js outside a comment.
+#[test]
+fn the_relay_gate_never_uses_the_webview_url_parser() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains("function relayGateCheck"),
+        "the gate function is present"
+    );
+    let code = strip_js_line_comments(&js);
+    assert!(
+        !code.contains("new URL("),
+        "the gate splits the authority BY HAND — `new URL()` re-introduces the \
+         integer-IP expansion the gate exists to refuse"
+    );
+}
+
+/// NA-0753 (R377 §1; D-0034) — the grouped verification code is wired on BOTH
+/// surfaces, and it is ONE text node, never a `<br>` split.
+///
+/// ⚠ MUST GO RED IF: a surface stops grouping, or someone reinstates the
+/// mockup's `<br>`. That is not a style preference: `.verify-code` is
+/// `white-space: nowrap; overflow: hidden`, and `fitCode()` only releases the
+/// clip (adding `.wrapped`) when `scrollWidth > clientWidth`. A `<br>` halves
+/// each line's width, so the escape could never fire and the second line would
+/// clip SILENTLY — the exact class `verify_code_never_clips_silently` exists to
+/// prevent. That mechanism is why R377 §1 ruled option (B); the resulting
+/// delta from mockup-07's fixed 3+3 split is enumerated in D-0034.
+#[test]
+fn grouped_verification_code_is_wired_on_both_surfaces() {
+    let js = ui_file("main.js");
+    assert!(js.contains("function groupedCode"), "the grouper exists");
+    assert!(
+        js.contains(r#"byId("identity-code").textContent = groupedCode("#),
+        "the onboarding surface groups"
+    );
+    assert!(
+        js.contains(r#"byId("settings-code").textContent = groupedCode("#),
+        "the Settings > Identity surface groups"
+    );
+    let start = js.find("function groupedCode").expect("grouper");
+    let body = &js[start..];
+    let body = &body[..body.find("\n}").expect("grouper body end")];
+    assert!(
+        !body.contains("createElement(\"br\")") && !body.contains("<br>"),
+        "ONE text node — a <br> split would defeat fitCode's clip escape (R377 §1)"
+    );
+}

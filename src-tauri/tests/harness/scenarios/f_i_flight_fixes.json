@@ -1,0 +1,86 @@
+{
+ "scenario": "na0753_gui_i_flight_fixes",
+ "destructive": false,
+ "steps": [
+  {"op": "note", "text": "NA-0753 (R376/R377): the flight-fixes tripwires plus the first LIFECYCLE-shaped coverage. Three launches: configure and arm, drive the armed wipe through the real unlock UI, then relaunch onto the wiped profile and prove the prior relay address did not survive."},
+  {"op": "launch"},
+  {"op": "type", "sel": "#vault-pass", "text": "na0753-fi-passphrase"},
+  {"op": "type", "sel": "#vault-confirm", "text": "na0753-fi-passphrase"},
+  {"op": "prop_eq", "sel": "#req-len", "prop": "className", "expect": "req ok", "poll": 5},
+  {"op": "prop_eq", "sel": "#req-match", "prop": "className", "expect": "req ok", "poll": 5},
+  {"op": "prop_eq", "sel": "#btn-vault-create", "prop": "disabled", "expect": false, "poll": 5},
+  {"op": "click", "sel": "#btn-vault-create"},
+  {"op": "poll_visible", "screen": "scr-wizard-identity"},
+  {"op": "poll_hidden", "screen": "scr-wizard-vault"},
+
+  {"op": "note", "text": "X2 arm 1 - the ONBOARDING surface renders the verification code in six 5-digit groups (v2 item 2 as ruled at R377 section 1: one text node, group-boundary wrap left to fitCode). The VALUE is generated fresh each run, so the harness pins SHAPE; the raw 30 digits stay pinned by the Rust value tests."},
+  {"op": "exec", "script": "return /^[0-9]{5}( [0-9]{5}){5}$/.test(document.getElementById('identity-code').textContent.replace(/\\s+/g, ' ').trim());", "expect": true},
+  {"op": "exec", "script": "return /^[0-9]{30}$/.test(document.getElementById('identity-code').textContent.replace(/\\s+/g, ''));", "expect": true},
+
+  {"op": "type", "sel": "#alias-input", "text": "FI"},
+  {"op": "prop_eq", "sel": "#btn-identity-done", "prop": "disabled", "expect": false, "poll": 5},
+  {"op": "click", "sel": "#btn-identity-done"},
+  {"op": "poll_visible", "screen": "scr-main"},
+  {"op": "click", "sel": "#btn-settings"},
+  {"op": "poll_visible", "screen": "scr-settings"},
+
+  {"op": "click", "sel": "[data-pane=\"identity\"]"},
+  {"op": "prop_eq", "sel": "#pane-identity", "prop": "className", "expect": "pane", "poll": 10},
+  {"op": "note", "text": "X2 arm 2 - the SETTINGS surface carries the same grouped form, and both surfaces still agree character for character."},
+  {"op": "exec", "script": "return /^[0-9]{5}( [0-9]{5}){5}$/.test(document.getElementById('settings-code').textContent.replace(/\\s+/g, ' ').trim());", "expect": true},
+  {"op": "exec", "script": "return document.getElementById('identity-code').textContent === document.getElementById('settings-code').textContent;", "expect": true},
+
+  {"op": "click", "sel": "[data-pane=\"server\"]"},
+  {"op": "prop_eq", "sel": "#pane-server", "prop": "className", "expect": "pane", "poll": 10},
+  {"op": "note", "text": "SETTLE, and the reason. Opening the pane calls refreshServerPane(), which is ASYNC: it clears the error and then, AFTER awaiting refreshServerState(), assigns #relay-url.value = savedRelayUrl. The pane className flips SYNCHRONOUSLY, so waiting on it alone races - typing lands first and the in-flight refresh then wipes both the field and any message. Measured: field and error both empty while a probe proved the gate had set them. #relay-token-help is written by renderTokenHelp() at the END of refreshServerState(), so it is a true settled signal."},
+  {"op": "prop_eq", "sel": "#relay-token-help", "prop": "textContent", "expect": "Required only if the operator set one. Stored in your vault, not in settings.", "poll": 15},
+
+  {"op": "note", "text": "INSTRUMENT NOTE: the two gate messages are read with prop_eq on textContent, not read_text. read_text polls but is VISIBILITY-COUPLED (WebDriver returns rendered text, empty for an element out of view), and #relay-url-error sits below the fold in a long pane - measured empty by a probe while the message was demonstrably set. prop_eq both POLLS and reads a PROPERTY, so it is race-free AND hidden-safe. NA-0752 moved read_tc -> read_text because read_tc does not poll; this is the same trade from the other side."},
+  {"op": "note", "text": "X3 arm 1 - THE INTEGER-IP TRAP. https://1234 is ACCEPTED by the engine (Url::parse reads an all-digit host as a packed IPv4 and returns 0.0.4.210 - route.rs:50-74, driven at STOP 1, filed as ENG-0218). The gate refuses it BEFORE any invoke, so no test fires and the field is left byte-identical to what was typed."},
+  {"op": "clear_type", "sel": "#relay-url", "text": "https://1234"},
+  {"op": "click", "sel": "#btn-relay-save"},
+  {"op": "prop_eq", "sel": "#relay-url-error", "prop": "textContent", "expect": "That's a number, not a server name. Type the address your relay operator gave you, for example https://relay.example.org:8443", "poll": 10},
+  {"op": "prop_eq", "sel": "#relay-url", "prop": "value", "expect": "https://1234", "poll": 5},
+
+  {"op": "note", "text": "X3 arm 2 - the missing port is NAMED, not guessed."},
+  {"op": "clear_type", "sel": "#relay-url", "text": "https://relay.example.test"},
+  {"op": "click", "sel": "#btn-relay-save"},
+  {"op": "prop_eq", "sel": "#relay-url-error", "prop": "textContent", "expect": "Add the port — for example :8443", "poll": 10},
+
+  {"op": "note", "text": "X3 arm 3 - the omitted scheme is prepended https (never http) and the prepend is VISIBLE in the field before any test; a dotless LAN-style host with an explicit port is accepted and committed."},
+  {"op": "clear_type", "sel": "#relay-url", "text": "relay.example.test:8443"},
+  {"op": "click", "sel": "#btn-relay-save"},
+  {"op": "prop_eq", "sel": "#relay-url", "prop": "value", "expect": "https://relay.example.test:8443", "poll": 10},
+  {"op": "json_field_eq", "file": "qsld-data/settings.json", "key": "relay_url", "expect": "https://relay.example.test:8443", "poll": 10},
+
+  {"op": "note", "text": "Arm the erase-after-N consequence at the documented minimum of 1, so ONE wrong attempt reaches the limit and the free-tier delay ladder (two free tries) never engages."},
+  {"op": "click", "sel": "[data-pane=\"vault\"]"},
+  {"op": "prop_eq", "sel": "#pane-vault", "prop": "className", "expect": "pane", "poll": 10},
+  {"op": "note", "text": "SETTLE the vault pane the same way, then ARM. Arm is gated on an explicit acknowledgement checkbox (#wipe-ack, main.js:854) - without it the handler returns early with an inline error and the arm SILENTLY does not happen, which is exactly how this scenario first failed: the wipe never fired because nothing was armed. The armed state is ASSERTED, never assumed."},
+  {"op": "prop_eq", "sel": "#btn-wipe-arm", "prop": "className", "expect": "danger", "poll": 15},
+  {"op": "clear_type", "sel": "#wipe-limit", "text": "1"},
+  {"op": "click", "sel": "#wipe-ack"},
+  {"op": "prop_eq", "sel": "#wipe-ack", "prop": "checked", "expect": true, "poll": 5},
+  {"op": "click", "sel": "#btn-wipe-arm"},
+  {"op": "note", "text": "The arm TOOK: renderWipeState hides Arm and reveals Disarm (main.js:806-807), and the status line names the limit and the remaining count."},
+  {"op": "prop_eq", "sel": "#btn-wipe-arm", "prop": "className", "expect": "danger hidden", "poll": 15},
+  {"op": "teardown"},
+
+  {"op": "note", "text": "Launch 2 on the persisted, configured, ARMED profile: boot lands scr-unlock. One wrong passphrase reaches the armed limit and the vault is wiped."},
+  {"op": "launch"},
+  {"op": "poll_visible", "screen": "scr-unlock"},
+  {"op": "type", "sel": "#unlock-pass", "text": "definitely-wrong-pass"},
+  {"op": "click", "sel": "#btn-unlock"},
+  {"op": "poll_visible", "screen": "scr-wiped"},
+
+  {"op": "note", "text": "X1 THROUGH THE REAL UI - the app-level residue. Before NA-0753 the armed wipe removed vault.qsv ONLY: qsc owns just its own directory (correct by design), and the desktop's Wiped arm did no app-level cleanup, so settings.json survived carrying the prior profile's relay address and alias. That is the operator's first-flight ghost, and ENG-0048's binding rule failing on the one path its remedy never covered."},
+  {"op": "file_absent", "path": "qsld-data/settings.json", "poll": 15},
+  {"op": "teardown"},
+
+  {"op": "note", "text": "Launch 3 - the FRESH-RESTART half. The wiped profile boots as a brand-new install, and the prior relay address is gone from the surface as well as from disk."},
+  {"op": "launch"},
+  {"op": "poll_visible", "screen": "scr-wizard-vault"},
+  {"op": "file_absent", "path": "qsld-data/settings.json", "poll": 10},
+  {"op": "teardown"}
+ ]
+}
