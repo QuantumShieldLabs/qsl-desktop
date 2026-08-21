@@ -576,19 +576,81 @@ byId("btn-erase-cancel").addEventListener("click", () => showUnlockScreen(unlock
 byId("btn-wiped-restart").addEventListener("click", () => route());
 
 // ---- main window ----------------------------------------------------------
+
+// NA-0752 (D-0033, ruled at R374): THE STATUS FOOTER TELLS THE TRUTH. It stops
+// knowing one sentence and reports the desk's typed state.
+//
+// ⚠ TWO SOURCES ARE STRUCTURAL, NOT A CONVENIENCE. `qsp_status_tuple` never
+// reads relay config — measured: `config_dir()` reads only env, `check_parent_
+// safe` only filesystem permissions, `qsp_session_load` only the session blob —
+// so the desk CANNOT say "no relay configured", and `relay_config_get` cannot
+// say the store is unwell. Either source alone would ship a false line.
+//
+// PRECEDENCE IS WORST-FIRST and it is load-bearing: the first matching row
+// wins, so a storage fault is never hidden behind a cheerful "Ready."
+const STATUS_FOOTER_STORAGE = "Storage problem — check Settings › Vault.";
+const STATUS_FOOTER_LOCKED = "Locked — unlock to connect.";
+const STATUS_FOOTER_UNKNOWN = "Status unknown — please report this.";
+const STATUS_FOOTER_NO_RELAY = "No relay configured — add one in Settings › Relay.";
+
+// PURE AND TOTAL: every input maps to exactly one shipped sentence. `reason`
+// is the desk's wire string, or `null` when the desk did not answer.
+//
+// ⚠ FIVE OF THE NINE REASONS ARE DELIBERATELY NON-SIGNALLING HERE, AND THAT IS
+// A DECISION, NOT A GAP (D-0033). `handshake`, `no_session`, `missing_seed`,
+// `session_invalid` and `channel_invalid` are PER-CONTACT — they describe one
+// peer, not the app. A healthy fresh profile answers `missing_seed`, so a
+// footer rendering it as a problem would call every new install broken. They
+// fall through to the relay rows by design.
+//
+// ⚠ Two arms are RESIDUAL rather than routine, and are kept for honesty:
+// `vault_locked` cannot normally be seen here at all (this footer lives inside
+// `scr-main`, and every lock path navigates to `scr-unlock`), and
+// `missing_home` is unreachable while `bootstrap()` sets QSC_CONFIG_DIR before
+// the runtime exists. A footer that could not say "storage is wrong" when the
+// desk says so is the dishonesty this lane exists to remove.
+function statusFooterLine(reason, relayUrl) {
+  if (reason === "missing_home" || reason === "unsafe_parent") {
+    return STATUS_FOOTER_STORAGE;
+  }
+  if (reason === "vault_locked") {
+    return STATUS_FOOTER_LOCKED;
+  }
+  // The honest tripwire: an EIGHTH upstream reason string, or a desk that did
+  // not answer at all. A typed failure must never arrive as silence.
+  if (reason === null || reason === "unrecognized") {
+    return STATUS_FOOTER_UNKNOWN;
+  }
+  if (!relayUrl) {
+    return STATUS_FOOTER_NO_RELAY;
+  }
+  return `Ready. Relay: ${relayUrl}`;
+}
+
 async function enterMain() {
   show("scr-main");
-  // Slice B (D609 R4): the footer reflects the ACTUAL relay config, not a
-  // "future update" claim that is now false. It shows the configured endpoint,
-  // or points at Settings when none is set.
+  // Slice B (D609 R4) kept: the footer reflects the ACTUAL relay config, never
+  // a "future update" claim. NA-0752 adds the desk's answer beside it.
+  //
+  // The peer label is `peer-0` — the TREE'S OWN convention for an app-level
+  // status read, hard-coded in qsc's own `status` verb (main.rs:95). ⚠ It is a
+  // real, valid contact label; the hazard is recorded in D-0033 with a forward
+  // trigger, because it is non-load-bearing only while the per-contact reasons
+  // fall through.
+  //
+  // A rejection from EITHER command leaves `reason` null, which the mapping
+  // renders as the honest tripwire rather than as a stale or empty line.
+  let reason = null;
+  let relayUrl = "";
   try {
     const cfg = await invoke("relay_config_get");
-    byId("status-line").textContent = cfg.relay_url
-      ? `Relay: ${cfg.relay_url}`
-      : "No relay configured — add one in Settings › Relay.";
+    relayUrl = cfg.relay_url || "";
+    const status = await invoke("connect_status", { peer: "peer-0" });
+    reason = status.reason;
   } catch (_) {
-    byId("status-line").textContent = "No relay configured — add one in Settings › Relay.";
+    reason = null;
   }
+  byId("status-line").textContent = statusFooterLine(reason, relayUrl);
 }
 byId("btn-add-contact").addEventListener("click", () => {
   byId("stub-note").classList.remove("hidden"); // honest stub (lane 2 lands the flow)

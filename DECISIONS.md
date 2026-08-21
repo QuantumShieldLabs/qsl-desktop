@@ -2022,3 +2022,146 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     seat bare and unpiped against the NAMED `github` remote (`9dcded4d`, true merge commit,
     parents `{3293c39a, cfb58c90}`, §0's figure NOT adopted) → the baseline run to COMPLETION
     before any edit → this lane's execution.
+
+- **ID:** D-0033
+  - **Status:** Accepted
+  - **Date:** 2026-08-21
+  - **Lane:** desktop **NA-0752 / THE STATUS-FOOTER TRUTH LANE** — the first Slice-4 screen act,
+    and the app's first truthful protocol-fed pixels. Executing the Director's ruling **`R374`**
+    (banked verbatim under SR-14 as this turn's FIRST ACT, with the R-space sweep run BEFORE the
+    banking per WF-0087, at
+    `RULING_NA0752_R374_SIX_ASKS_RULED_TABLE_CONFIRMED_BUILD_AUTHORIZED_20260821T180930Z.md`,
+    sha256 `22fcad2555c9b4cad58ea00a0b13de4db5ef336677c4dcac77d5351f61558bff`, 71 lines / 5489
+    bytes, mode 444). Spine decision **D-1394** (qsl-protocol `9dcded4d`). Governing design bank
+    sha `f3ba1222…`, VERIFIED before reading.
+  - **Decision:** **The existing `#status-line` footer stops knowing one sentence and reports the
+    desk's typed state**, through one pure total mapping applied at the one event point that
+    already existed. `enterMain()` (`ui/main.js`) now reads `relay_config_get` **and**
+    `connect_status { peer: "peer-0" }` and writes `statusFooterLine(reason, relayUrl)`. **No new
+    event wiring** — all four existing `enterMain()` call sites are inherited. **No timer**, and
+    none was invented: the census found five timers in `main.js` and not one polls backend state
+    (four are one-shots/ceremony countdowns; the fifth polls WALL-CLOCK IDLE and its action is to
+    navigate away). **Zero bytes** in `ui/index.html`, the harness engine, or any mockup.
+  - ⚠⚠ **TWO SOURCES ARE STRUCTURAL, NOT A CONVENIENCE — and this is the finding the table rests
+    on.** `qsp_status_tuple` **never reads relay config**: traced through all three callees,
+    `config_dir()` reads only env (`fs_store:10-30`), `check_parent_safe` only filesystem
+    permissions (`:279+`), `qsp_session_load` only the session blob (`protocol_state:946-965`).
+    ⇒ the desk **cannot** say "no relay configured", and `relay_config_get` cannot say the store
+    is unwell. **Either source alone would ship a false line.** That is why the pre-existing
+    writer survives beside the desk rather than being replaced by it.
+  - **THE RULED TABLE — precedence WORST-FIRST, first match wins** (`R374` §3/§7):
+
+    | # | condition | copy |
+    |---|---|---|
+    | 1 | reason ∈ {`missing_home`, `unsafe_parent`} | `Storage problem — check Settings › Vault.` |
+    | 2 | reason == `vault_locked` | `Locked — unlock to connect.` |
+    | 3 | reason == `unrecognized` **or either invoke rejects** | `Status unknown — please report this.` |
+    | 4 | relay_url empty | `No relay configured — add one in Settings › Relay.` |
+    | 5 | otherwise | `Ready. Relay: <url>` |
+
+    Row 4 keeps the **JS writer's shipped sentence verbatim** — the design bank's shorter quote
+    was the Director's abbreviation of it, and **no shipped copy changes** (`R374` §3). Row 5
+    keeps today's `Relay: <url>` substring intact. Row 3 catches an `ErrorDto` from **either**
+    command, so a typed failure can never render as silence.
+  - ⚠⚠ **FIVE OF THE NINE REASONS ARE DELIBERATELY NON-SIGNALLING HERE. THIS IS A DECISION, NOT A
+    GAP.** Read off `qsp_status_tuple`'s own precedence ladder (`protocol_state:79-102`), the peer
+    argument is first consulted at `:87` ⇒ **exactly two reasons are APP-LEVEL** (`missing_home`
+    `:82`, `unsafe_parent` `:85`). `handshake`, `no_session`, `missing_seed`, `session_invalid`
+    and `channel_invalid` describe **one peer**, not the app, and fall through to rows 4/5.
+    **A healthy fresh profile answers `missing_seed`** — so a footer rendering it as a problem
+    would call every new install broken.
+  - ⚠ **TWO ARMS ARE RESIDUAL RATHER THAN ROUTINE, AND ARE KEPT ANYWAY** (`R374` §7). (a) The
+    footer lives **inside `<section id="scr-main">`** (`index.html:156`), `show()` hides every
+    other screen, and **both** lock paths (idle autolock `:1412`, native menu `:1431`) call
+    `showUnlockScreen("main")` ⇒ **a user cannot see this footer while the vault is locked by any
+    in-app path.** (b) `missing_home` is **unreachable in the running app**: `bootstrap()`
+    (`lib.rs:302-311`) creates `<data>/qsc` at 0700 and sets `QSC_CONFIG_DIR` once, before any
+    thread. Kept because a footer that cannot say "storage is wrong" when the desk says so is the
+    dishonesty this lane exists to remove.
+  - ⚠ **THE PEER LABEL IS `"peer-0"`, AND ITS HAZARD IS RECORDED WITH A FORWARD TRIGGER**
+    (`R374` §2). It is the tree's **own production convention**: qsc's `status` verb hard-codes
+    `let status_peer = "peer-0";` at `main.rs:95` for exactly this job — an app-level status read
+    that needs a peer label. **The hazard is real:** it is a valid contact label, so a user could
+    have a contact named `peer-0`. **Measured non-load-bearing** for this table: rows 1-3 are
+    app-level or facade-level and unaffected, and the fall-through would answer `handshake`
+    instead of `missing_seed` — which still falls to rows 4/5, so **the table's output is
+    unchanged**. ⚠⚠ **FORWARD TRIGGER: if any future table makes a per-contact reason signalling
+    at app level, the peer-label question REOPENS before that table ships.**
+  - **THE HARNESS BASELINE, FINALLY WRITTEN DOWN** — and it is now derivable from bytes rather
+    than observed. Verdict rows are **not** declared JSON steps (a..f declare 233, emit 242).
+    From the runner's own bytes: `note`/`teardown` emit 0; `countdown_commit` emits 2
+    (`:438`+`:440`); `launch` emits 2 (`:229`,`:236`) **and also runs `liveness_pair()` for 2 more
+    when `n == 1`** (`:238`); `finish()` appends one `isolation_bracket` (`:455`). The model
+    reproduces every published figure exactly:
+
+        f_a 96 · f_b 20 · f_c 28 · f_d 25 · f_e 52 · f_f 21   = 242  (the SIX-scenario figure)
+        f_g 26                                                 ⇒ TRUE SEVEN-SCENARIO BASELINE 268
+        f_h 28  (this lane)                                    ⇒ NEW TOTAL 296
+
+    ⛳ **The 268 figure had never been recorded anywhere** — `g`'s own count appeared in no
+    record, so comparing a seven-scenario run against 242 manufactured a false **+26** delta. It
+    is recorded here. **`f_h`'s 28 was PREDICTED from the model BEFORE the run and confirmed BY
+    the run**, and all seven prior scenarios reproduced EXACTLY.
+  - **COVERAGE LINKAGE, stated so the story is complete** (`R374` §4). Only **two** footer states
+    are drivable end-to-end, and the reasons are structural, not effort: no harness op writes or
+    chmods the profile (`file_present`/`file_absent` only READ; `exec` runs JS in the webview),
+    the footer is not on screen while locked, and `unrecognized` needs an EIGHTH upstream reason
+    string. So the proof is split and each part says what it is:
+    - **F1a — BEHAVIOUR**, rows 4 and 5, by equality on extracted text in `f_h`.
+    - **F1b — PRESENCE**, rows 1-3, source-asserted in `design_polish.rs`, whose doc states it
+      proves presence and **never** behaviour.
+    - The `vault_locked` **behaviour** is already proven where it lives:
+      `na0751_facade_locked_control.rs:141-174` asserts `ConnectReason::VaultLocked` on a
+      fabricated blob **with both arms shown to differ**. The mapping function is pure and total.
+  - ⚠ **THE INSTRUMENT WAS CHANGED FROM THE DIRECTIVE'S, AND THE REASON IS THE WHOLE POINT.** The
+    formalized directive said `read_tc`. Measured, **`read_tc` (runner `:343`) does not poll** —
+    and `enterMain()` writes the footer after two `await`s, so `read_tc` would have shipped a
+    RACE. `read_text` (`:299`) polls **and** is visibility-coupled. Same seal (equality on
+    extracted text), no race, and it cannot pass while the footer is hidden. ⛳ A bonus the
+    substitution buys: `index.html:156`'s static default is the **shorter** `No relay
+    configured.`, a different string, so a writer that never ran leaves the static text and the
+    assertion **fails** — row 4 cannot pass by accident.
+  - **TWO MEASURED DELTAS FROM THE FORMALIZED DIRECTIVE, BOTH FROM ONE ROOT CAUSE, BOTH REPORTED
+    RATHER THAN ABSORBED.** The directive enumerated **five** desktop files and constrained
+    `gui_driver.rs` to "the THREE-LINE wrapper only" — leaving seal **F1b**, which `R374` §4
+    ruled *as proposed*, with **no file in the enumeration able to host it**. Resolved in favour
+    of the ruled seal, since dropping it would silently discard a ruled requirement:
+    - **The desktop PR is SIX files, not five** — `src-tauri/tests/design_polish.rs` is the sixth,
+      chosen because it is the existing home of the `ui_file("main.js")` source-discipline idiom
+      the seal names, and its module doc already requires every test to ship a proof it can fail.
+    - **The inventory re-pin is 129, not the directive's 128.** 127 at base + the `#[ignore]`
+      wrapper + **F1b's presence test**. The directive's 128 was computed while F1b had no home.
+  - **SEALS — every one measured, with its control run and both arms asserted to differ:**
+    - **F1a HIT.** `f_h` PASS, 28/28 rows. **Mutation control:** rows 4 and 5 swapped in a copy of
+      the mapping ⇒ scenario **RED** (rc 101, `read_text #status-line` rows not PASS); restored
+      byte-identical and re-verified green.
+    - **F1b HIT.** Presence test green. **Two controls, both fired:** rewording a ruled sentence
+      (em-dash → hyphen) ⇒ RED naming the declaration; deleting the `vault_locked` arm ⇒ RED
+      naming the dead copy. Restored byte-identical.
+    - **F2 HIT.** All seven prior scenarios reproduced EXACTLY (96/20/28/25/52/21/26); new total
+      **296** = 268 + 28, predicted first, confirmed by the run.
+    - **F3 HIT, and its first control was WRONG — recorded because a miss is a result.** The pin
+      is re-pinned at **129** and the gate is green with zero ADDED. The seal as drafted said
+      "remove one name from a copy ⇒ RED"; run, that exercises the **ADDED** direction, which this
+      gate treats as informational **by design** — an asymmetry this lane had itself measured and
+      then written a control against the wrong arm of. Re-run in the **fatal** direction (a name
+      in the pin absent from the tree) it returns **rc 1, "TESTS DISAPPEARED", naming the
+      sentinel**. Restored byte-identical.
+    - **F4 HIT.** The live required set was **re-measured from branch protection at build time**,
+      never inherited: `["rust","advisories","infra-literal-scan"]` — confirming `ENG-0208`
+      (ci.yml's own comment still names a different set). `rust`'s four gating steps in CI's
+      order: `cargo fmt --all -- --check` rc 0 · `cargo test` **120 passed / 0 failed / 9
+      ignored** · `test_inventory.sh` PASS · `cargo clippy --all-targets -q -- -D warnings` rc 0.
+      `infra-literal-scan`: selftest **13 checks 0 failed**, Tier 1 clean (78 files / 24276
+      lines). Every exit status read UNPIPED.
+  - **What this lane deliberately did NOT do:** no channel-banner mockup or conversation view; no
+    polling; no string parsed from the engine; `ENG-0187`/`ENG-0209`/`ENG-0216` left open; the
+    three stale self-descriptions left unfixed and recorded as owed; **no harness-engine op added
+    to make rows 1-3 drivable**, however tempting — that is `tests/harness` engine bytes, which
+    the enumeration puts at zero.
+  - **Record chain:** the consolidated ruling artifact `STOP_NA0752_002` (sha
+    `683d9d3b…`, 639 lines — itself the remedy for a four-file supplement chain, accepted as such
+    at `R374`) → **`R374`** (six asks ruled, the table confirmed, build authorised; banked
+    verbatim, R-space swept first) → the bases re-derived bare and unpiped against the NAMED
+    `github` remote and verified by **sha comparison**, both mirrors having measured stale → the
+    seven-scenario baseline reproduced to COMPLETION before any edit → this lane's execution.
