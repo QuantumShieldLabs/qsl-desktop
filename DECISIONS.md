@@ -2320,3 +2320,136 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     on screen, never its legibility. The port hint is **presence-sealed**, not behaviour-driven —
     its `unreachable` state needs a real connection that refuses, which the harness cannot drive
     without a network dependency and a timeout. Nothing is merged by the seat; the operator merges.
+
+- **ID:** D-0035
+  - **Status:** Accepted
+  - **Date:** 2026-08-22
+  - **Lane:** desktop **NA-0754 / THE RELAY-PANE TRUTH LANE** — the pane can no longer lie or
+    lose. Executing the Director's ruling **`R379`** (five asks ruled, the fifth filing admitted,
+    build authorised; banked verbatim under SR-14 as this turn's FIRST ACT, sha256
+    `5165debc…07f7d5`, 80 lines / 6306 bytes, with the R-space swept BEFORE the banking per
+    WF-0087) and the **copy rider** of the same date. Spine decision **D-1396**. Governing design
+    bank **v2** (`RBANK_relay_pane_truth_design_v2_20260821.md`, sha256 `44f7d343…a7cc12`,
+    35 lines / 2607 bytes) and copy bank **F3** (`RBANK_relay_pane_copy_F3_20260822.md`, sha256
+    `bdd3f083…0f77c1`, 19 lines / 1284 bytes), each sha-VERIFIED against its own bytes BEFORE
+    being read.
+  - ⛳⛳ **THE HEADLINE: THE INVARIANT IS NOW STRUCTURAL.** *What is persisted has connected at
+    least once.* "Test connection" becomes TEST-AND-SAVE-ON-PROOF: the probe runs against the
+    values the user TYPED, and a write happens only on a `Connected` result. A test failing ANY
+    rung — unreachable, certificate, token, CA — persists **nothing**, so the previous working
+    configuration is untouched. The separate **Save button is REMOVED**: a control whose whole
+    job was to persist an UNTESTED configuration is exactly what the invariant forbids. It is UI
+    chrome, not a safety mechanism, and removing it STRENGTHENS the guarantee.
+  - ⛳ **THE SUPERSESSION OF R-B2 UN-INVERTS R-B1 — a ruling is RESTORED, not broken.** R-B1
+    wanted vault writes first and `settings.json` LAST. R-B2 forced address-FIRST *only because*
+    validating meant writing: as `ui/main.js:1102-1131` recorded in its own words, *"the crate
+    exposes nine relay commands and NONE is validate-only… Neither field can be checked without
+    committing it."* `relay_probe` dissolves that forcing, so the ruled order is restored:
+    **vault token → vault CA → `settings.json` LAST.** `relay_url` is the OBSERVABLE
+    configuration (the status footer and relaunch both read it), so writing it last keeps the
+    surviving configuration COHERENT when a vault write fails; address-first leaves a NEW address
+    paired with OLD credentials, which is the clobber shape itself.
+  - **THE INVARIANT'S HONEST READING, ratified rather than assumed:** true atomicity across
+    `settings.json` and the vault **does not exist** and was not built. Each write is individually
+    atomic — `settings::save` is tmp+rename (`settings.rs:57-64`); qsc's vault writer holds an
+    exclusive lock across the whole read-modify-write, then tmp→fsync→rename — but the SET of
+    three is not, and the two vault secrets are two separate transactions. So: **a green test that
+    COMPLETES its writes persists exactly the tested triple; a partial write NAMES what landed;
+    and everything persisted has still connected at least once.** No rollback is proposed or
+    needed: a mid-sequence failure always leaves prefix-new/suffix-old, never a torn value.
+  - ⚠⚠ **THE CA-STATUS DEFECT'S ROOT WAS A FALSE DOC COMMENT IN THIS REPO, and it is corrected
+    at the root rather than the symptom.** `commands.rs:628-629` asserted *"qsc validates the file
+    exists (`relay_ca_file_missing`)"*, and `main.js:1270-1272` repeated it as *"`relay_ca_file_set`
+    VALIDATES BY WRITING, and its error codes ARE the validation."* Measured against the PINNED
+    qsc (`transport/mod.rs:2250-2257`), `relay_ca_file_set` trims, rejects **only the empty
+    string**, and writes to the vault — **it never touches the filesystem.** A garbage path was
+    therefore stored silently and then reported `configured: true`. **No test asserted either
+    claim**, which is why it survived. Both comments are now corrected. Filed and resolved as
+    `ENG-0222`.
+  - ⛳ **AND THE REAL CHECK ALREADY EXISTED, AT ZERO COST.** `relay_http_client()`
+    (`transport/mod.rs:2174-2192`) performs exists (`relay_ca_file_missing` /
+    `relay_ca_file_unreadable`) **plus a genuine PEM parse** (`reqwest::Certificate::from_pem_bundle`
+    plus an empty-bundle check → `relay_ca_file_invalid`), and `relay_server_info` calls it
+    **BEFORE opening a socket**, returning the code as `Err`. So the CA rung is validated with **no
+    relay reachable and no new dependency** — the brief's contemplated degrade to a PEM-header
+    sniff was never needed, a contingency that measured unnecessary.
+  - **THE TWO COMMAND-LAYER FUNCTIONS (the ruled maximum of two).** `relay_probe(address, token,
+    ca_path)` probes an explicit triple persisting nothing; `home_dir()` returns `$HOME` so the CA
+    field can expand a leading `~/` VISIBLY before the path is used (the webview cannot resolve
+    `~`, and no other command exposed it).
+  - ⚠ **THE ENV-INJECTION BOUNDARY, IN THE RECORD RATHER THAN IN A COMMENT.** qsc resolves both
+    secrets itself, consulting the ENVIRONMENT FIRST in both chains (`relay_auth_token()`
+    `transport/mod.rs:2050`; `relay_ca_file()` `:2127`), so `relay_probe` supplies explicit values
+    by setting `QSC_RELAY_TOKEN` / `QSC_RELAY_CA_FILE` for the duration of one probe — **zero qsc
+    bytes changed.** The set → probe → restore sequence runs entirely inside ONE `gw.call` closure,
+    i.e. one blocking thread inside the `CoreGateway`'s process-wide single-flight mutex
+    (`gateway.rs:12,35`), so no other qsc call can observe the mutated environment. `EnvGuard`
+    restores each variable in `Drop` — including **absence**, which `set_var("")` would not
+    reproduce, because qsc trims an empty value to `None` and falls through to the vault.
+    **THE RESIDUAL, STATED SO IT CAN BE ATTACKED:** `set_var` is process-global while the gateway
+    serializes qsc calls only; a non-qsc thread reading these two variables concurrently is a real
+    hazard. Nothing in this tree does — measured — and the restore is sealed by test, but the
+    boundary is recorded, not asserted away.
+  - ⚠ **WHAT THE MODEL CANNOT DO, recorded with its remedy.** It cannot probe with NO token while
+    one IS stored: an empty env value is trimmed to nothing and falls THROUGH to the vault, so
+    absence is not expressible without a write. **Ruled at `R379` §Q1:** the bank §2 sentence
+    offering "clear the field, Test" as an online removal path is **STRUCK**; the **x** control is
+    the removal path — it deletes immediately and works offline — and R-B3's blank-means-keep
+    stands unchanged. That single strike is what makes the whole model implementable with **zero
+    qsc bytes**.
+  - **THE CA PATH IS NOT DISPLAYED, and qsc's redaction STANDS (`R379` §Q3).** `relay_ca_file_show`
+    returns `{configured, path_hash}` and never the path. The raw value was reachable with zero qsc
+    bytes via `vault::secret_get` — `qsc::vault::secret_get` and
+    `qsc::store::TUI_RELAY_CA_FILE_SECRET_KEY` are both `pub` — but that reverses a recorded
+    redaction and reads a key the trio owns, so it was **offered and refused, not taken**. The
+    field instead reports STORED-STATE in its placeholder (`Set · <hash8>`), the same
+    state-symmetry as the token's fixed eight dots, with the x's visibility as the second signal.
+  - ⚠ **THE HELPER-LINE REMOVAL HAD A BLAST RADIUS NOBODY HAD MEASURED.** `#relay-token-help` was
+    the SETTLE SIGNAL an existing scenario depended on (`f_i_flight_fixes.json:36`, whose own note
+    explained why that element and not another). Removing it would have hung that scenario. It is
+    RE-AIMED to `#relay-ca-path.placeholder`, a strictly better signal for the same reason — it is
+    written by `renderFieldState()` at the very END of `refreshServerState()` — and it is now a
+    REAL transition, because the static `placeholder` attribute was deleted from the markup so JS
+    owns it outright. **An attribute present in the HTML from the first byte can never signal that
+    an async refresh has finished.**
+  - **COPY, per bank F3 (operator-blessed, this date).** The Relay pane's header one-liner (*"The
+    relay carries your encrypted messages…"*) is RETIRED and replaced verbatim by the blessed
+    hostile-relay paragraph, transcribed from the bank's own bytes with exactly one transform —
+    the bank's `--` transport armor to the house em-dash, house typography measured in this file
+    (28 em-dashes, 11 straight apostrophes, zero typographic). ⚠⚠ **IT IS RECORDED AS A TESTABLE
+    CLAIM SET, not decoration:** messages sealed client-side before transmission; names never
+    present on the relay; delivery by anonymous codes; the relay observes traffic-flow only. The
+    pane's seal pins the WORDS character-for-character and **cannot verify the claims** — the
+    threat-model documentation owes alignment with them, filed OPEN as `ENG-0227`. **Any future
+    change to what the relay can see re-opens this copy before it ships.**
+  - **Also in this stroke:** the three CA failure strings ship as ruled, including the shipped-copy
+    change *"That doesn't look like a certificate file."* → *"That file isn't a certificate."*
+    (flagged as a change to shipped copy, not a new string); the `~` rejection carries an example
+    per the address gate's own house pattern; both icon controls carry distinct accessible names,
+    because an icon-only control's accessible name is the ONLY thing a screen reader has.
+  - **Tests: 134 → 145, nothing deleted.** Three tests that pinned the SUPERSEDED model were
+    **renamed and re-aimed at the inverse ruled behaviour**, keeping their disciplines:
+    `test_saves_first…` → `test_probes_first_and_a_failed_probe_never_persists`;
+    `the_commit_order_is_fixed…` → `the_persist_order_is_fixed_and_r_b1s_original_order_is_restored`;
+    `removal_is_a_link_per_field…` → `removal_is_a_distinctly_named_control_per_field_not_a_shared_label`
+    (ENG-0073's anti-confusion property re-pinned on the accessible name, since the prose line that
+    hosted it is gone). The inventory gate caught all three as disappearances — **the gate working**
+    — and was re-pinned deliberately per its own instruction.
+  - ⚠⚠ **THREE TIMES THIS LANE, DOCUMENTING A REMOVAL RE-PLANTED THE THING REMOVED.** A source-text
+    pin cannot tell a comment from code. A comment enumerating the four retired helper sentences
+    put all four back into `main.js` and would have turned their absence seal green-when-red; a
+    comment explaining the vault write mechanism spelled the construct that
+    `no_secret_is_written_outside_the_qsc_vault_trios` forbids; and the R-space sweep's own
+    classification sentences are why that space's raw content maximum reads `R391`. **The rule
+    earned: describe a retired construct, never spell it, and keep the retired wording in the
+    records, which no seal reads.**
+  - **Claim boundary, stated plainly.** No relay is reachable from this harness and none was made
+    reachable: no fixture relay exists in this repo, and building one is outside the ruled
+    enumeration (filed as `ENG-0226`, converging with `ENG-0220`'s profile-write op). So the GREEN
+    half of the model — a Connected test persisting the triple, and a working config surviving a
+    later failed test — is **not driven by CI**. Its ENGINE half is sealed relay-free in
+    `na0754_persist_boundary.rs`, whose differ-control proves each of the three observables CAN
+    move before proving the probe leaves them alone; its LIVE half is the operator's acceptance
+    flight, recorded [O]. Eight counterfactual red runs are preserved 444 under
+    `/srv/qbuild/operator/NA-0754/redruns/`, one per seal arm. Nothing is merged by the seat; the
+    operator merges.

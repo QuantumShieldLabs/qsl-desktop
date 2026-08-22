@@ -222,7 +222,7 @@
       </div>
       <div id="pane-server" class="pane hidden">
         <h2>Relay</h2>
-        <p class="muted">The relay carries your encrypted messages. It can't read them.</p>
+        <p class="muted">Assume the relay is hostile — this app already does. It's built so a compromised relay still learns almost nothing: your messages are sealed before they leave your device, your name and your contacts' names never exist on it, and delivery runs on anonymous codes. The most it can ever see is that sealed traffic is flowing.</p>
         <!-- D610 R-D1: THREE sections, hairlines BETWEEN them only (two total).
              `.srv-sect + .srv-sect` draws the rule, so the count follows the
              structure and cannot drift to three. The results block sits INSIDE
@@ -242,10 +242,18 @@
                      placeholder shows a FIXED eight dots. relay_token_show is a
                      bare bool by design, so the app cannot know the length --
                      and must not appear to. -->
-                <input type="password" id="relay-token" class="full" autocomplete="off" aria-label="Access token">
-                <!-- R-E1/E2/E3: ONE helper line that SWAPS by state. The two
-                     texts never stack; JS owns the content. -->
-                <p id="relay-token-help" class="hint"></p>
+                <!-- NA-0754: the field carries stored state and nothing else does.
+                     JS owns the placeholder (fixed eight dots when a token is
+                     stored) so the transition from unknown to known is a real,
+                     observable one — the harness settles on it. -->
+                <div class="ctlrow">
+                  <input type="password" id="relay-token" class="full" autocomplete="off" aria-label="Access token">
+                  <!-- THE ONE PRESERVED AFFORDANCE (design bank v2 item 2): a
+                       stored secret must ALWAYS be deletable, even with no relay
+                       reachable. This deletes IMMEDIATELY — it is not a pending
+                       flag — and it is visible only when a value is stored. -->
+                  <button type="button" id="relay-token-clear" class="secondary hidden" aria-label="Remove stored token" title="Remove stored token">&times;</button>
+                </div>
               </div>
             </div>
           </div>
@@ -257,20 +265,29 @@
                 <p class="hint">If the operator runs their own certificate authority, add their CA certificate file so this app can verify the connection. The file's path is read at connection time; it is stored in your vault.</p>
                 <div>
                   <span class="field-label">CA certificate file path</span>
-                  <!-- C3: this input renders EMPTY even when a CA IS set.
-                       relay_ca_file_show() returns {configured, path_hash} and
-                       NEVER the path, so the app genuinely cannot echo it back.
-                       The status line below carries the state instead. -->
-                  <input type="text" id="relay-ca-path" class="full mono" autocomplete="off" spellcheck="false" placeholder="/path/to/ca.pem" aria-label="CA certificate file path">
+                  <!-- C3 STANDS, and NA-0754 (R379 Q3) leaves qsc's redaction
+                       intact: relay_ca_file_show() returns {configured, path_hash}
+                       and NEVER the path, so the app genuinely cannot echo it back.
+                       The status LINE is gone, so the field itself now carries the
+                       state — JS owns the placeholder, which shows the stored
+                       marker when one is set and the example path when none is.
+                       Same state-symmetry as the token's dots. -->
+                  <div class="ctlrow">
+                    <input type="text" id="relay-ca-path" class="full mono" autocomplete="off" spellcheck="false" aria-label="CA certificate file path">
+                    <button type="button" id="relay-ca-clear" class="secondary hidden" aria-label="Remove stored certificate authority file" title="Remove stored certificate authority file">&times;</button>
+                  </div>
                   <div id="relay-ca-error" class="error"></div>
                 </div>
-                <p id="relay-ca-status" class="hint"></p>
               </div>
             </details>
           </div>
 
           <div class="srv-sect">
-            <div class="ctlrow"><button id="btn-relay-test" class="primary">Test connection</button><button id="btn-relay-save" class="secondary">Save</button></div>
+            <!-- NA-0754: the Save button is REMOVED. "Test connection" is now
+                 test-and-save-on-proof, so a separate control whose whole job was
+                 to persist an UNTESTED configuration is exactly what the invariant
+                 (what is persisted has connected at least once) forbids. -->
+            <div class="ctlrow"><button id="btn-relay-test" class="primary">Test connection</button></div>
             <!-- R-E5: accent, NEVER red. An unsaved change is inconvenience-
                  class, not vault-danger; red is reserved (DESIGN_SPEC §2). -->
             <p id="relay-dirty" class="helper-accent hidden">Settings changed — not saved.</p>

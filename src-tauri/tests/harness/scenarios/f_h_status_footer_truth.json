@@ -27,8 +27,8 @@
     {"op": "poll_visible", "screen": "scr-settings"},
     {"op": "click", "sel": "[data-pane=\"server\"]"},
     {"op": "prop_eq", "sel": "#pane-server", "prop": "className", "expect": "pane", "poll": 10},
-    {"op": "clear_type", "sel": "#relay-url", "text": "https://relay.example.test:8443"},
-    {"op": "click", "sel": "#btn-relay-save"},
+    {"op": "note", "text": "NA-0754: this step used to type an address and press Save. The Save button is GONE, and with it OFFLINE PRE-CONFIGURATION - the ruled ACCEPTED COST of test-and-save-on-proof (design bank v2 item 1): a relay you cannot currently reach can no longer be saved, and no relay is reachable from this harness. This scenario SUBJECT is the STATUS FOOTER, not the control that arranged its state, so the address is arranged DIRECTLY through the same command the UI would call. What the footer proves is unchanged; only the means is. The on-disk assertion below still gates the footer read, so a footer miss still cannot be blamed on an unsaved relay."},
+    {"op": "exec", "script": "return window.__TAURI__.core.invoke('relay_config_set', {url: 'https://relay.example.test:8443'}).then(function(){ return true; });", "expect": true},
     {"op": "json_field_eq", "file": "qsld-data/settings.json", "key": "relay_url", "expect": "https://relay.example.test:8443", "poll": 10},
     {"op": "note", "text": "The commit is proven ON DISK before the footer is read, so a footer miss cannot be blamed on an unsaved relay. normalize_relay_endpoint is Url::parse().to_string() minus a trailing slash - measured identity for this input."},
 

@@ -193,3 +193,23 @@ fn na0752_gui_h_status_footer_truth() {
 fn na0753_gui_i_flight_fixes() {
     run_scenario("f_i_flight_fixes");
 }
+
+// NA-0754 (D-0035): the relay pane can no longer lie or lose. Drives the arms a
+// scenario can genuinely reach — the Save button and both helper sentences ABSENT,
+// the x controls present-but-hidden-until-stored, the ~ expansion VISIBLE in the
+// field before use, the CA path that does not exist NAMED rather than accepted,
+// the failed test's "Nothing saved" statement, settings.json unwritten, and the
+// offline delete.
+//
+// ⚠ CLAIM BOUNDARY, and it is the lane's honest one: NO RELAY IS REACHABLE FROM
+// THIS HARNESS. No fixture relay exists in this repo, so the GREEN half of the
+// model — a Connected test persisting the tested triple, and the prior config
+// surviving a later failed test — is NOT driven here. Its engine half is sealed
+// in `na0754_persist_boundary.rs` (relay-free, with counterfactual red runs) and
+// its live half is the operator's acceptance flight, recorded [O]. The fixture is
+// filed as ENG-0226, the successor harness-maintenance lane.
+#[test]
+#[ignore]
+fn na0754_gui_j_relay_pane_truth() {
+    run_scenario("f_j_relay_pane_truth");
+}

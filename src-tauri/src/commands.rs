@@ -625,8 +625,21 @@ pub async fn relay_token_show(st: State<'_, AppState>) -> Result<RelayTokenStatu
         .await)
 }
 
-/// Set the operator CA-file path — into the qsc vault via the trio. qsc
-/// validates the file exists (`relay_ca_file_missing`).
+/// Set the operator CA-file path — into the qsc vault via the trio.
+///
+/// ⚠ THIS CALL DOES NOT VALIDATE THE PATH, and a comment here used to say it did
+/// ("qsc validates the file exists"). Measured against the pinned qsc at
+/// `transport/mod.rs:2250`: `relay_ca_file_set` trims, rejects ONLY the empty
+/// string, and writes to the vault. It never touches the filesystem. The false
+/// claim is why a garbage path could be stored and then reported as configured —
+/// NA-0754 / ENG-0222, the defect's ROOT rather than its symptom.
+///
+/// The real check lives one layer down and runs at PROBE time:
+/// `relay_http_client()` does exists (`relay_ca_file_missing` /
+/// `relay_ca_file_unreadable`) plus a REAL PEM parse
+/// (`relay_ca_file_invalid`), and `relay_server_info` returns those codes
+/// BEFORE it opens a socket — which is why `relay_probe` can validate a CA
+/// path with no relay reachable at all.
 #[tauri::command]
 pub async fn relay_ca_file_set(st: State<'_, AppState>, path: String) -> Result<(), String> {
     st.gw
@@ -657,6 +670,117 @@ pub async fn relay_ca_file_show(st: State<'_, AppState>) -> Result<RelayCaStatus
             }
         })
         .await)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NA-0754 (D-0035) — TEST-AND-SAVE-ON-PROOF. The two functions the model needs.
+//
+// THE INVARIANT: what is persisted has connected at least once. That requires
+// probing a triple the user has TYPED but that is NOT YET STORED — the exact
+// thing the old model could not do, which is why R-B2 ruled "validating IS
+// writing" and why a failed test could clobber a working config.
+
+/// Probe a relay with an EXPLICIT (address, token, CA path) triple, persisting
+/// NOTHING. This is the whole of the NA-0754 model's engine half.
+///
+/// `token`/`ca_path` are `None` to mean "use whatever is stored" — which is
+/// R-B3's blank-means-keep, unchanged — and `Some(v)` to mean "probe with THIS
+/// value instead".
+///
+/// ⚠ HOW THE EXPLICIT VALUES REACH qsc, AND WHY IT IS SOUND HERE. qsc resolves
+/// both secrets itself: `relay_auth_token()` reads env `QSC_RELAY_TOKEN` → env
+/// `RELAY_TOKEN` → the vault, and `relay_ca_file()` reads env `QSC_RELAY_CA_FILE`
+/// → env `RELAY_CA_FILE` → the vault. **Env is consulted FIRST in both chains**,
+/// so setting it overrides the stored value for the duration of one probe. ZERO
+/// qsc bytes change.
+///
+/// ⚠ THE RESTORE IS UNCONDITIONAL, and that is the load-bearing detail. `EnvGuard`
+/// restores each variable to its exact prior state (including ABSENT, which is
+/// distinct from empty) in `Drop`, so the restore runs on the success path, on
+/// every early return, AND while a panic unwinds — a leaked `QSC_RELAY_TOKEN`
+/// would silently override the vault for every later call in the process.
+///
+/// ⚠ THE BOUNDARY, STATED IN THE RECORD RATHER THAN HIDDEN IN A COMMENT (D-0035):
+/// `std::env::set_var` is PROCESS-GLOBAL, while the `CoreGateway` serializes qsc
+/// calls only. The set → probe → restore sequence runs entirely INSIDE one
+/// `gw.call` closure — one blocking thread, inside the process-wide single-flight
+/// guard — so no other qsc call can observe the mutated environment. A non-qsc
+/// thread reading these two variables concurrently is the residual hazard; nothing
+/// in this tree does, measured, but the boundary is real and is recorded, not
+/// asserted away.
+///
+/// ⚠ WHAT THIS CANNOT DO, also recorded: it cannot probe with NO token while one
+/// IS stored. An empty env value is trimmed to nothing and falls THROUGH to the
+/// vault, so absence is not expressible without a write. Ruled at R379 §Q1: the
+/// x control is the removal path, and it deletes immediately and offline.
+#[tauri::command]
+pub async fn relay_probe(
+    st: State<'_, AppState>,
+    address: String,
+    token: Option<String>,
+    ca_path: Option<String>,
+) -> Result<RelayTestDto, String> {
+    let outcome = st
+        .gw
+        .call(move || {
+            let _token_guard = EnvGuard::set("QSC_RELAY_TOKEN", token.as_deref());
+            let _ca_guard = EnvGuard::set("QSC_RELAY_CA_FILE", ca_path.as_deref());
+            qsc::transport::relay_server_info(&address)
+        })
+        .await;
+    match outcome {
+        Ok(o) => Ok(relay_test_dto(o)),
+        Err(code) => Err(code.to_string()),
+    }
+}
+
+/// The user's home directory, so the front end can expand a leading `~/` in the
+/// CA-path field VISIBLY, before the path is used (design bank v2 item 4).
+///
+/// The webview cannot resolve `~` on its own: `$HOME` is a process fact and no
+/// other command exposes it. Returns an empty string when `HOME` is unset, and
+/// the caller then refuses `~` rather than guessing — a wrong guess would send
+/// the probe at a path the user never typed.
+#[tauri::command]
+pub fn home_dir() -> String {
+    std::env::var("HOME").unwrap_or_default()
+}
+
+/// Restores one environment variable to its EXACT prior state on drop —
+/// including ABSENT, which `set_var("")` would not reproduce, because qsc
+/// trims an empty value to `None` and falls through to the vault. Drop runs on
+/// success, on early return, and during panic unwind.
+struct EnvGuard {
+    key: &'static str,
+    prior: Option<String>,
+    engaged: bool,
+}
+
+impl EnvGuard {
+    fn set(key: &'static str, value: Option<&str>) -> EnvGuard {
+        let prior = std::env::var(key).ok();
+        let engaged = value.is_some();
+        if let Some(v) = value {
+            std::env::set_var(key, v);
+        }
+        EnvGuard {
+            key,
+            prior,
+            engaged,
+        }
+    }
+}
+
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        if !self.engaged {
+            return;
+        }
+        match &self.prior {
+            Some(v) => std::env::set_var(self.key, v),
+            None => std::env::remove_var(self.key),
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

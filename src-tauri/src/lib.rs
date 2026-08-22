@@ -359,6 +359,11 @@ pub fn configure_builder<R: tauri::Runtime>(
             commands::relay_ca_file_set,
             commands::relay_ca_file_clear,
             commands::relay_ca_file_show,
+            // NA-0754 (D-0035) — test-and-save-on-proof: the explicit-triple probe
+            // that persists nothing, and the home directory the CA field needs to
+            // expand a leading `~/` visibly before the path is used.
+            commands::relay_probe,
+            commands::home_dir,
             // NA-0751 (D-0032) — the Slice-4 gateway surface, twelve pass-through
             // wrappers over `qsc::facade`. `invite_list_at` is deliberately absent:
             // it is a clock-injection seam and must not be reachable from the front end.

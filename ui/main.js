@@ -959,9 +959,12 @@ let savedRelayUrl = "";
 let tokenConfigured = false;
 let caConfigured = false;
 let caPathHash = "";
-let tokenPendingRemoval = false;
-let caPendingRemoval = false;
 let serverBusy = false;
+// NA-0754: the ~ expansion must be VISIBLE in the field before the path is used,
+// and the webview cannot resolve `~` on its own — $HOME is a process fact. Cached
+// once per pane open from the `home_dir` command; "" means "could not resolve",
+// and the gate then REFUSES `~` rather than guessing at a path nobody typed.
+let homeDir = "";
 
 function clearServerResults() {
   byId("relay-results").classList.add("hidden");
@@ -975,8 +978,11 @@ function urlDirty() {
   const v = byId("relay-url").value.trim();
   return v !== "" && v !== savedRelayUrl;
 }
-function tokenDirty() { return byId("relay-token").value !== "" || tokenPendingRemoval; }
-function caDirty() { return byId("relay-ca-path").value.trim() !== "" || caPendingRemoval; }
+// R-B3 STANDS (R379 Q1): a blank field means KEEP WHAT'S THERE. Removal is the x
+// control's job now — it deletes immediately and works with no relay reachable —
+// so a blank field is never a removal request and never dirty.
+function tokenDirty() { return byId("relay-token").value !== ""; }
+function caDirty() { return byId("relay-ca-path").value.trim() !== ""; }
 function serverDirty() { return urlDirty() || tokenDirty() || caDirty(); }
 
 // ⚠ ORDERING: after a commit this MUST run AFTER the R-B5 echo has written the
@@ -1010,74 +1016,106 @@ function onServerChanged() {
   renderDirty();
 }
 
-// R-A1: "remove it" replaces the per-field Clear BUTTONS. A prose link inside
-// the line that describes the field's state cannot be confused with its
-// neighbour the way two adjacent buttons both labelled "Clear" were
-// (ENG-0073, surfaced by the NA-0673 acceptance flight and superseded here).
-function removalLink(id, onPick) {
-  const a = document.createElement("a");
-  a.className = "rm";
-  a.id = id;
-  a.textContent = "remove it";
-  a.setAttribute("role", "button");
-  a.tabIndex = 0;
-  a.addEventListener("click", onPick);
-  a.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(); }
-  });
-  return a;
-}
+// NA-0754 (design bank v2 item 2) — THE HELPER SENTENCES ARE GONE, AND THE FIELDS
+// CARRY THE STATE. Six per-field status sentences were removed: the token's
+// set/unset pair, the CA's set/unset pair, and the two pending-removal siblings
+// that the immediate-x makes unreachable. The bottom status line and the results
+// banner carry connection truth; these two fields carry stored-state, and nothing
+// narrates.
+//
+// ⚠ THE SENTENCES ARE DESCRIBED HERE, NEVER QUOTED, and that is deliberate. The
+// absence seal in design_polish.rs is a SOURCE-TEXT pin — it cannot tell a comment
+// from live copy — so quoting a retired string to document its retirement would
+// re-introduce it and turn the seal green-when-it-should-be-red. Recording a
+// removal must not plant the thing removed; the retired wording lives in the
+// lane's records, which no seal reads.
+//
+// ⚠ THE PLACEHOLDERS ARE OWNED BY JS, NOT BY THE MARKUP, and that is deliberate
+// twice over. It is how each field reports stored state (the token's fixed eight
+// dots; the CA's stored marker), AND it gives the harness a real transition to
+// settle on — an attribute present in the HTML from the first byte can never
+// signal that an async refresh has finished. The retired #relay-token-help was
+// the old settle signal; this replaces it (see f_j / the re-aimed f_i note).
+const CA_PLACEHOLDER_UNSET = "/path/to/ca.pem";
 
-// R-E1/E2/E3: ONE helper line that SWAPS by state — the two texts never stack.
-function renderTokenHelp() {
-  const p = byId("relay-token-help");
+function renderFieldState() {
+  // TOKEN. R-E1 unchanged: relay_token_show is a bare bool by design, so the app
+  // cannot know the token's length and must not appear to — FIXED eight dots.
   const input = byId("relay-token");
-  p.textContent = "";
-  if (tokenPendingRemoval) {
-    input.placeholder = "";
-    p.textContent = "Token will be removed when you save or test.";
-    return;
-  }
   if (tokenConfigured) {
-    // R-E1: FIXED eight dots, always. relay_token_show is a bare bool by
-    // design — the app cannot know the token's length, and must not appear to.
     input.placeholder = "••••••••";
-    p.appendChild(document.createTextNode("A token is set — leave blank to keep it, or "));
-    p.appendChild(removalLink("relay-token-remove", () => {
-      tokenPendingRemoval = true;
-      renderTokenHelp();
-      onServerChanged();
-    }));
-    p.appendChild(document.createTextNode("."));
-    return;
+  } else {
+    input.placeholder = "";
   }
-  input.placeholder = "";
-  p.textContent = "Required only if the operator set one. Stored in your vault, not in settings.";
+  byId("relay-token-clear").classList.toggle("hidden", !tokenConfigured);
+
+  // CA. R379 Q3: qsc's path redaction STANDS — relay_ca_file_show() returns
+  // {configured, path_hash} and never the path, so the field cannot echo the
+  // value. It reports STORED-STATE instead, exactly as the token's dots do: one
+  // word plus the hash8 marker the retired status line already displayed.
+  byId("relay-ca-path").placeholder = caConfigured
+    ? "Set · " + (caPathHash || "configured")
+    : CA_PLACEHOLDER_UNSET;
+  byId("relay-ca-clear").classList.toggle("hidden", !caConfigured);
 }
 
-// R-E4: same link pattern, wording adapted. C3: the PATH is never shown —
-// relay_ca_file_show() returns {configured, path_hash} and the path itself is
-// deliberately not retrievable, so this line is the only place the stored
-// state appears.
-function renderCaStatus() {
-  const p = byId("relay-ca-status");
-  p.textContent = "";
-  if (caPendingRemoval) {
-    p.textContent = "Certificate authority file will be removed when you save or test.";
-    return;
-  }
-  if (caConfigured) {
-    p.appendChild(document.createTextNode("CA certificate file set (" + (caPathHash || "configured") + ") — "));
-    p.appendChild(removalLink("relay-ca-remove", () => {
-      caPendingRemoval = true;
-      renderCaStatus();
-      onServerChanged();
-    }));
-    p.appendChild(document.createTextNode("."));
-    return;
-  }
-  p.textContent = "No CA file set — the app uses your computer's trusted certificates.";
+// F1R (operator-ruled): ANY change to what the app will use clears the results.
+// Results describing a configuration the user has already changed are
+// stale-but-technically-true, which is the kind that gets misread.
+function onServerChanged() {
+  clearServerResults();
+  renderDirty();
 }
+
+// NA-0754 — THE ALWAYS-DELETABLE AFFORDANCE, AND IT DELETES NOW.
+//
+// ⚠ WHY IMMEDIATE AND NOT PENDING. The old "remove it" link set a flag that only
+// committed inside the old commitServerSettings(), whose FIRST step was the address. So a
+// user with a mistyped address could not remove a stored token at all: the gate
+// refused, the function returned, and the clear never ran — the house's own
+// "a stored secret must ALWAYS be deletable" principle failing on a path nobody
+// had measured (NA-0754 §5, filed and resolved as ENG-0225). Deleting on the
+// click removes the dependency rather than documenting it.
+//
+// Neither clear touches the network: both resolve to a vault write of an empty
+// value through the gateway, so they work with no relay reachable — which is the
+// whole point of keeping the affordance.
+//
+// ⚠ The mechanism is described, never named in its qsc spelling: this file is
+// scanned by `no_secret_is_written_outside_the_qsc_vault_trios`, a SOURCE-TEXT
+// boundary test that cannot tell a comment from a call. Writing the forbidden
+// construct here to explain it would trip the very seal it explains.
+async function clearStoredSecret(which) {
+  if (serverBusy) return;
+  setServerBusy(true, which === "token" ? "Removing token…" : "Removing certificate…");
+  try {
+    // ⚠ THE TWO CALLS ARE WRITTEN OUT IN FULL, DELIBERATELY. A ternary picking the
+    // command name would hide both from `no_secret_is_written_outside_the_qsc_vault_trios`,
+    // which scans this file for the literal trio invocations. A boundary test that
+    // cannot see a secret write is worse than no test, so the call sites stay greppable.
+    if (which === "token") {
+      await invoke("relay_token_clear");
+    } else {
+      await invoke("relay_ca_file_clear");
+    }
+    await refreshServerState();
+    onServerChanged();
+  } catch (e) {
+    byId("relay-results").classList.remove("hidden");
+    byId("relay-doc").innerHTML = "";
+    setBanner(byId("relay-status"), "accent", "Couldn't remove it");
+    byId("relay-detail").textContent =
+      (which === "token"
+        ? "The access token couldn't be removed from your vault ("
+        : "The certificate authority file couldn't be removed from your vault (") +
+      String(e) + "). Nothing else was changed.";
+  } finally {
+    setServerBusy(false);
+  }
+}
+
+byId("relay-token-clear").addEventListener("click", () => clearStoredSecret("token"));
+byId("relay-ca-clear").addEventListener("click", () => clearStoredSecret("ca"));
 
 // R-C1: no re-entry while a commit or probe is in flight; both buttons
 // disabled; the results area shows a neutral, accent-free in-flight line.
@@ -1091,7 +1129,10 @@ function renderCaStatus() {
 function setServerBusy(on, label) {
   serverBusy = on;
   byId("btn-relay-test").disabled = on;
-  byId("btn-relay-save").disabled = on;
+  // NA-0754: the Save button is gone; the two clear controls are the only other
+  // controls that reach the vault, and they must not re-enter mid-flight either.
+  byId("relay-token-clear").disabled = on;
+  byId("relay-ca-clear").disabled = on;
   if (!on) return;
   byId("relay-results").classList.remove("hidden");
   byId("relay-doc").innerHTML = "";
@@ -1099,40 +1140,89 @@ function setServerBusy(on, label) {
   setBanner(byId("relay-status"), "neutral", label);
 }
 
-// ⚠ THE COMMIT ORDER — R-B1 AMENDED BY DIRECTOR RULING 2026-07-25.
+// ⚠ THE WRITE ORDER — R-B1's ORIGINAL ORDER RESTORED (NA-0754, R379 §Q2).
 //
-// D610's C2 ruled the order "validate the URL → token → CA → settings.json
-// LAST", on the premise that the URL (unlike the CA path) could be validated
-// WITHOUT writing. That premise is FALSE, and it was verified false here: the
-// crate exposes nine relay commands and NONE is validate-only.
-// `relay_config_set` runs `normalize_relay_endpoint` and then writes
-// settings.json in the same call, exactly as `relay_ca_file_set` validates by
-// writing. Neither field can be checked without committing it.
+// THE HISTORY, because the inversion is being undone rather than overridden.
+// D610's C2 ruled "validate the URL → token → CA → settings.json LAST" on the
+// premise that the URL could be validated WITHOUT writing. That premise was
+// false: the crate exposed nine relay commands and NONE was validate-only —
+// `relay_config_set` normalized and wrote settings.json in the same call, and
+// `relay_ca_file_set` "validated by writing". Neither field could be checked
+// without committing it. That put R-B1 (vault first, settings.json last) in
+// direct conflict with R-B2 (a malformed address blocks the ENTIRE commit with
+// nothing persisted), and R-B2 won: the address had to be validated before any
+// vault write, so — validating being writing — the address committed FIRST.
 //
-// That put two rulings in direct conflict:
-//   R-B1 wants vault writes first and settings.json LAST.
-//   R-B2 wants a malformed address to block the ENTIRE commit with NOTHING
-//        persisted — "on Save AND on Test."
-// Honouring R-B1's order means the vault writes land and THEN the bad address
-// is rejected, so something persisted: R-B2 broken. Honouring R-B2 means the
-// address must be validated before any vault write, and since validating IS
-// writing, the address commits first: R-B1's ordering inverted.
+// ⛳ THE V2 DESIGN BANK DISSOLVES THE FORCING RATHER THAN PICKING A SIDE. The
+// probe now runs BEFORE every write, against explicitly-supplied field values
+// (`relay_probe`), so nothing has to be persisted in order to be checked. With
+// the forcing gone, R-B1's ordering becomes available again and is RESTORED:
 //
-// RULED: R-B2's guarantee GOVERNS; R-B1's vault-first ordering is AMENDED to
-// address-first. An absolute stated guarantee outranks unexplained write
-// ordering — R-B2 says what the user is promised and can observe, while
-// R-B1's ordering was a preference with no stated purpose, and R-B1 already
-// conceded the commit is not atomic.
+//     (1) vault token  →  (2) vault CA path  →  (3) settings.json LAST
 //
-// THE ACCEPTED COST: if a vault write fails, the address is ALREADY saved.
-// That is acceptable because state 14 reports it HONESTLY (it names the failed
-// part and says the probe did not run) and because A RE-TEST HEALS IT — fix
-// the failing field, press Test again, and the commit completes from where it
-// stopped. A partial commit the user can see and finish is not the defect a
-// partial commit that hides would be. See D-0010 and Appendix F.
+// WHY settings.json LAST, stated so it can be attacked: `relay_url` is the
+// OBSERVABLE configuration — the status footer reads it and relaunch reads it.
+// If a vault write fails, the address has not moved, so the app still points at
+// the last proven-good relay and the surviving configuration stays COHERENT.
+// Address-first leaves a NEW address paired with OLD credentials, which is the
+// clobber shape itself.
 //
-// Returns null on success, or {part, message, inline} on the first failure —
-// at which point the REMAINDER IS ABANDONED (R-B1) and the probe never runs.
+// NO ROLLBACK, and none is needed. Each store's write is individually atomic —
+// settings::save is tmp+rename, and qsc's vault secret writer holds an exclusive
+// lock across the whole read-modify-write and then does tmp→fsync→rename. So a
+// mid-sequence failure always leaves prefix-new/suffix-old, never a torn value,
+// and the message NAMES what landed.
+//
+// ⚠ THE HONEST READING OF THE INVARIANT (ratified, D-1396): a green test that
+// COMPLETES its writes persists exactly the tested triple; a partial write NAMES
+// what landed; and everything persisted has still connected at least once —
+// which is the guarantee that actually protects the user.
+//
+// Returns null on success, or {part, message, inline} on the first failure, at
+// which point the remainder is ABANDONED.
+async function persistProvenSettings(proven) {
+  // (1) THE TOKEN — to the vault, through the qsc trio.
+  if (proven.token !== null) {
+    try {
+      await invoke("relay_token_set", { token: proven.token });
+    } catch (e) {
+      const code = String(e);
+      const lead = code.includes("relay_token_missing")
+        ? "Enter a token first."
+        : "The access token couldn't be saved to your vault (" + code + ").";
+      return { part: "vault", message: lead + " Your settings were not changed.", inline: false };
+    }
+  }
+
+  // (2) THE CA FILE — to the vault, through the qsc trio.
+  if (proven.caPath !== null) {
+    try {
+      await invoke("relay_ca_file_set", { path: proven.caPath });
+    } catch (e) {
+      byId("relay-ca-error").textContent = mapErr(e, {
+        relay_ca_file_missing: "No file at that path.",
+        relay_ca_file_unreadable: "That file can't be read.",
+        relay_ca_file_invalid: "That file isn't a certificate.",
+      });
+      return { part: "vault", message: "Your access token was saved. The certificate authority file couldn't be saved to your vault. Your relay address is unchanged.", inline: false };
+    }
+  }
+
+  // (3) THE ADDRESS — settings.json, LAST.
+  if (proven.address !== null) {
+    try {
+      await invoke("relay_config_set", { url: proven.address });
+    } catch (e) {
+      return {
+        part: "settings",
+        message: "Your token and certificate settings were saved. The relay address couldn't be saved (" + String(e) + "), so the app is still using the previous one.",
+        inline: false,
+      };
+    }
+  }
+  return null;
+}
+
 // NA-0753 (R376 §3; design bank v2 item 4) — THE RELAY-ADDRESS GATE.
 //
 // ⚠ WHY IT EXISTS. The engine's `normalize_relay_endpoint` is
@@ -1145,7 +1235,8 @@ function setServerBusy(on, label) {
 // silently becomes a different server. Measured and driven at NA-0753 STOP 1;
 // the ENGINE half is FILED as ENG-0218 for a guarded engine lane and is
 // deliberately NOT patched here. This gate fronts it for every user-facing
-// path: both Test and Save reach the address through `commitServerSettings`.
+// path: Test is now the only control that reaches the address, and it reaches
+// it through this gate before any probe or any write.
 //
 // ⚠ THE GATE MUST NOT USE `new URL()`. The webview's URL parser performs the
 // SAME WHATWG IPv4 expansion this gate exists to refuse, so the authority is
@@ -1201,93 +1292,44 @@ function relayGateCheck(raw) {
   return { ok: true, value, prepended };
 }
 
-async function commitServerSettings() {
-  // (1) THE ADDRESS. Validated-and-persisted first so a malformed one blocks
-  //     everything with nothing written (R-B2). Skipped when the field is
-  //     empty or unchanged — an untouched field is not a validation failure.
-  if (urlDirty()) {
-    // THE GATE, before any invoke — so a refusal fires no test and, when the
-    // address is untouched by the one allowed transform, leaves the field
-    // byte-identical to what was typed. Both Test and Save reach the network
-    // through here, so one insertion point covers both.
-    const gate = relayGateCheck(byId("relay-url").value);
-    if (gate.prepended) {
-      byId("relay-url").value = gate.value; // VISIBLE before any test.
-    }
-    if (!gate.ok) {
-      byId("relay-url").classList.add("invalid");
-      byId("relay-url-error").textContent = gate.message;
-      return { part: "settings", message: "", inline: true };
-    }
-    try {
-      await invoke("relay_config_set", { url: gate.value });
-    } catch (e) {
-      const code = String(e);
-      if (RELAY_ENDPOINT_CODES.some((c) => code.includes(c))) {
-        // State 11: INLINE field validation, never a results card — no probe
-        // was attempted, so a card would assert something untrue.
-        byId("relay-url").classList.add("invalid");
-        byId("relay-url-error").textContent = "Enter a valid relay address, for example https://relay.example.org:8443";
-        return { part: "settings", message: "", inline: true };
-      }
-      return {
-        part: "settings",
-        message: "The relay address couldn't be saved to your settings (" + code + "). Nothing else was saved, and no connection test was run.",
-        inline: false,
-      };
-    }
+// NA-0754 (design bank v2 item 4) — THE CA-PATH GATE: `~` EXPANDED VISIBLY.
+//
+// Same shape as the address gate's https:// prepend and for the same reason: the
+// ONLY transform is one the user can see, written into the field BEFORE the path
+// is used, so nothing is silently sent at a path nobody typed.
+//
+// ⚠ THE EXPANSION NEEDS A PROCESS FACT THE WEBVIEW DOES NOT HAVE. `~` is not a
+// filesystem entry; it is shell notation for $HOME, and JS in the webview cannot
+// read the environment. `homeDir` is fetched from the `home_dir` command at pane
+// open. If it is empty — HOME unset, or the fetch failed — the gate REFUSES `~`
+// instead of guessing, because guessing here means probing a path the user never
+// typed and then persisting it on success.
+//
+// Everything else that is shell notation rather than a path is refused with one
+// message: `~user` (which needs a passwd lookup, not $HOME), $VAR and ${VAR},
+// globs, and command substitution. qsc opens the path with fs::metadata, which
+// expands none of them, so an unexpanded token would fail later as a confusing
+// "no file at that path" instead of the truth.
+function caPathGateCheck(raw) {
+  const typed = String(raw == null ? "" : raw).trim();
+  const EXAMPLE = "Use the full path — for example /home/you/ca.pem";
+  if (typed === "") {
+    return { ok: true, value: "", expanded: false };
   }
-
-  // (2) THE TOKEN — to the vault, through the qsc trio. R-B3: blank keeps,
-  //     typed replaces, pending-removal deletes.
-  if (tokenPendingRemoval) {
-    try {
-      await invoke("relay_token_clear");
-    } catch (e) {
-      return { part: "vault", message: "The access token couldn't be removed from your vault (" + String(e) + "). The relay address was saved; nothing after this was. No connection test was run.", inline: false };
+  let value = typed;
+  let expanded = false;
+  if (value === "~" || value.startsWith("~/")) {
+    if (homeDir === "") {
+      return { ok: false, value: typed, expanded: false, message: EXAMPLE };
     }
-  } else if (byId("relay-token").value !== "") {
-    try {
-      await invoke("relay_token_set", { token: byId("relay-token").value });
-    } catch (e) {
-      // A FRIENDLY SENTENCE LEADS; the raw code survives in parentheses at the
-      // end, matching the other four commit-failure messages. `mapErr` falls
-      // through to the BARE error code when it has no mapping, and that was
-      // being concatenated straight onto prose — so state 14 opened with a
-      // naked `vault_write_failed`. State 14 is the one message a user only
-      // ever reaches after something has already gone wrong, which is the
-      // worst possible moment to show them an internal identifier where a
-      // sentence belongs. Found by the NA-0674 flight; see D-0011.
-      const code = String(e);
-      const lead = code.includes("relay_token_missing")
-        ? "Enter a token first."
-        : "The access token couldn't be saved to your vault (" + code + ").";
-      return { part: "vault", message: lead + " Nothing after it was saved, and no connection test was run.", inline: false };
-    }
+    const rest = value === "~" ? "" : value.slice(1);
+    value = homeDir.replace(/\/+$/, "") + (rest === "" ? "" : rest);
+    expanded = true;
   }
-
-  // (3) THE CA FILE — to the vault, through the qsc trio. C2: there is no
-  //     validate-only call; relay_ca_file_set VALIDATES BY WRITING, and its
-  //     error codes ARE the validation.
-  if (caPendingRemoval) {
-    try {
-      await invoke("relay_ca_file_clear");
-    } catch (e) {
-      return { part: "vault", message: "The certificate authority file couldn't be removed from your vault (" + String(e) + "). Everything before it was saved. No connection test was run.", inline: false };
-    }
-  } else if (byId("relay-ca-path").value.trim() !== "") {
-    try {
-      await invoke("relay_ca_file_set", { path: byId("relay-ca-path").value.trim() });
-    } catch (e) {
-      byId("relay-ca-error").textContent = mapErr(e, {
-        relay_ca_file_missing: "No file at that path.",
-        relay_ca_file_unreadable: "That file can't be read.",
-        relay_ca_file_invalid: "That doesn't look like a certificate file.",
-      });
-      return { part: "vault", message: "The certificate authority file couldn't be saved to your vault. Check the path under “Certificate authority” above. Everything before it was saved, and no connection test was run.", inline: false };
-    }
+  if (/^~/.test(value) || /[$`*?]/.test(value)) {
+    return { ok: false, value: typed, expanded: false, message: EXAMPLE };
   }
-  return null;
+  return { ok: true, value, expanded };
 }
 
 // Both buttons take the SAME path out of a failed commit, and the two branches
@@ -1410,12 +1452,18 @@ function renderServerOutcome(res, committed) {
       detail.textContent = "Something answered, but it isn't a QSL relay. Check the address.";
       break;
   }
-  // C6 (R-E6, promoted from "may" to "does"): a Test that COMMITTED says so.
-  // Under Test-saves-first the commit is otherwise silent, and the dirty
-  // helper merely disappearing is absence-of-signal, not confirmation. Shown
-  // only when something was actually committed.
+  // C6 (R-E6): a Test that COMMITTED says so — the commit is otherwise silent,
+  // and a helper merely disappearing is absence-of-signal, not confirmation.
+  //
+  // NA-0754: and a test that did NOT commit says THAT, which is the half the old
+  // pane could not say because it had already written. The red sentence is the
+  // design bank's own verbatim direction, and it is the user-facing statement of
+  // the invariant: a failed rung persists nothing, so what you had still stands.
   if (committed) {
     detail.textContent = (detail.textContent ? detail.textContent + " " : "") + "Settings saved.";
+  } else {
+    detail.textContent = (detail.textContent ? detail.textContent + " " : "") +
+      "Nothing saved — your previous settings are unchanged.";
   }
 }
 
@@ -1436,9 +1484,26 @@ function renderServerError(codeStr) {
   byId("relay-results").classList.remove("hidden");
   byId("relay-doc").innerHTML = "";
   if (RELAY_CA_CODES.some((c) => codeStr.includes(c))) {
+    // NA-0754 (design bank v2 item 3): the failure must NAME WHICH CHECK FAILED.
+    //
+    // ⚠ THIS BRANCH IS WHERE THE CA IS NOW ACTUALLY VALIDATED, which is why the
+    // three specific strings live here. Under the old model the CA path was
+    // checked by being WRITTEN, so the specific sentences sat on the save path;
+    // under test-and-save-on-proof nothing is written until the probe is green,
+    // and the probe's own Err channel carries the verdict — `relay_http_client`
+    // reads and PEM-parses the file before any socket is opened. Leaving the
+    // sentences on the save path would have meant the pane naming the check on
+    // the one route that no longer runs it, and saying only "couldn't be read"
+    // on the route that does. Measured: scenario f_j caught exactly that.
+    byId("relay-ca-error").textContent = mapErr(codeStr, {
+      relay_ca_file_missing: "No file at that path.",
+      relay_ca_file_unreadable: "That file can't be read.",
+      relay_ca_file_invalid: "That file isn't a certificate.",
+    });
+    byId("relay-ca-path").classList.add("invalid");
     setBanner(byId("relay-status"), "accent", "Certificate authority file couldn't be read");
     byId("relay-detail").textContent =
-      "The certificate authority file you configured couldn't be read. Check the path under “Certificate authority” above — this is a local file problem, not a problem with the relay's certificate.";
+      "The certificate authority file couldn't be read. Check the path under “Certificate authority” above — this is a local file problem, not a problem with the relay's certificate. Nothing saved — your previous settings are unchanged.";
   } else {
     setBanner(byId("relay-status"), "accent", "Couldn't start the connection test");
     byId("relay-detail").textContent = "The connection test couldn't be started (" + codeStr + ").";
@@ -1456,16 +1521,13 @@ async function refreshServerState() {
   try {
     const s = await invoke("relay_token_show");
     tokenConfigured = !!s.configured;
-    if (!tokenConfigured) tokenPendingRemoval = false;
   } catch (_) { tokenConfigured = false; }
   try {
     const s = await invoke("relay_ca_file_show");
     caConfigured = !!s.configured;
     caPathHash = s.path_hash || "";
-    if (!caConfigured) caPendingRemoval = false;
   } catch (_) { caConfigured = false; caPathHash = ""; }
-  renderTokenHelp();
-  renderCaStatus();
+  renderFieldState();
   renderDirty();
 }
 
@@ -1474,8 +1536,10 @@ async function refreshServerState() {
 // inconvenience-class loss, and severity discipline gives that a helper, not a
 // modal.
 async function refreshServerPane() {
-  tokenPendingRemoval = false;
-  caPendingRemoval = false;
+  // The ~ expansion needs $HOME and the webview cannot read it; fetched once per
+  // pane open. On failure it stays "" and caPathGateCheck refuses `~` rather than
+  // guessing at a path the user never typed.
+  try { homeDir = await invoke("home_dir"); } catch (_) { homeDir = ""; }
   byId("relay-token").value = "";
   byId("relay-ca-path").value = "";
   byId("relay-url-error").textContent = "";
@@ -1495,75 +1559,100 @@ for (const fid of ["relay-url", "relay-token", "relay-ca-path"]) {
     }
     if (fid === "relay-ca-path") {
       byId("relay-ca-error").textContent = "";
-      // R-B3/R-E3: typing CANCELS a pending removal and reverts the line.
-      if (caPendingRemoval && byId("relay-ca-path").value !== "") {
-        caPendingRemoval = false;
-        renderCaStatus();
-      }
-    }
-    if (fid === "relay-token" && tokenPendingRemoval && byId("relay-token").value !== "") {
-      tokenPendingRemoval = false;
-      renderTokenHelp();
+      byId("relay-ca-path").classList.remove("invalid");
     }
     onServerChanged();
   });
 }
 
-// R-A2: TEST SAVES FIRST. On a dirty pane Test commits everything, then probes
-// the JUST-SAVED state — so the result always describes what the app will
-// actually use. A clean pane commits nothing and probes what is stored.
+// NA-0754 — TEST-AND-SAVE-ON-PROOF (design bank v2 item 1). ONE BUTTON, ONE RULE.
+//
+// The order is the whole point: GATE the two fields, PROBE with what was typed,
+// and persist ONLY on a Connected result. A test that fails ANY rung —
+// unreachable, certificate, token, CA — persists NOTHING, so the previous
+// working configuration is untouched. That is the invariant in the record and in
+// the pane's own copy: WHAT IS PERSISTED HAS CONNECTED AT LEAST ONCE.
+//
+// ⚠ WHAT THIS REPLACES, AND THE DEFECT IT KILLS. The old handler committed
+// everything FIRST and then probed the just-saved state, because nothing could be
+// validated without being written. So typing a broken address over a working one
+// and pressing Test persisted the broken one and then reported that it did not
+// work — a failed test clobbering a proven-good config. The operator met exactly
+// that in flight. Inverting the order removes the class structurally rather than
+// warning about it.
+//
+// ⚠ ACCEPTED COST, in the open (bank §1): there is no offline pre-configuration.
+// A relay you cannot currently reach cannot be saved.
 byId("btn-relay-test").addEventListener("click", async () => {
   if (serverBusy) return;
   byId("relay-url-error").textContent = "";
   byId("relay-url").classList.remove("invalid");
   byId("relay-ca-error").textContent = "";
+  byId("relay-ca-path").classList.remove("invalid");
+
+  // (1) THE ADDRESS GATE — before any invoke, so a refusal fires no probe and
+  //     leaves the field byte-identical to what was typed.
+  const typedUrl = byId("relay-url").value.trim();
+  const useTypedUrl = typedUrl !== "" && typedUrl !== savedRelayUrl;
+  let address = savedRelayUrl;
+  if (useTypedUrl || savedRelayUrl === "") {
+    const gate = relayGateCheck(byId("relay-url").value);
+    if (gate.prepended) byId("relay-url").value = gate.value; // VISIBLE before any test.
+    if (!gate.ok) {
+      byId("relay-url").classList.add("invalid");
+      byId("relay-url-error").textContent = gate.message;
+      clearServerResults();
+      return;
+    }
+    address = gate.value;
+  }
+
+  // (2) THE CA GATE — the ~ expansion is written back BEFORE the path is used.
+  const caGate = caPathGateCheck(byId("relay-ca-path").value);
+  if (caGate.expanded) byId("relay-ca-path").value = caGate.value; // VISIBLE before any test.
+  if (!caGate.ok) {
+    byId("relay-ca-path").classList.add("invalid");
+    byId("relay-ca-error").textContent = caGate.message;
+    clearServerResults();
+    return;
+  }
+
+  // (3) THE PROBE, with the TYPED values and nothing persisted. `null` means
+  //     "use whatever is stored" — R-B3's blank-means-keep, unchanged.
+  const typedToken = byId("relay-token").value;
+  const proven = {
+    address: address !== savedRelayUrl ? address : null,
+    token: typedToken !== "" ? typedToken : null,
+    caPath: caGate.value !== "" ? caGate.value : null,
+  };
+
   setServerBusy(true, "Testing…");
   try {
-    let committed = false;
-    if (serverDirty()) {
-      const fail = await commitServerSettings();
+    const res = await invoke("relay_probe", {
+      address,
+      token: proven.token,
+      caPath: proven.caPath,
+    });
+
+    // (4) PERSIST ONLY ON PROOF. Connected is the ONLY accepting outcome; every
+    //     other variant is a rung that failed, and a failed rung saves nothing.
+    if (res && res.kind === "reachable") {
+      const fail = await persistProvenSettings(proven);
       if (fail) {
         handleFailedCommit(fail);
-        return; // R-B2/R-B1: the probe does NOT run on a failed commit.
+        return;
       }
-      committed = true;
       byId("relay-token").value = "";
       byId("relay-ca-path").value = "";
       await refreshServerState();
       byId("relay-url").value = savedRelayUrl; // R-B5: the NORMALIZED form.
       renderDirty(); // MUST follow the echo — see renderDirty()'s ORDERING note.
+      renderServerOutcome(res, true);
+    } else {
+      renderServerOutcome(res, false);
     }
-    renderServerOutcome(await invoke("relay_test", { url: savedRelayUrl }), committed);
   } catch (e) {
-    // R-B4: a failed probe does NOT roll the commit back. The commit outcome
-    // and the probe outcome are independent verdicts.
     renderServerError(String(e));
-  } finally {
-    setServerBusy(false);
-  }
-});
-
-// R-A3: Save stays independently clickable — commit without probe, for the
-// configure-now-connect-later case.
-byId("btn-relay-save").addEventListener("click", async () => {
-  if (serverBusy) return;
-  byId("relay-url-error").textContent = "";
-  byId("relay-url").classList.remove("invalid");
-  byId("relay-ca-error").textContent = "";
-  setServerBusy(true, "Saving…");
-  try {
-    const fail = await commitServerSettings();
-    if (fail) {
-      handleFailedCommit(fail);
-      return;
-    }
-    byId("relay-token").value = "";
-    byId("relay-ca-path").value = "";
-    await refreshServerState();
-    byId("relay-url").value = savedRelayUrl; // R-B5
-    renderDirty(); // MUST follow the echo — see renderDirty()'s ORDERING note.
-    clearServerResults();
-    acknowledge(byId("btn-relay-save"), "✓ Saved");
   } finally {
     setServerBusy(false);
   }
