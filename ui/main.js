@@ -1484,9 +1484,26 @@ function renderServerError(codeStr) {
   byId("relay-results").classList.remove("hidden");
   byId("relay-doc").innerHTML = "";
   if (RELAY_CA_CODES.some((c) => codeStr.includes(c))) {
+    // NA-0754 (design bank v2 item 3): the failure must NAME WHICH CHECK FAILED.
+    //
+    // ⚠ THIS BRANCH IS WHERE THE CA IS NOW ACTUALLY VALIDATED, which is why the
+    // three specific strings live here. Under the old model the CA path was
+    // checked by being WRITTEN, so the specific sentences sat on the save path;
+    // under test-and-save-on-proof nothing is written until the probe is green,
+    // and the probe's own Err channel carries the verdict — `relay_http_client`
+    // reads and PEM-parses the file before any socket is opened. Leaving the
+    // sentences on the save path would have meant the pane naming the check on
+    // the one route that no longer runs it, and saying only "couldn't be read"
+    // on the route that does. Measured: scenario f_j caught exactly that.
+    byId("relay-ca-error").textContent = mapErr(codeStr, {
+      relay_ca_file_missing: "No file at that path.",
+      relay_ca_file_unreadable: "That file can't be read.",
+      relay_ca_file_invalid: "That file isn't a certificate.",
+    });
+    byId("relay-ca-path").classList.add("invalid");
     setBanner(byId("relay-status"), "accent", "Certificate authority file couldn't be read");
     byId("relay-detail").textContent =
-      "The certificate authority file you configured couldn't be read. Check the path under “Certificate authority” above — this is a local file problem, not a problem with the relay's certificate.";
+      "The certificate authority file couldn't be read. Check the path under “Certificate authority” above — this is a local file problem, not a problem with the relay's certificate. Nothing saved — your previous settings are unchanged.";
   } else {
     setBanner(byId("relay-status"), "accent", "Couldn't start the connection test");
     byId("relay-detail").textContent = "The connection test couldn't be started (" + codeStr + ").";
