@@ -1436,3 +1436,452 @@ fn the_ca_path_gate_expands_tilde_visibly_and_refuses_other_shell_tokens() {
         "the expansion must be VISIBLE in the field before any test runs"
     );
 }
+
+// ===========================================================================
+// NA-0755 (D-0036) — INVITE LANE A: THE CREATE FLOW.
+//
+// These are the seals for behaviour the offline harness cannot drive, plus the
+// character-for-character copy pins. What the harness DOES drive lives in
+// `f_k_invite_create.json`; what real IPC already pins lives in
+// `na0751_gateway_surface.rs`, which drove `invite_create`/`invite_revoke`/
+// `invite_list` through the mock runtime BEFORE this lane and is deliberately
+// not duplicated here.
+// ===========================================================================
+
+/// Whitespace-collapsing containment: HTML wraps a sentence across source lines,
+/// and a copy pin must survive that without becoming a pin on the indentation.
+fn html_says(hay: &str, needle: &str) -> bool {
+    let flat: String = hay.split_whitespace().collect::<Vec<_>>().join(" ");
+    let n: String = needle.split_whitespace().collect::<Vec<_>>().join(" ");
+    flat.contains(&n)
+}
+
+/// Z5 — THE MOCKUP-VERBATIM COPY, from the blob at 142c1eb6.
+///
+/// ⚠ THIS IS THE SOURCE PIN AND IT IS THE ONE THAT MATTERS. The scenario's
+/// `read_text` reads WebDriver's RENDERED text, which applies `text-transform` —
+/// measured at build time when `.tag` came back `INVITE — STEP 1`. Rendered text
+/// pins what the user sees; only this pin holds the STRING.
+///
+/// ⚠ MUST GO RED IF: any of these sentences is reworded. They are the ratified
+/// mockup's own bytes, and the brief's S6 transcription of them DIVERGED IN SIX
+/// PLACES — which is why the mockup, not the brief, is quoted here.
+#[test]
+fn invite_modal_copy_is_mockup_verbatim() {
+    let html = ui_file("index.html");
+    // STATE 1 — note the closing clause: "through a channel you trust", NOT the
+    // brief's "only with the person you mean" (Δ1, ruled to the mockup at R380 §6).
+    assert!(html_says(&html, "Invite &mdash; step 1"), "state 1 tag");
+    assert!(html_says(&html, "Invite someone"), "state 1 heading");
+    assert!(
+        html_says(
+            &html,
+            "Create a one-time invite code and send it to the person you want to add &mdash; \
+             by text, email, or in person. Anyone who has the code can connect to you once, \
+             so share it through a channel you trust."
+        ),
+        "state 1 body — the mockup's closing clause, not the brief's"
+    );
+    assert!(html_says(&html, "Create invite code"), "state 1 button");
+    // STATE 2 — "verify fingerprints before the conversation is trusted", NOT the
+    // brief's "confirm the connection before anything else happens" (Δ3).
+    assert!(html_says(&html, "Invite &mdash; step 2"), "state 2 tag");
+    assert!(html_says(&html, "Send this invite"), "state 2 heading");
+    assert!(
+        html_says(
+            &html,
+            "Copy the code and send it to your contact. When they accept, you'll both \
+             verify fingerprints before the conversation is trusted."
+        ),
+        "state 2 body — the mockup's fingerprint sentence, not the brief's"
+    );
+    assert!(html_says(&html, "Invite code"), "state 2 field label");
+    for b in ["Copy code", "New code", "Revoke this invite"] {
+        assert!(html_says(&html, b), "state 2 button: {b}");
+    }
+    // Δ5 — the callout. The mockup's first sentence, NOT the brief's invented
+    // "Treat the code like a house key while it's live."
+    assert!(
+        html_says(
+            &html,
+            "Share it through a channel you trust &mdash; a text, a call, or in person. \
+             The code works only once and expires on its own."
+        ),
+        "the callout carries the mockup's sentence"
+    );
+    assert!(
+        !html_says(&html, "house key"),
+        "the brief's 'house key' sentence appears nowhere in the ratified mockup and MUST NOT ship (R380 §6)"
+    );
+}
+
+/// Δ5 — THE CALLOUT USES `.callout`, NEVER THE MOCKUP'S `.warn`.
+///
+/// ⚠ MUST GO RED IF: someone copies the mockup's class name across. `style.css:277`
+/// records the ruling that renamed it: "a class named `warn` rendering in accent is
+/// a lie the next reader has to decode". Adopting the mockup's name would re-open
+/// a defect the tree already closed by name.
+#[test]
+fn the_invite_callout_uses_the_renamed_class_not_the_mockups_warn() {
+    let html = ui_file("index.html");
+    let start = html
+        .find(r#"id="invite-overlay""#)
+        .expect("the modal exists");
+    let modal = &html[start..];
+    let end = modal.find("<script src=").unwrap_or(modal.len());
+    let modal = &modal[..end];
+    assert!(
+        modal.contains(r#"class="callout""#),
+        "the modal uses the shipped .callout"
+    );
+    assert!(
+        !modal.contains(r#"class="warn""#),
+        "the mockup's `.warn` name must not be adopted — style.css:277 renamed it because it lied"
+    );
+}
+
+/// Z4 — THE ONE-TIME BOUNDARY, and it is STRUCTURAL rather than remembered.
+///
+/// ⚠ MUST GO RED IF: `show()` stops closing the modal. The overlay is deliberately
+/// NOT a `SCREENS` member, so the screen loop cannot hide it; without this call an
+/// autolock firing with the modal open leaves a live one-time code rendered over
+/// the unlock screen. There are eight `show()` call sites and this covers all of
+/// them, including ones not yet written.
+#[test]
+fn every_screen_transition_closes_the_invite_modal() {
+    let js = ui_file("main.js");
+    let start = js.find("function show(id) {").expect("show() exists");
+    let body = &js[start..start + 1400];
+    let end = body.find("\n}\n").expect("show() ends");
+    let body = &body[..end];
+    assert!(
+        body.contains("closeInviteModal()"),
+        "show() MUST close the invite modal — the overlay is not a SCREENS member, so \
+         nothing else can, and the autolock path (`show(\"scr-unlock\")`) is one of the \
+         call sites this protects"
+    );
+    // And the overlay is genuinely NOT in SCREENS: if it were added there, this
+    // seal would be measuring a redundancy instead of the real boundary.
+    let screens_start = js.find("const SCREENS = [").expect("SCREENS exists");
+    let screens = &js[screens_start..screens_start + 200];
+    assert!(
+        !screens.contains("invite-overlay"),
+        "the overlay must stay OUT of SCREENS — putting it in would make it a navigation \
+         destination and silently defeat the reason show() closes it"
+    );
+}
+
+/// Z4 — THE CODE IS NEVER PERSISTED UI-SIDE, and closing clears it.
+///
+/// ⚠ MUST GO RED IF: the code is written to storage, to settings, or to a variable
+/// that outlives the modal. The recorded NA-0751 boundary is that the full code
+/// appears exactly once, at mint; `InviteDto` carries no `code` field, so the only
+/// way it could leak is through this file.
+#[test]
+fn the_one_time_code_is_never_persisted_by_the_front_end() {
+    let js = ui_file("main.js");
+    for banned in ["localStorage", "sessionStorage", "indexedDB"] {
+        assert!(
+            !js.contains(banned),
+            "`{banned}` must not appear in main.js — the one-time code has no UI-side store"
+        );
+    }
+    let start = js
+        .find("// ---- NA-0755")
+        .expect("the invite module exists");
+    let module = &js[start..];
+    let end = module
+        .find("// ---- boot")
+        .expect("the module ends before boot");
+    let module = &module[..end];
+    assert!(
+        !module.contains("settings_set"),
+        "the invite module must never write settings — nothing about a one-time code is configuration"
+    );
+    // closeInviteModal empties the node the code lives in.
+    let close = module
+        .find("function closeInviteModal()")
+        .expect("closeInviteModal exists");
+    let close_body = &module[close..];
+    let close_end = close_body.find("\n}\n").expect("closeInviteModal ends");
+    let close_body = &close_body[..close_end];
+    assert!(
+        close_body.contains(r#"byId("invite-code").textContent = "";"#),
+        "closing the modal MUST empty the code box"
+    );
+    assert!(
+        close_body.contains("inviteId = null;"),
+        "closing the modal MUST forget the displayed invite's id"
+    );
+}
+
+/// Z3's FRONT-END HALF — the arg shapes this file really emits are the ones
+/// `na0751_gateway_surface.rs` already pinned through real IPC.
+///
+/// ⚠ MUST GO RED IF: a key is renamed on either side. The gateway test drives
+/// `{"selfLabel": null, "relay": …, "ttlSecs": …}` and `{"inviteId": …}`; if the
+/// front end emitted different keys, that test would still pass while the app
+/// broke — which is exactly the gap this seal closes.
+#[test]
+fn the_invite_calls_emit_the_arg_shapes_the_gateway_test_pins() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"invoke("invite_create", {"#)
+            && js.contains("selfLabel: null, relay: relayUrl, ttlSecs: INVITE_TTL_SECS,"),
+        "invite_create must emit selfLabel/relay/ttlSecs"
+    );
+    assert!(
+        js.contains(r#"invoke("invite_revoke", { inviteId })"#),
+        "invite_revoke must emit inviteId"
+    );
+    assert!(
+        js.contains(r#"invoke("invite_list")"#),
+        "invite_list takes no args"
+    );
+    // The TTL is the CLI's own default, adopted rather than invented.
+    assert!(
+        js.contains("const INVITE_TTL_SECS = 259200;"),
+        "the requested TTL is qsc's own `default_value_t` (72h); changing it here without \
+         changing that reference makes the two front ends ask for different things"
+    );
+}
+
+/// R380 §2 — THE `relay_rejected` SENTENCE NAMES BOTH PROVENANCES.
+///
+/// ⚠ MUST GO RED IF: it is reworded to claim the relay was unreachable. Every
+/// non-TLS send failure on the create path returns the caller's own fallback
+/// (`relay_send_outcome_from_parts`), so unreachable and refused arrive as the SAME
+/// code — measured live at STOP 1. A sentence that picks one is a claim the app
+/// has not measured, which is the defect class NA-0754 removed from the relay pane.
+#[test]
+fn the_create_failure_sentence_does_not_claim_a_cause_it_cannot_know() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains("The relay didn't create the invite"),
+        "the ruled banner"
+    );
+    assert!(
+        js.contains(
+            "Nothing was created — the relay couldn't be reached, or it refused the request. \
+             Check Settings → Relay; its Test connection button can tell which."
+        ),
+        "the ruled detail, naming BOTH provenances"
+    );
+    let start = js
+        .find(r#"if (c === "relay_rejected")"#)
+        .expect("the arm exists");
+    let arm = &js[start..start + 900];
+    assert!(
+        !arm.contains("Couldn't reach the relay"),
+        "the relay-pane's unreachable banner must NOT be reused here: this code cannot \
+         distinguish unreachable from refused"
+    );
+}
+
+/// R380 §5 — THE TWO SECURITY TELLS ARE PREPARED, DISTINCT, AND UNSEALED.
+///
+/// ⚠ This seal pins that the two arms remain DISTINCT FROM EACH OTHER and from the
+/// generic. It does NOT assert either is reachable — both are produced only inside
+/// `verify_redeemed_bundle`, on the redeem/accept path, so no Lane A call can
+/// render them. A seal on their reachability could not fail, and a seal that
+/// cannot fail is not a seal.
+#[test]
+fn the_two_security_tells_stay_distinct_from_each_other() {
+    let js = ui_file("main.js");
+    let commitment = js
+        .find("This invite's keys don't match")
+        .expect("commitment tell");
+    let signature = js
+        .find("This invite has been altered")
+        .expect("signature tell");
+    assert_ne!(
+        commitment, signature,
+        "the two tells must not collapse into one sentence"
+    );
+    // The const doc's distinction — substituted KEYS vs tampered FIELDS — is what
+    // makes two arms worth having; both must say someone may be interfering.
+    assert_eq!(
+        js.matches("Someone may be interfering.").count(),
+        2,
+        "both security tells carry the interference statement, and only they do"
+    );
+}
+
+/// R380 §3 — THE NO-RELAY GATE DISABLES RATHER THAN LETS THE USER FAIL.
+///
+/// ⚠ MUST GO RED IF: the gate becomes advisory. `relay_config_get()` returns
+/// `{relay_url: ""}` on a fresh profile (measured), so with no relay the create
+/// cannot succeed; an enabled button whose only outcome is an error is the
+/// control-that-cannot-succeed shape.
+#[test]
+fn create_is_disabled_when_no_relay_is_configured() {
+    let js = ui_file("main.js");
+    let start = js
+        .find("async function openInviteModal()")
+        .expect("open exists");
+    let body = &js[start..];
+    let end = body.find("\n}\n").expect("open ends");
+    let body = &body[..end];
+    assert!(
+        body.contains(r#"const noRelay = relayUrl === "";"#),
+        "the gate reads the empty string"
+    );
+    assert!(
+        body.contains(r#"byId("btn-invite-create").disabled = noRelay;"#),
+        "the gate DISABLES create"
+    );
+    assert!(
+        body.contains(r#"invoke("relay_config_get")"#),
+        "refresh-on-open: the gate re-reads configuration when the modal opens"
+    );
+}
+
+/// THE BANK'S "NO POLLING" DECISION, held structurally.
+///
+/// ⚠ MUST GO RED IF: a timer is added to the invite module. Refresh-on-open is the
+/// blessed design; a background check is FILED as a candidate, not built.
+#[test]
+fn the_invite_module_adds_no_timer() {
+    let js = ui_file("main.js");
+    let start = js
+        .find("// ---- NA-0755")
+        .expect("the invite module exists");
+    let module = &js[start..];
+    let end = module.find("// ---- boot").expect("the module ends");
+    let module = &module[..end];
+    assert!(
+        !module.contains("setInterval"),
+        "no polling — the bank's decision 1 is refresh-on-open, with the background check FILED"
+    );
+    // setTimeout IS used, once, for the transient "Copied" label. That is a
+    // one-shot label reset, not a poll of backend state; pinning the count keeps
+    // the distinction honest rather than banning the primitive outright.
+    assert_eq!(
+        module.matches("setTimeout").count(),
+        1,
+        "exactly one setTimeout — the transient Copy acknowledgement, never a poll"
+    );
+}
+
+/// ⚠ THE CODE BOX WRAPS, AND IT IS NOT THE VERIFICATION CODE'S BOX.
+///
+/// MUST GO RED IF: `.code-box` gains `nowrap`, or the modal switches to
+/// `.verify-code`. An invite code is 133-154 characters; `.verify-code` is
+/// `white-space: nowrap; overflow: hidden` with fitCode(), and its own comment
+/// records the re-flight where that pair produced a SILENT CLIP. Reusing it here
+/// would reproduce NA-0753's defect at twice the string length.
+#[test]
+fn the_invite_code_box_wraps_and_is_selectable() {
+    let css = ui_file("style.css");
+    let start = css.find(".code-box {").expect(".code-box exists");
+    let rule = &css[start..];
+    let end = rule.find('}').expect("the rule closes");
+    let rule = &rule[..end];
+    assert!(
+        rule.contains("overflow-wrap: anywhere"),
+        ".code-box must wrap"
+    );
+    assert!(
+        rule.contains("word-break: break-all"),
+        ".code-box must break long tokens"
+    );
+    assert!(
+        !rule.contains("nowrap"),
+        ".code-box must never be nowrap — that is the silent-clip pair"
+    );
+    // `body` sets `user-select: none`, so the box must re-enable it or the manual
+    // fallback (select the code by hand) is unavailable.
+    assert!(
+        rule.contains("user-select: text"),
+        ".code-box must re-enable selection"
+    );
+    let html = ui_file("index.html");
+    let m = html
+        .find(r#"id="invite-overlay""#)
+        .expect("the modal exists");
+    let modal = &html[m..modal_end(&html, m)];
+    // ⚠ THE NEEDLE MATCHES USAGE, NOT MENTION — and it was rebuilt here after the
+    // first draft caught its OWN AUTHOR. That draft searched for the bare class
+    // name and fired on the modal's explanatory comment, which names the class in
+    // order to say it is NOT used: the "documenting a removal re-plants it" hazard,
+    // arriving inside the seal written to prevent the defect. A seal must test what
+    // the markup DOES, so it matches the attribute, and the comment stays.
+    assert!(
+        !modal.contains(r#"class="verify-code""#)
+            && !modal.contains(r#"class="code-box verify-code""#),
+        "the modal must not APPLY .verify-code — naming it in a comment is fine and is why \
+         this needle matches the attribute rather than the word"
+    );
+    assert!(
+        modal.contains(r#"class="code-box""#),
+        "the code box is .code-box"
+    );
+}
+
+/// R380 §4 — THE UN-STUBBING IS SCOPED TO ONE HANDLER, AND THE OTHER TWO SURVIVE.
+///
+/// ⚠ MUST GO RED IF: someone "finishes the job" by deleting `#stub-note` or its
+/// remaining revealers. The Contacts pane is Lane C and is still unbuilt, so on
+/// those two paths the stub is still the truth. The brief's global claim that the
+/// stub message is GONE measured FALSE and was struck at R380 §4.
+#[test]
+fn the_un_stubbing_is_handler_scoped_and_lane_cs_stub_survives() {
+    let js = ui_file("main.js");
+    let html = ui_file("index.html");
+    assert!(
+        js.contains(
+            r#"byId("btn-add-contact").addEventListener("click", () => openInviteModal());"#
+        ),
+        "the welcome button opens the real flow"
+    );
+    // The element and BOTH Lane-C revealers are still here.
+    assert!(
+        html.contains(r#"id="stub-note""#),
+        "the stub element survives for Lane C"
+    );
+    assert_eq!(
+        js.matches(r#"byId("stub-note").classList.remove("hidden");"#)
+            .count(),
+        2,
+        "exactly TWO revealers remain — btn-rail-contacts and btn-rail-contacts-s, both Lane C's; \
+         Lane A removed exactly one and invented none"
+    );
+}
+
+/// SEVERITY: THE MODAL IS ACCENT, NEVER RED.
+///
+/// ⚠ MUST GO RED IF: a danger banner is introduced. Red is reserved for the
+/// armed-erasure state (setBanner's own note at main.js:152), and qsc's const doc
+/// says the same of the invite arms: "Severity is accent, never red".
+#[test]
+fn the_invite_modal_never_renders_danger_severity() {
+    let js = ui_file("main.js");
+    let start = js
+        .find("// ---- NA-0755")
+        .expect("the invite module exists");
+    let module = &js[start..];
+    let end = module.find("// ---- boot").expect("the module ends");
+    let module = &module[..end];
+    assert!(
+        !module.contains(r#""danger""#),
+        "the invite modal must never use the danger tier — red is the vault-loss reservation"
+    );
+    assert!(
+        module.contains(r#"setBanner(box.querySelector(".status-banner"), "accent""#),
+        "the modal renders through the shipped banner helper at accent severity"
+    );
+    let html = ui_file("index.html");
+    let m = html
+        .find(r#"id="invite-overlay""#)
+        .expect("the modal exists");
+    let modal = &html[m..modal_end(&html, m)];
+    assert!(
+        !modal.contains("danger"),
+        "no danger chrome in the modal markup"
+    );
+}
+
+fn modal_end(html: &str, from: usize) -> usize {
+    let tail = &html[from..];
+    from + tail.find("<script src=").unwrap_or(tail.len())
+}

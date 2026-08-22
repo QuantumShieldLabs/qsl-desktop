@@ -140,7 +140,14 @@
     </nav>
     <section class="list-pane">
       <div class="list-header">
-        <h2>Chats</h2>
+        <div class="list-head-row">
+          <h2>Chats</h2>
+          <!-- NA-0755 (D-0036): the SECOND entry to the invite modal. It exists so the
+               flow stays reachable after the first contact lands and the welcome pane —
+               the only other entry — is gone. `.rail-btn`+`.tip` is the shipped
+               small-icon-button pattern; no new button CSS is minted for it. -->
+          <button class="rail-btn tip" id="btn-invite-open" data-tip="Invite someone" aria-label="Invite someone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        </div>
         <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Search</span></div>
       </div>
       <p class="empty-note">No conversations yet.</p>
@@ -374,6 +381,80 @@
     </main>
   </div>
 </section>
+
+<!-- ===================================================================
+     NA-0755 (D-0036) — THE INVITE MODAL, mockup-14 states 1-2.
+
+     ⚠ DELIBERATELY NOT A `SCREENS` MEMBER. `show()` toggles exactly the seven
+     screen sections; this overlay sits beside them so it can float over the main
+     screen without becoming a navigation destination. The cost of that choice is
+     that a screen transition would otherwise leave it up — which is why `show()`
+     itself closes it (main.js), covering every transition INCLUDING autolock.
+
+     Copy authority: docs/mockups/mockup-14-invite-create.html at 142c1eb6
+     (blob 338042f03120e28f7c9ca5273867cd15903ae324), states 1-2, VERBATIM.
+     The mockup's own `.warn` is NOT used: style.css:277 records its rename to
+     `.callout` because "a class named `warn` rendering in accent is a lie".
+     The state-1 note field and the state-2 Note chip are DEFERRED TO LANE C
+     (R380 §6): nothing stores a per-invite note, and the only free-text
+     parameter, `self_label`, is the SENDER's identity and fails closed. -->
+<div id="invite-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+  <div class="modal">
+
+    <!-- STATE 1: before generating -->
+    <div id="invite-state-1">
+      <p class="tag">Invite &mdash; step 1</p>
+      <h2 id="invite-title">Invite someone</h2>
+      <p class="muted">Create a one-time invite code and send it to the person you want to add &mdash;
+      by text, email, or in person. Anyone who has the code can connect to you once, so share
+      it through a channel you trust.</p>
+      <div class="block"><button class="primary full" id="btn-invite-create">Create invite code</button></div>
+      <!-- R380 §3: the gate. Create is DISABLED while no relay is configured — an
+           enabled button whose only outcome is an error is the control-that-cannot-
+           succeed shape. The line names where to fix it. -->
+      <p id="invite-no-relay" class="hint hidden">Set a relay address in Settings &rarr; Relay before creating an invite.</p>
+      <div id="invite-error-1" class="hidden">
+        <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+        <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+      </div>
+    </div>
+
+    <!-- STATE 2: generated -->
+    <div id="invite-state-2" class="hidden">
+      <p class="tag">Invite &mdash; step 2</p>
+      <h2>Send this invite</h2>
+      <p class="muted">Copy the code and send it to your contact. When they accept, you'll both
+      verify fingerprints before the conversation is trusted.</p>
+
+      <span class="field-label">Invite code</span>
+      <!-- ⚠ `.code-box`, NOT `.verify-code`. The verification code's box is
+           `white-space:nowrap; overflow:hidden` with fitCode(); an invite code is
+           133-154 characters and that combination would clip it SILENTLY — the exact
+           NA-0753 defect. `.code-box` follows `.fingerprint` instead: word-break with
+           `user-select:text`, which `body`'s `user-select:none` otherwise denies. -->
+      <div class="code-box" id="invite-code"></div>
+      <div class="btnrow">
+        <button class="primary" id="btn-invite-copy">Copy code</button>
+        <button class="secondary" id="btn-invite-new">New code</button>
+      </div>
+
+      <div class="meta-line"><span id="invite-expiry"></span><span>Not yet accepted</span></div>
+
+      <div class="callout">Share it through a channel you trust &mdash; a text, a call, or in person.
+      The code works only once and expires on its own.</div>
+
+      <div class="block">
+        <button class="secondary full" id="btn-invite-revoke">Revoke this invite</button>
+      </div>
+      <div id="invite-error-2" class="hidden">
+        <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+        <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+      </div>
+    </div>
+
+    <div class="block"><button class="secondary full" id="btn-invite-close">Close</button></div>
+  </div>
+</div>
 
 <script src="main.js"></script>
 </body>

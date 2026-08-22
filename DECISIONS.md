@@ -2453,3 +2453,122 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     flight, recorded [O]. Eight counterfactual red runs are preserved 444 under
     `/srv/qbuild/operator/NA-0754/redruns/`, one per seal arm. Nothing is merged by the seat; the
     operator merges.
+
+- **ID:** D-0036
+  - **Status:** Accepted
+  - **Date:** 2026-08-22
+  - **Lane:** desktop **NA-0755 / INVITE LANE A: THE CREATE FLOW** — the app's first
+    contact-making act. Executing the Director's ruling **`R380`** (eight asks ruled, both
+    filings admitted, build authorised; banked verbatim under SR-14, sha256
+    `5f5e8ee4…b001b1`, 70 lines / 5198 bytes, with the R-space RE-SWEPT before the banking per
+    WF-0087). Spine decision **D-1397**. Governing design bank
+    (`RBANK_invite_lanes_split_and_laneA_20260822.md`, sha256 `0a4f8d5a…c19db0c2`, 33 lines /
+    2368 bytes) sha-VERIFIED against its own bytes BEFORE being read. Base
+    `142c1eb62892949aef3fd34dc538782490702ba7`, re-derived bare and unpiped at the NAMED github
+    remote with the open-PR set measured **0** against a positive control that returned rows.
+  - ⛳⛳ **THE HEADLINE: THE APP CAN MAKE A CONTACT.** A one-time invite is minted from the GUI
+    against a real relay, shown **exactly once**, copied, re-minted or revoked — mockup-14's
+    ratified states 1-2, live. Two entries open the same modal: the welcome button (un-stubbed)
+    and a new "+" in the Chats list header, the second existing so the flow survives the first
+    contact landing and the welcome pane disappearing.
+  - ⛳ **THE ENUMERATION SHRANK RATHER THAN GREW, WHICH IS THE CHEAPEST RESULT A LANE CAN HAVE.**
+    The brief's item 4 contemplated desktop wrappers for the invite verbs *"ONLY IF S2(b)
+    measures a needed invite wrapper missing"*. It measured **none missing**: the
+    `generate_handler` census is **40**, exactly the brief's expected figure, and all six facade
+    invite verbs were already registered at NA-0751. `R380` §1 STRUCK item 4 ⇒ **zero new
+    commands, and no `.rs` product file is touched at all.** That is also why SR-15 is not
+    triggered on a lane that adds an entire screen: three code files, none of them Rust.
+  - ⛳ **THE COPY BUTTON NEEDS NO DEPENDENCY, AND THE MEASUREMENT WAS TAKEN IN THE REAL WEBVIEW.**
+    Instrument: the harness's own `exec` op driving the shipped base binary from a
+    scratchpad-only scenario, no repo byte touched. Origin `tauri://localhost`,
+    `isSecureContext: true`, and `navigator.clipboard.writeText` **RESOLVES under a real click**
+    at capability `core:default`. ⚠ **`readText` is REJECTED** (`NotAllowedError`) — a SEAL
+    CONSTRAINT, recorded in the seal's own doc: a check may assert that `writeText` RESOLVED,
+    **never** that the clipboard holds the code. ⚠ `document.execCommand('copy')` returned
+    **`false` even with a valid selection**, so the legacy route is dead here and is not carried
+    as a fallback — the opposite of what recall would have supplied. The bank's select-the-code
+    fallback never engaged: its precondition measured FALSE.
+  - ⚠⚠ **THE Z2 PREMISE MEASURED FALSE AND WAS NOT FIXED IN PLACE.** `relay_send_outcome_from_parts`
+    returns the caller's own fallback for every non-TLS send failure, so an **unreachable** relay
+    and a relay that **refused** the request arrive as the identical code `relay_rejected` —
+    driven live at **4112 ms**. Reusing the relay pane's *"Couldn't reach the relay"* copy would
+    have shipped a claim this client cannot measure, which is the defect class NA-0754 spent a
+    whole lane removing. `R380` §2 ruled one sentence NAMING BOTH PROVENANCES and routing the
+    user to the pane that can classify. ⚖ A composed diagnosis was **offered and refused**, with
+    its hazard recorded: the pane's test command now PERSISTS on green, so any future
+    composition must use the pure `relay_probe`, never `relay_test`.
+  - ⚠⚠ **THE BRIEF'S REFERENCE MARKUP DIVERGED FROM THE MOCKUP IT CITED AS AUTHORITY, IN SIX
+    PLACES.** The copy was extracted from `docs/mockups/mockup-14-invite-create.html` at
+    `142c1eb6` (blob `338042f0…3ae324`) per the brief's own closing NOTE, and the deltas were
+    enumerated mechanically rather than resolved by preference. **The mockup rules** on Δ1/Δ3/Δ5/Δ6,
+    and the brief's invented *"Treat the code like a house key while it's live."* sentence **does
+    not ship** — with a seal that goes red if it reappears.
+  - ⚠ **A MOCKUP ELEMENT IS DEFERRED, NOT DROPPED, AND BOTH REASONS ARE MEASURED.** The state-1
+    *"Who is this invite for? (optional — stays on this device)"* field and its state-2 chip are
+    **homeless twice**: nothing stores a per-invite note (`AppSettings` is three fields;
+    `settings.rs` is outside the authorized set; `qsc`'s `InviteRecord` has no such field and
+    `qsc` is frozen), **and** the only free-text parameter on the create path, `self_label`, is
+    the SENDER's own identity label — driven live with a recipient name it returns
+    `identity_self_ambiguous`, i.e. it **fails closed**. `R380` §6 defers both to **Lane C**,
+    which must give the note a home or amend the mockup through the loop. The rest of the meta
+    line ships, because it is affordable honestly.
+  - ⛳ **THE REVOKE BUTTON EXISTS ONLY BY COMPOSITION, AND THE SAME CALL MAKES THE EXPIRY HONEST.**
+    `invite_create` returns the **code**; `invite_revoke` requires the **invite_id**; they are
+    different values and no command returns the id of the invite just minted. The id comes from
+    an `invite_list` snapshot diff taken across the mint — NA-0751's own recorded pattern for
+    this surface. That one call also returns the **real** expiry, which matters because
+    `resolve_expiry` clamps the requested TTL to the relay's advertised ceiling and subtracts a
+    300 s skew margin, and **a clamp is a NORMAL outcome, never an error**. So the modal renders
+    the expiry the invite CARRIES rather than the 72 h it asked for (`259_200`, adopted from
+    `qsc`'s own CLI default rather than invented). ⇒ **When a value can be clamped by a party you
+    do not control, read it back; do not print what you requested.**
+  - ⛳ **THE ONE-TIME BOUNDARY IS STRUCTURAL RATHER THAN REMEMBERED.** The overlay is deliberately
+    **not** a `SCREENS` member — it must float over the main screen without becoming a navigation
+    destination — and the price of that is that the screen loop cannot hide it. `show()` closes
+    it, one line beside `clearCeremonyState()`, covering all **eight** call sites including the
+    autolock at `main.js:232`. Without it, an autolock firing with the modal open would leave a
+    live one-time code rendered **over the unlock screen**. The per-call-site alternative was
+    refused BY NAME at `R380` §7 as the habit-that-is-not-a-control shape.
+  - ⚠ **Z1's NEGATIVE PIN WAS MIS-SCOPED AND WAS STRUCK.** `#stub-note` has **three** consumers —
+    `btn-add-contact` (Lane A's) plus `btn-rail-contacts` and `btn-rail-contacts-s` (both Lane
+    C's) — so *"the stub message is GONE"* is **false while Lane C is unbuilt**. The pin
+    re-scopes to the HANDLER, and the element's continued PRESENCE is pinned **positively**, so a
+    later tidy-up that deletes Lane C's honest stub goes red.
+  - ⚠ **TWO ORDERED ARMS ARE UNREACHABLE HERE AND ARE DELIBERATELY UNSEALED.**
+    `invite_commitment_mismatch` and `invite_signature_invalid` are produced only inside
+    `verify_redeemed_bundle` — the redeem/accept path, i.e. **Lane B**. Their rows are written and
+    marked **UNREACHABLE FROM LANE A — PREPARED FOR LANE B**, carrying the const doc's
+    substituted-**KEYS**-versus-tampered-**FIELDS** distinction, and carry **NO SEAL**: a seal
+    aimed at an arm no call can reach cannot fail. What IS sealed is that the two stay distinct.
+  - ⚠ **THE CODE BOX IS NOT THE VERIFICATION CODE'S BOX.** An invite code is `QSLI-1-` +
+    base64url(76 + len(relay_ep)) = **133–154 characters**, about twice the mockup's placeholder.
+    `.verify-code` is `nowrap` + `overflow: hidden` with `fitCode()` — the pair whose own comment
+    records NA-0753's silent clip. `.code-box` follows `.fingerprint` instead
+    (`overflow-wrap: anywhere`, `word-break: break-all`) and re-enables the selection that
+    `body { user-select: none }` otherwise denies — selection being the manual fallback.
+  - ⛳ **THE SHIPPED DESIGN SYSTEM CAUGHT TWO REAL VIOLATIONS IN THE FIRST DRAFT AND BOTH WERE
+    FIXED RATHER THAN EXCUSED.** `every_button_is_tiered_or_nav` fired on two modal buttons
+    transcribed from the mockup's **bare** `<button>` (the mockup's presentation is not this
+    tree's tier vocabulary), and `colors_only_in_token_block` fired on an inline `rgba` scrim
+    that the draft's own comment had reasoned its way past. Colour now lives in `:root` as
+    `--scrim` / `--modal-shadow`. ⇒ **The house's own tests are a design authority, not a
+    formality, and a comment explaining why a rule does not apply is the tell.**
+  - **MEASUREMENTS.** GUI baseline reproduced to COMPLETION **before any edit**: 10 scenarios,
+    **396 steps**, 10 passed / 0 failed, 580.62 s — the brief's figure to the step, with the
+    decomposition derivable from the runner's own terminal rows (96+20+28+25+52+21+27+27+60+40).
+    ⚠ Two carried per-scenario figures were corrected against the bytes: `g` = **27** and
+    `h` = **27**, not 26 / 28. After: **11 scenarios / 445 steps, 11 passed / 0 failed**,
+    625.05 s — the new scenario emitting **49**, PREDICTED then CONFIRMED. Full desktop suite
+    **146 passed / 0 failed**. Inventory **145 → 158**, the gate's asymmetry RE-MEASURED at this
+    base (ADDED informational, only MISSING exits 1) and printing 13 ADDED at rc 0. **Ten
+    counterfactual controls**, every one RED on breakage — and **two were re-aimed after
+    measuring the wrong thing**: one replaced a pre-existing `.callout` elsewhere in the file and
+    PASSED, one carried a needle missing a leading dot and never ran.
+  - ⚠ **Claim boundary.** No `qsc`/protocol source byte, no harness engine byte, no mockup byte,
+    no `.github/**`, no `Cargo.toml`/`Cargo.lock`; **two measured needs in `qsc` were FILED, never
+    patched** (`ENG-0228`, `ENG-0229`), per the `ENG-0218` precedent. No test weakened, skipped or
+    deleted. No relay is reachable from the harness and none was made reachable (`ENG-0226`,
+    open), so the GREEN half — a code actually minted, copied and revoked — is the operator's
+    acceptance card, recorded [O]. The clipboard measurement is **one platform**: this build
+    box's WebKitGTK under X11; macOS and Windows are unmeasured. Nothing is merged by the seat;
+    the operator merges.

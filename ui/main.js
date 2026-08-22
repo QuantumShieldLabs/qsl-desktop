@@ -84,6 +84,18 @@ function show(id) {
   // Item 13 (§5 STATE RULE): every screen transition clears the ceremony
   // and passphrase fields — no typed secret survives a state transition.
   clearCeremonyState();
+  // NA-0755 (D-0036, R380 §7): the one-time invite code is held to the SAME
+  // rule, and it is held STRUCTURALLY rather than by remembering.
+  //
+  // ⚠ Why it must live HERE and not at the call sites. The invite modal is a
+  // body-level overlay and is deliberately NOT a `SCREENS` member, so the loop
+  // below cannot hide it. There are eight `show()` call sites and one of them
+  // is the autolock path (`:232`) — an autolock firing with the modal open
+  // would otherwise leave a live one-time code rendered OVER the unlock screen.
+  // One line here covers every transition, including ones not yet written; the
+  // alternative is a habit that must be re-derived at each new call site, and a
+  // habit that must be re-derived is not a control.
+  closeInviteModal();
   for (const s of SCREENS) byId(s).classList.toggle("hidden", s !== id);
   currentScreen = id;
   // Item 15 (R1): the backend disables the state-dependent menu entries
@@ -684,9 +696,14 @@ async function enterMain() {
   }
   byId("status-line").textContent = statusFooterLine(reason, relayUrl);
 }
-byId("btn-add-contact").addEventListener("click", () => {
-  byId("stub-note").classList.remove("hidden"); // honest stub (lane 2 lands the flow)
-});
+// NA-0755 (D-0036): UN-STUBBED. This button now opens the real invite flow.
+//
+// ⚠ `#stub-note` and its OTHER TWO revealers (`btn-rail-contacts` below and
+// `btn-rail-contacts-s` in the settings rail) are deliberately LEFT IN PLACE:
+// the Contacts pane is Lane C and is still unbuilt, so the honest stub is still
+// the truth on those paths. Only THIS handler stops revealing it — which is why
+// the seal is scoped to this handler and not to the element's existence.
+byId("btn-add-contact").addEventListener("click", () => openInviteModal());
 byId("btn-rail-contacts").addEventListener("click", () => {
   byId("stub-note").classList.remove("hidden");
 });
@@ -1743,6 +1760,300 @@ function mapErr(e, table) {
   for (const k of Object.keys(table)) if (s.includes(k)) return table[k];
   return s;
 }
+
+// ---- NA-0755 (D-0036): THE INVITE MODAL — mockup-14 states 1-2 ------------
+//
+// Lane A CREATES. Redeeming is Lane B; the open-invites list and the approval
+// gate are Lane C. Nothing here polls: the modal reads its state when it OPENS
+// (the design bank's refresh-on-open decision), and a background-check design
+// is FILED as a candidate rather than invented.
+//
+// ⚠ ZERO new commands. All six facade invite verbs were already registered by
+// NA-0751; the census at base is 40 and none of them is added here.
+
+let inviteId = null;          // the id of the DISPLAYED invite, for Revoke
+let inviteCopyTimer = null;
+
+// The invite TTL this app requests, in seconds. 259200 = 72h = the `qsc` CLI's
+// own `default_value_t` for `invite create --ttl-secs` (cmd/mod.rs:949), adopted
+// rather than invented so the two front ends ask for the same thing.
+//
+// ⚠ IT IS A REQUEST, NOT A GUARANTEE. `resolve_expiry` clamps it to the relay's
+// advertised ceiling and subtracts a 300s skew margin, and a clamp is a NORMAL
+// outcome, never an error. That is exactly why the modal renders the expiry it
+// READS BACK from `invite_list` instead of printing "72 hours" from this value:
+// a number we control is not the number the invite carries.
+const INVITE_TTL_SECS = 259200;
+
+// R380 §2 / §5 — the ruled mapping from a typed facade failure onto modal copy.
+//
+// PURE and TOTAL: (code, detail) -> {banner, detail}. Kept pure so it can be
+// asserted directly, and total so no arm can render as silence.
+//
+// ⚠ SEVERITY IS ACCENT, NEVER RED. Red is reserved for the armed-erasure state
+// (setBanner's own note, and qsc's const doc says the same of the invite arms).
+//
+// ⚠ THE ENDPOINT ARMS ARE MATCHED ON `detail`, NOT ON `code`, AND THAT IS NOT A
+// STYLE CHOICE. `adversarial/route.rs` emits four endpoint codes but the facade's
+// `map_code` names only `_host` and `_scheme`, so `relay_endpoint_missing` and
+// `relay_endpoint_invalid` arrive as the open-world residual `other` with the
+// real code in `detail`. Filed as ENG-0228; the desktop is honest today by
+// reading the field that actually carries the answer.
+const INVITE_ENDPOINT_DETAILS = [
+  "relay_endpoint_missing", "relay_endpoint_invalid",
+  "relay_endpoint_invalid_host", "relay_endpoint_invalid_scheme",
+];
+function inviteErrorLine(code, detail, verb) {
+  const c = String(code || "");
+  const d = String(detail || "");
+  if (c === "relay_tls_untrusted") {
+    return { banner: "Certificate not trusted",
+      detail: "This relay presented a certificate your computer doesn't recognise. That's expected if the operator runs their own certificate authority — and it's also what an interception attack looks like. Add their CA certificate under Settings → Relay." };
+  }
+  if (c === "relay_ca_file") {
+    return { banner: "Certificate authority file couldn't be read",
+      detail: "The certificate authority file couldn't be read. Check the path under Settings → Relay — this is a local file problem, not a problem with the relay's certificate." };
+  }
+  if (c === "relay_unauthorized") {
+    return { banner: "Token rejected",
+      detail: "The relay requires an access token and didn't accept the one this app sent. Check it with the operator, then set it under Settings → Relay." };
+  }
+  if (INVITE_ENDPOINT_DETAILS.includes(c) || (c === "other" && INVITE_ENDPOINT_DETAILS.includes(d))) {
+    return { banner: "Relay address isn't usable",
+      detail: "Set a valid relay address under Settings → Relay, then try again." };
+  }
+  if (c === "soft_cap_reached") {
+    return { banner: "Too many live invites",
+      detail: "You already have 10 invites waiting. Revoke one you no longer need, then create another." };
+  }
+  if (c === "rate_limited") {
+    return { banner: "The relay is rate-limiting",
+      detail: "The relay asked this app to slow down. Wait a moment and try again." };
+  }
+  if (c === "relay_slots_full") {
+    return { banner: "The relay has no invite slots free",
+      detail: "The relay's invite table is full. Ask the operator, or try again later." };
+  }
+  if (c === "relay_rejected") {
+    // R380 §2, option (A): BOTH provenances named, because the client cannot
+    // tell them apart. Every non-TLS send failure returns the caller's own
+    // fallback (`relay_send_outcome_from_parts`), so an unreachable relay and a
+    // relay that refused the request arrive as the SAME code. Saying "couldn't
+    // reach the relay" here would be a claim this app has not measured.
+    return { banner: "The relay didn't create the invite",
+      detail: "Nothing was created — the relay couldn't be reached, or it refused the request. Check Settings → Relay; its Test connection button can tell which." };
+  }
+  if (c === "not_found") {
+    return { banner: "That invite is already gone",
+      detail: "This app has no record of that invite any more." };
+  }
+  if (c === "revoke_invalid") {
+    return { banner: "Couldn't revoke this invite",
+      detail: "This invite has no revoke token stored, so it can't be revoked from here." };
+  }
+  if (c === "locked") {
+    return { banner: "Vault is locked", detail: "Unlock to continue." };
+  }
+  if (c === "vault_unavailable") {
+    // ⚠ MUST NOT say "unlock it". `vault_unavailable` carries THREE provenances
+    // — locked mid-operation, vault DAMAGE, or a key-source failure — and the
+    // facade's own doc requires copy that is true in all three.
+    return { banner: "The vault couldn't be read",
+      detail: "The vault couldn't be read. If this keeps happening, check Settings → Vault." };
+  }
+  // ── UNREACHABLE FROM LANE A — PREPARED FOR LANE B (R380 §5) ──────────────
+  // `invite_commitment_mismatch` and `invite_signature_invalid` are produced at
+  // exactly two sites, both inside `verify_redeemed_bundle` — the REDEEM/ACCEPT
+  // path. Neither can arrive from `invite_create`, `invite_revoke` or
+  // `invite_list`, so these two rows carry NO SEAL: a seal that cannot fail is
+  // not a seal. They are written now because the distinction they preserve is
+  // the expensive part — substituted KEYS versus tampered FIELDS — and Lane B
+  // inherits them by name.
+  if (c === "commitment_mismatch") {
+    return { banner: "This invite's keys don't match",
+      detail: "The keys in this invite don't match what it commits to. Someone may be interfering. Ask the person who sent it for a new invite through a different channel." };
+  }
+  if (c === "signature_invalid") {
+    return { banner: "This invite has been altered",
+      detail: "This invite's signature doesn't check out, so its contents have been changed since it was made. Someone may be interfering. Ask for a new invite through a different channel." };
+  }
+  // The honest generic, CARRYING the class name so a residual is diagnosable
+  // rather than mute. `Store`'s thirteen codes land here by design.
+  const shown = c === "other" && d ? d : c || "unknown";
+  return { banner: verb === "revoke" ? "Couldn't revoke the invite" : "Couldn't create the invite",
+    detail: "The relay or this app reported: " + shown };
+}
+
+function renderInviteError(box, code, detail, verb) {
+  const line = inviteErrorLine(code, detail, verb);
+  setBanner(box.querySelector(".status-banner"), "accent", line.banner);
+  box.querySelector(".hint").textContent = line.detail;
+  box.classList.remove("hidden");
+}
+function clearInviteErrors() {
+  for (const id of ["invite-error-1", "invite-error-2"]) byId(id).classList.add("hidden");
+}
+
+function inviteShowState(n) {
+  byId("invite-state-1").classList.toggle("hidden", n !== 1);
+  byId("invite-state-2").classList.toggle("hidden", n !== 2);
+}
+
+// ⚠ The one-time boundary's local half: the code lives in the DOM node and in
+// nothing else — no module variable holds it, nothing writes it to settings,
+// and closing the modal removes it. `inviteId` is NOT the code; it is the
+// public slot identifier that Revoke needs and that `invite_list` already
+// publishes, which is why keeping it is not a second copy of the secret.
+function closeInviteModal() {
+  const ov = byId("invite-overlay");
+  if (!ov || ov.classList.contains("hidden")) return;
+  ov.classList.add("hidden");
+  byId("invite-code").textContent = "";
+  byId("invite-expiry").textContent = "";
+  inviteId = null;
+  clearInviteErrors();
+  inviteShowState(1);
+}
+
+async function openInviteModal() {
+  clearInviteErrors();
+  inviteShowState(1);
+  byId("invite-code").textContent = "";
+  inviteId = null;
+  byId("invite-overlay").classList.remove("hidden");
+  // Refresh-on-open (the bank's decision 1), not polling: the gate reflects the
+  // relay configuration as it is at the moment the user opens the flow.
+  let relayUrl = "";
+  try {
+    const cfg = await invoke("relay_config_get");
+    relayUrl = cfg.relay_url || "";
+  } catch (_) {
+    relayUrl = "";
+  }
+  // R380 §3: an enabled button whose only outcome is an error is the
+  // control-that-cannot-succeed shape. With no relay configured the create
+  // cannot succeed, so the control says so instead of failing.
+  const noRelay = relayUrl === "";
+  byId("btn-invite-create").disabled = noRelay;
+  byId("invite-no-relay").classList.toggle("hidden", !noRelay);
+}
+
+// The invite_id is NOT returned by invite_create — it returns the CODE — and
+// Revoke needs the id. `invite_list` publishes it, so the id is recovered by
+// COMPOSITION: snapshot the ids before minting, take the one that is new after.
+// The same row carries the REAL expiry, which is what lets the meta line state
+// a duration the invite actually has rather than the one we asked for.
+async function inviteIdSnapshot() {
+  try {
+    const rows = await invoke("invite_list");
+    return rows.map((r) => r.invite_id);
+  } catch (_) {
+    return null;   // null = "unknown", never an empty set: an empty set would
+  }                // make every existing invite look new.
+}
+async function adoptMintedInvite(before) {
+  byId("invite-expiry").textContent = "";
+  inviteId = null;
+  if (before === null) return;
+  let rows;
+  try {
+    rows = await invoke("invite_list");
+  } catch (_) {
+    return;
+  }
+  const fresh = rows.filter((r) => !before.includes(r.invite_id));
+  if (fresh.length !== 1) return;   // ambiguous -> claim nothing
+  inviteId = fresh[0].invite_id;
+  const left = fresh[0].expiry - Math.floor(Date.now() / 1000);
+  if (left > 0) byId("invite-expiry").textContent = "Expires in " + humanDuration(left);
+}
+
+async function mintInvite() {
+  clearInviteErrors();
+  let relayUrl = "";
+  try {
+    const cfg = await invoke("relay_config_get");
+    relayUrl = cfg.relay_url || "";
+  } catch (_) {
+    relayUrl = "";
+  }
+  const before = await inviteIdSnapshot();
+  try {
+    const code = await invoke("invite_create", {
+      selfLabel: null, relay: relayUrl, ttlSecs: INVITE_TTL_SECS,
+    });
+    byId("invite-code").textContent = code;
+    inviteShowState(2);
+    await adoptMintedInvite(before);
+  } catch (e) {
+    renderInviteError(byId("invite-error-1"), e && e.code, e && e.detail, "create");
+    inviteShowState(1);
+  }
+}
+
+byId("btn-invite-open").addEventListener("click", () => openInviteModal());
+byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
+byId("btn-invite-create").addEventListener("click", () => mintInvite());
+
+// "New code" MINTS ANOTHER invite. It does NOT revoke the one on screen — the
+// bank is explicit that there is no implicit revoke, and a user who wanted the
+// previous slot dead has a Revoke button for exactly that.
+byId("btn-invite-new").addEventListener("click", async () => {
+  clearInviteErrors();
+  inviteShowState(1);
+  byId("invite-code").textContent = "";
+  await mintInvite();
+});
+
+byId("btn-invite-copy").addEventListener("click", async () => {
+  const btn = byId("btn-invite-copy");
+  const code = byId("invite-code").textContent;
+  if (!code) return;
+  try {
+    // MEASURED, not assumed: this webview is a secure context
+    // (`tauri://localhost`) and `navigator.clipboard.writeText` RESOLVES under a
+    // real click, at zero new dependencies — the capability stays `core:default`.
+    // `document.execCommand("copy")` was measured to return FALSE here even with
+    // a valid selection, so the legacy route is not a fallback worth carrying.
+    await navigator.clipboard.writeText(code);
+    btn.textContent = "Copied";
+    btn.classList.add("acked");
+    if (inviteCopyTimer) clearTimeout(inviteCopyTimer);
+    inviteCopyTimer = setTimeout(() => {
+      btn.textContent = "Copy code";
+      btn.classList.remove("acked");
+    }, 1500);
+  } catch (_) {
+    // No new failure vocabulary: the code is on screen and selectable
+    // (`.code-box` re-enables `user-select`), so the honest instruction is to
+    // select it. This arm was not reachable on the measured platform.
+    renderInviteError(byId("invite-error-2"), "clipboard_unavailable", null, "create");
+  }
+});
+
+byId("btn-invite-revoke").addEventListener("click", async () => {
+  clearInviteErrors();
+  if (!inviteId) {
+    renderInviteError(byId("invite-error-2"), "revoke_invalid", null, "revoke");
+    return;
+  }
+  try {
+    await invoke("invite_revoke", { inviteId });
+    closeInviteModal();
+  } catch (e) {
+    renderInviteError(byId("invite-error-2"), e && e.code, e && e.detail, "revoke");
+  }
+});
+
+// Backdrop click closes; a click inside the panel does not.
+byId("invite-overlay").addEventListener("click", (ev) => {
+  if (ev.target === byId("invite-overlay")) closeInviteModal();
+});
+// Escape closes. This is the FIRST keydown handler in this file — there was no
+// modal machinery to inherit one from.
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") closeInviteModal();
+});
 
 // ---- boot -----------------------------------------------------------------
 (async () => {

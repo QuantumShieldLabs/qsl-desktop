@@ -213,3 +213,24 @@ fn na0753_gui_i_flight_fixes() {
 fn na0754_gui_j_relay_pane_truth() {
     run_scenario("f_j_relay_pane_truth");
 }
+
+// NA-0755 (D-0036) — INVITE LANE A: THE CREATE FLOW.
+//
+// ⚠ WHAT THIS SCENARIO CANNOT REACH, stated so its silence is not read as
+// coverage. A successful mint needs a relay that answers, and this repo still
+// has no fixture relay (ENG-0226, open). So the GREEN half — the code rendered
+// once, Copy, New code, and a Revoke that actually revokes — is the operator's
+// acceptance card, recorded [O]. What IS driven here is every arm reachable
+// offline: both entries opening the same modal, the handler-scoped un-stubbing,
+// the no-relay gate, the create arm against an unreachable relay, and close by
+// button and by Escape.
+//
+// ⚠ THE CREATE STEP POLLS TO 20s AND THAT NUMBER IS MEASURED, NOT PADDED. An
+// unreachable `.test` relay costs two failed network calls — the pre-clamp
+// `relay_server_info` (bounded at 10s) and then the create POST — and was
+// driven at 4112 ms at STOP 1.
+#[test]
+#[ignore]
+fn na0755_gui_k_invite_create() {
+    run_scenario("f_k_invite_create");
+}
