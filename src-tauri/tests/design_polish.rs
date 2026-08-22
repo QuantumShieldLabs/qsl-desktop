@@ -1290,3 +1290,149 @@ fn grouped_verification_code_is_wired_on_both_surfaces() {
         "ONE text node — a <br> split would defeat fitCode's clip escape (R377 §1)"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NA-0754 (D-0035) — TEST-AND-SAVE-ON-PROOF: the source disciplines behind the
+// invariant. These are SOURCE PINS, and presence is not behaviour — the
+// behavioural halves live in `na0754_persist_boundary.rs` (engine, with its
+// counterfactual red runs) and scenario `f_j` (surface). What these catch is a
+// later edit quietly reintroducing the SHAPE the lane removed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// NA-0754 — THE ORDER IS THE INVARIANT: the probe runs before any write.
+///
+/// ⚠ MUST GO RED IF: someone reintroduces a persist call ahead of the probe in
+/// the Test handler. That is the whole defect class — under the old model the
+/// handler committed everything and THEN probed the just-saved state, so a
+/// failed test clobbered a proven-good configuration. This pins the ORDER in the
+/// one function where it is decided, by position, not by comment.
+#[test]
+fn the_test_handler_probes_before_it_persists() {
+    let js = ui_file("main.js");
+    let start = js
+        .find(r#"byId("btn-relay-test").addEventListener"#)
+        .expect("the Test handler exists");
+    let body = &js[start..];
+    let probe = body
+        .find(r#"invoke("relay_probe""#)
+        .expect("the handler probes");
+    let persist = body
+        .find("persistProvenSettings(proven)")
+        .expect("the handler persists through the ruled order");
+    assert!(
+        probe < persist,
+        "the probe MUST precede the persist — a write before the probe is the \
+         clobber class this lane removed structurally"
+    );
+    // And the persist is gated on the ACCEPTING outcome, not merely sequenced
+    // after the probe: sequence without a gate would still save on a red rung.
+    let gate = body
+        .find(r#"res.kind === "reachable""#)
+        .expect("the persist is gated on Connected");
+    assert!(
+        gate < persist,
+        "persisting must be GATED on a Connected result, not just ordered after the probe"
+    );
+}
+
+/// NA-0754 (R379 §Q2) — R-B1's ORIGINAL ORDER, RESTORED: token → CA → settings LAST.
+///
+/// ⚠ MUST GO RED IF: settings.json moves back to first. It was first only because
+/// R-B2 forced it there when validating meant writing; with the probe now first
+/// that forcing is gone. settings.json is the OBSERVABLE configuration (the status
+/// footer and relaunch both read it), so writing it last is what keeps the
+/// surviving configuration coherent when a vault write fails.
+#[test]
+fn the_persist_order_is_token_then_ca_then_settings_last() {
+    let js = ui_file("main.js");
+    let start = js
+        .find("async function persistProvenSettings(")
+        .expect("the persist function exists");
+    let body = &js[start..];
+    let end = body.find("\n}\n").expect("persist body end");
+    let body = &body[..end];
+    let token = body
+        .find(r#"invoke("relay_token_set""#)
+        .expect("token write");
+    let ca = body
+        .find(r#"invoke("relay_ca_file_set""#)
+        .expect("CA write");
+    let settings = body
+        .find(r#"invoke("relay_config_set""#)
+        .expect("settings write");
+    assert!(
+        token < ca && ca < settings,
+        "the ruled order is vault token -> vault CA -> settings.json LAST \
+         (got token@{token} ca@{ca} settings@{settings})"
+    );
+}
+
+/// NA-0754 (design bank v2 item 2) — the clear controls delete IMMEDIATELY and
+/// never route through a commit.
+///
+/// ⚠ MUST GO RED IF: someone reintroduces a pending-removal flag. The old
+/// "remove it" links set a flag that only committed inside the commit function,
+/// whose first step was the address — so a mistyped address made a stored token
+/// undeletable, breaking the house rule that a stored secret must ALWAYS be
+/// removable (ENG-0225). The affordance's whole value is that it works when
+/// nothing else does.
+#[test]
+fn the_clear_controls_delete_immediately_and_offline() {
+    let js = ui_file("main.js");
+    assert!(
+        !js.contains("PendingRemoval"),
+        "a pending-removal flag is back — removal must not depend on a commit path"
+    );
+    let start = js
+        .find("async function clearStoredSecret(")
+        .expect("the immediate clear exists");
+    let body = &js[start..];
+    let end = body.find("\n}\n").expect("clear body end");
+    let body = &body[..end];
+    assert!(
+        body.contains(r#""relay_token_clear""#) && body.contains(r#""relay_ca_file_clear""#),
+        "both clears go straight to the vault trio"
+    );
+    // Neither clear may reach the network: those two commands are pure vault
+    // writes, and adding a probe here would make the affordance relay-dependent.
+    assert!(
+        !body.contains("relay_probe") && !body.contains("relay_config_set"),
+        "a clear must not probe or touch settings — it has to work with no relay reachable"
+    );
+    for id in ["relay-token-clear", "relay-ca-clear"] {
+        assert!(
+            ui_file("index.html").contains(&format!(r#"id="{id}""#)),
+            "the {id} control must exist to host the affordance"
+        );
+    }
+}
+
+/// NA-0754 (design bank v2 item 4) — a leading `~/` is expanded VISIBLY, in the
+/// field, before the path is used; anything else shell-shaped is refused.
+///
+/// ⚠ MUST GO RED IF: the write-back disappears, or the gate starts guessing when
+/// $HOME is unresolvable. Expanding invisibly would send the probe at a path the
+/// user never saw and then PERSIST it on success — silent, and persisted.
+#[test]
+fn the_ca_path_gate_expands_tilde_visibly_and_refuses_other_shell_tokens() {
+    let js = ui_file("main.js");
+    let start = js
+        .find("function caPathGateCheck(")
+        .expect("the CA path gate exists");
+    let body = &js[start..];
+    let end = body.find("\n}\n").expect("gate body end");
+    let body = &body[..end];
+    assert!(
+        body.contains("homeDir === \"\""),
+        "an unresolvable $HOME must REFUSE, never guess at a path nobody typed"
+    );
+    assert!(
+        body.contains("Use the full path"),
+        "the ruled refusal string is missing"
+    );
+    // The expansion must be written back into the field before the probe.
+    assert!(
+        js.contains(r#"if (caGate.expanded) byId("relay-ca-path").value = caGate.value;"#),
+        "the expansion must be VISIBLE in the field before any test runs"
+    );
+}

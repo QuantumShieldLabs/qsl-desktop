@@ -27,14 +27,14 @@ fn server_pane_has_the_connectivity_controls() {
         r#"id="relay-token""#,
         r#"id="relay-ca-path""#,
         r#"id="btn-relay-test""#,
-        r#"id="btn-relay-save""#,
         r#"id="relay-results""#,
-        // D610 redesign: the state-communication surfaces that REPLACED the
-        // per-field buttons — one swapping token helper line (R-E1/E2/E3), the
-        // CA status line (R-E4), the dirty helper (R-E5).
-        r#"id="relay-token-help""#,
-        r#"id="relay-ca-status""#,
         r#"id="relay-dirty""#,
+        // NA-0754 (D-0035): the two clear controls that REPLACED the prose
+        // "remove it" links. A stored secret must always be deletable even with
+        // no relay reachable, so the affordance survives the helper lines that
+        // used to host it — as an icon-only control that deletes immediately.
+        r#"id="relay-token-clear""#,
+        r#"id="relay-ca-clear""#,
     ] {
         assert!(html.contains(needle), "server pane missing {needle}");
     }
@@ -43,6 +43,88 @@ fn server_pane_has_the_connectivity_controls() {
         !html.contains("makes no network connections at all"),
         "the #pane-server placeholder copy must be replaced by the pane"
     );
+}
+
+/// ⚠ NEGATIVE PIN (NA-0754 / D-0035, design bank v2 items 1-2). The
+/// test-and-save-on-proof model REMOVED the Save button and the two per-field
+/// helper lines; this asserts the removal itself, because a pin file that merely
+/// LOST its assertions would document nothing and would not notice them coming
+/// back. Same reasoning as the four-buttons pin below, whose shape this follows.
+///
+/// WHY EACH ONE WENT:
+///   `btn-relay-save` — its whole job was to persist an UNTESTED configuration,
+///     which is precisely what the invariant ("what is persisted has connected at
+///     least once") forbids. Removing it strengthens the invariant; it is UI
+///     chrome, not a safety mechanism.
+///   `relay-token-help` / `relay-ca-status` — the per-field status sentences. The
+///     FIELDS now carry stored state (the token's fixed dots, the CA's stored
+///     marker in its placeholder) and the results banner carries connection truth,
+///     so a sentence narrating what the field already shows is clutter.
+///
+/// THE REGRESSION THIS MUST CATCH: a later lane re-adding a Save button, which
+/// would silently restore the ability to persist a configuration that has never
+/// connected — the exact defect this lane exists to make structurally impossible.
+/// NA-0754 COPY RIDER (Bank F3, operator-blessed 2026-08-22) — THE RELAY PANE'S
+/// HEADER COPY, PINNED VERBATIM.
+///
+/// ⚠ THIS STRING IS A TESTABLE CLAIM SET, NOT DECORATION, which is why it is
+/// pinned character-for-character rather than by keyword. It asserts four things
+/// about the product: messages are sealed client-side before transmission; names
+/// are never present on the relay; delivery runs on anonymous codes; and the relay
+/// observes traffic-flow only. This test pins the WORDS. It cannot and does not
+/// verify the claims — the threat-model documentation owes that alignment, filed
+/// as an open documentation candidate. Any future change to what the relay can
+/// actually see must re-open this copy BEFORE it ships.
+///
+/// ⚠ MUST GO RED IF: a single character drifts. That is the point — a claim set
+/// that can be quietly reworded is a claim set nobody is accountable for.
+#[test]
+fn the_relay_pane_header_copy_is_the_blessed_claim_set() {
+    let html = ui("index.html");
+    let blessed = "Assume the relay is hostile — this app already does. It's built so a compromised relay still learns almost nothing: your messages are sealed before they leave your device, your name and your contacts' names never exist on it, and delivery runs on anonymous codes. The most it can ever see is that sealed traffic is flowing.";
+    assert!(
+        html.contains(blessed),
+        "the blessed F3 relay-pane copy must ship VERBATIM — no drift, house em-dash"
+    );
+    // The em-dash is house typography; the bank's `--` was transport armor only.
+    assert!(
+        blessed.contains('\u{2014}') && !blessed.contains("--"),
+        "the shipped string carries the house em-dash, never the armor form"
+    );
+    // The superseded one-liner is retired in the same stroke, so the pane cannot
+    // carry both the old understated claim and the new explicit one.
+    assert!(
+        !html.contains("The relay carries your encrypted messages."),
+        "the retired one-liner must not survive beside its replacement"
+    );
+}
+
+#[test]
+fn the_save_button_and_the_per_field_helper_lines_are_gone_and_stay_gone() {
+    let html = ui("index.html");
+    for needle in [
+        r#"id="btn-relay-save""#,
+        r#"id="relay-token-help""#,
+        r#"id="relay-ca-status""#,
+    ] {
+        assert!(
+            !html.contains(needle),
+            "{needle} must stay removed (NA-0754: test-and-save-on-proof)"
+        );
+    }
+    // And the retired per-field status sentences themselves, so the copy cannot
+    // come back on a differently-named element.
+    for copy in [
+        "A token is set",
+        "Required only if the operator set one",
+        "CA certificate file set",
+        "No CA file set",
+    ] {
+        assert!(
+            !ui("main.js").contains(copy),
+            "the retired helper sentence {copy:?} must stay removed"
+        );
+    }
 }
 
 #[test]
@@ -122,104 +204,133 @@ fn three_sections_two_hairlines() {
 }
 
 #[test]
-fn removal_is_a_link_per_field_not_a_shared_button_label() {
-    // R-A1/R-E1/R-E4 + F1R. Each field's removal affordance lives INSIDE the
-    // line that describes that field's state, so the two can never be
-    // confused for one another the way two "Clear" buttons were.
-    let js = ui("main.js");
-    let css = ui("style.css");
+fn removal_is_a_distinctly_named_control_per_field_not_a_shared_label() {
+    // R-A1's PURPOSE, carried forward through a changed mechanism (NA-0754 /
+    // design bank v2 item 2). ENG-0073 was two ADJACENT controls both labelled
+    // "Clear": the NA-0673 flight mis-clicked between them twice, each time
+    // producing a plausible-looking wrong result. The fix was never "use a link";
+    // it was "make the two removals impossible to confuse". D610 achieved that
+    // with prose links inside each field's status line. Those status lines are
+    // gone, so the affordance is now an icon control per field — and the
+    // anti-confusion property is re-pinned on what actually carries it: each
+    // control names ITS OWN field in its accessible name, and the two names
+    // differ.
+    //
+    // ⚠ MUST GO RED IF: the two controls ever share a label, which is the exact
+    // condition that produced ENG-0073.
+    let html = ui("index.html");
+    let token_label = "Remove stored token";
+    let ca_label = "Remove stored certificate authority file";
     assert!(
-        js.contains(r#"a.className = "rm""#),
-        "the removal affordance must be the prose link (R-A1)"
+        html.contains(&format!(r#"aria-label="{token_label}""#)),
+        "the token clear must name its own field"
     );
     assert!(
-        js.contains(r#"a.textContent = "remove it""#),
-        "the removal link copy is 'remove it' (R-E1/R-E4)"
+        html.contains(&format!(r#"aria-label="{ca_label}""#)),
+        "the CA clear must name its own field"
     );
-    assert!(
-        js.contains(r#"removalLink("relay-token-remove""#)
-            && js.contains(r#"removalLink("relay-ca-remove""#),
-        "each field gets its OWN removal link, distinctly identified"
+    assert_ne!(
+        token_label, ca_label,
+        "the two removals must never share a label (ENG-0073)"
     );
-    assert!(
-        css.contains("a.rm {"),
-        "the removal link needs its own style"
-    );
-    // R-E3: a pending removal is CANCELLED by typing.
-    assert!(
-        js.contains("tokenPendingRemoval = false;") && js.contains("caPendingRemoval = false;"),
-        "typing must cancel a pending removal (R-B3/R-E3)"
-    );
+    // Icon-only controls: an accessible name is the ONLY thing a screen reader
+    // has here, so a missing one would make the affordance unreachable.
+    for id in ["relay-token-clear", "relay-ca-clear"] {
+        let at = html
+            .find(&format!(r#"id="{id}""#))
+            .expect("control present");
+        let tag_end = html[at..].find('>').expect("tag closes") + at;
+        assert!(
+            html[at..tag_end].contains("aria-label="),
+            "{id} is icon-only and MUST carry an accessible name"
+        );
+    }
 }
 
 #[test]
-fn test_saves_first_and_a_failed_commit_never_probes() {
-    // R-A2 is the whole reason this lane exists: on the shipped pane, typing a
-    // token and pressing Test probed the OLD token, because the typed one had
-    // never been committed. Test now commits first and probes what it saved.
+fn test_probes_first_and_a_failed_probe_never_persists() {
+    // ⚠ THIS TEST IS THE INVERSE OF THE ONE IT REPLACES, AND THAT IS THE LANE.
+    // R-A2 ruled TEST-SAVES-FIRST because nothing could be validated without
+    // being written: the pane committed everything and then probed what it had
+    // just saved. It fixed a real trap (a typed token that had never been
+    // committed was not the token the probe used) and introduced a worse one —
+    // a FAILED test overwrote a working configuration, which the operator met
+    // in flight. The v2 design bank supersedes R-A2 with test-and-save-on-proof,
+    // so the order pinned here is REVERSED on purpose: probe, then persist, and
+    // only on a Connected result.
     let js = ui("main.js");
     let test_handler = js
         .split(r#"byId("btn-relay-test").addEventListener"#)
         .nth(1)
         .expect("the Test handler must exist");
-    let commit_at = test_handler
-        .find("commitServerSettings()")
-        .expect("Test must commit before probing (R-A2)");
     let probe_at = test_handler
-        .find(r#"invoke("relay_test""#)
-        .expect("Test must probe");
+        .find(r#"invoke("relay_probe""#)
+        .expect("Test must probe with the TYPED values");
+    let persist_at = test_handler
+        .find("persistProvenSettings(proven)")
+        .expect("Test must persist through the ruled order");
     assert!(
-        commit_at < probe_at,
-        "TEST SAVES FIRST: the commit must precede the probe (R-A2)"
+        probe_at < persist_at,
+        "TEST-AND-SAVE-ON-PROOF: the probe must precede every write"
     );
-    // R-B2/R-B1: a failed commit abandons the remainder AND the probe.
+    // The persist is GATED on the accepting outcome, not merely sequenced after
+    // the probe — sequence alone would still save on a failed rung.
+    let gate_at = test_handler
+        .find(r#"res.kind === "reachable""#)
+        .expect("the persist must be gated on Connected");
     assert!(
-        test_handler.contains("if (fail) {"),
-        "a failed commit must short-circuit the Test handler"
+        gate_at < persist_at,
+        "the write must be gated on a Connected result"
     );
-    // R-F2: the new state 14 exists and says the probe did not run.
+    // And the user is TOLD nothing was saved — the invariant's user-facing half.
     assert!(
-        js.contains(r#"setBanner(byId("relay-status"), "accent", "Couldn't save settings")"#),
-        "state 14 must render (R-F2)"
-    );
-    assert!(
-        js.contains("no connection test was run"),
-        "state 14 must say plainly that the probe did not run (R-F2)"
+        js.contains("Nothing saved — your previous settings are unchanged."),
+        "a failed test must say plainly that nothing was persisted"
     );
 }
 
 #[test]
-fn the_commit_order_is_fixed_and_settings_validation_gates_the_vault() {
-    // D610 C2, as CORRECTED at implementation: neither the URL nor the CA path
-    // can be validated without writing — the crate exposes no validate-only
-    // command, and `relay_config_set` / `relay_ca_file_set` each validate BY
-    // writing. R-B2 ("nothing persists" on a malformed address, on Save AND on
-    // Test) therefore forces the address to be committed FIRST, inverting
-    // R-B1's "settings.json last". Pinned so the order cannot drift back
-    // silently while the deviation is on the record.
+fn the_persist_order_is_fixed_and_r_b1s_original_order_is_restored() {
+    // D610 C2 ruled "URL -> token -> CA -> settings.json LAST", then implementation
+    // measured its premise false: no command was validate-only, so validating the
+    // address MEANT writing it, and R-B2's "nothing persists on a malformed
+    // address" forced the address to commit FIRST — inverting R-B1.
+    //
+    // ⛳ NA-0754 dissolves the forcing rather than picking a side. `relay_probe`
+    // validates an explicit triple while persisting nothing, so nothing has to be
+    // written in order to be checked, and R-B1's ORIGINAL order is restored:
+    // vault token -> vault CA -> settings.json LAST. Pinned so it cannot drift
+    // back, because settings.json's `relay_url` is the OBSERVABLE configuration
+    // (the status footer and relaunch both read it) — writing it last is what
+    // keeps the surviving configuration coherent when a vault write fails.
     let js = ui("main.js");
-    let commit = js
-        .split("async function commitServerSettings()")
+    let persist = js
+        .split("async function persistProvenSettings(")
         .nth(1)
-        .expect("the unified commit must exist (R-A1)");
-    let url_at = commit
-        .find(r#"invoke("relay_config_set""#)
-        .expect("URL step");
-    let token_at = commit
+        .expect("the persist function must exist");
+    let token_at = persist
         .find(r#"invoke("relay_token_set""#)
         .expect("token step");
-    let ca_at = commit
+    let ca_at = persist
         .find(r#"invoke("relay_ca_file_set""#)
         .expect("CA step");
+    let url_at = persist
+        .find(r#"invoke("relay_config_set""#)
+        .expect("settings step");
     assert!(
-        url_at < token_at && token_at < ca_at,
-        "the commit order is address -> token -> CA (C2 as corrected)"
+        token_at < ca_at && ca_at < url_at,
+        "the restored order is token -> CA -> settings.json LAST (R379 Q2)"
     );
-    // R-B3: a blank token field KEEPS the stored token — it must never be
-    // committed as an empty replacement.
+    // The superseded entry point must be gone, not merely bypassed.
     assert!(
-        commit.contains(r#"byId("relay-token").value !== """#),
-        "a blank token field must mean 'keep', not 'replace' (R-B3)"
+        !js.contains("async function commitServerSettings"),
+        "the write-then-probe commit path must not survive alongside its replacement"
+    );
+    // R-B3 STANDS: a blank token field KEEPS the stored token. Under the new model
+    // that is expressed by sending `null` to the probe, meaning "use what's stored".
+    assert!(
+        js.contains(r#"token: typedToken !== "" ? typedToken : null"#),
+        "a blank token field must mean 'keep', never 'replace' (R-B3)"
     );
 }
 
@@ -235,11 +346,19 @@ fn dirty_helper_is_re_evaluated_after_the_normalized_echo() {
     // The echo then fixed the field, but nothing re-evaluated the helper.
     //
     // Pin the ORDER in both commit handlers: the echo, then renderDirty().
+    //
+    // NA-0754: the Save handler is GONE, so this now pins the one remaining
+    // commit handler. The regression it guards is unchanged and still reachable —
+    // Test still echoes the normalized URL back into the field after persisting,
+    // and renderDirty() must still run after that echo.
     let js = ui("main.js");
-    for (handler, label) in [
-        (r#"byId("btn-relay-test").addEventListener"#, "Test"),
-        (r#"byId("btn-relay-save").addEventListener"#, "Save"),
-    ] {
+    assert!(
+        !js.contains(r#"byId("btn-relay-save")"#),
+        "the Save handler is retired; this pin must not silently keep passing on a ghost"
+    );
+    // One handler now, not two — the loop collapses with the Save button.
+    {
+        let (handler, label) = (r#"byId("btn-relay-test").addEventListener"#, "Test");
         let body = js.split(handler).nth(1).expect("handler must exist");
         let echo = body
             .find(r#"byId("relay-url").value = savedRelayUrl"#)
@@ -304,11 +423,13 @@ fn commit_failure_prose_never_opens_with_a_raw_error_code() {
     // identifier is the worst moment for it. A friendly sentence leads; the
     // code stays, in parentheses, at the end.
     let js = ui("main.js");
+    // NA-0754: the same discipline, re-anchored on the function that replaced
+    // commitServerSettings(). The failure prose it guards is unchanged.
     let commit = js
-        .split("async function commitServerSettings()")
+        .split("async function persistProvenSettings(")
         .nth(1)
         .and_then(|s| s.split("function handleFailedCommit").next())
-        .expect("the unified commit must exist");
+        .expect("the persist function must exist");
     assert!(
         !commit.contains("mapErr(e, { relay_token_missing"),
         "the token-set failure must not lead its message with mapErr's raw-code fallback"

@@ -1,0 +1,67 @@
+{
+ "scenario": "na0754_gui_j_relay_pane_truth",
+ "destructive": false,
+ "steps": [
+  {"op": "note", "text": "NA-0754 (R379): THE RELAY PANE CANNOT LIE OR LOSE. Drives the arms of Y1/Y4/Y5/Y6 that a scenario can genuinely reach. CLAIM BOUNDARY, stated up front: no relay is reachable from this harness - no fixture relay exists in this repo and building one is the successor harness-maintenance lane (ENG-0226). So the GREEN half of the model (Y2, Y3's live half) is NOT driven here; it is the operator's acceptance flight, recorded [O] in the evidence doc. What IS driven here is the RED half, which is the half that protects the user, plus the surface removals."},
+
+  {"op": "launch"},
+  {"op": "type", "sel": "#vault-pass", "text": "na0754-fj-passphrase"},
+  {"op": "type", "sel": "#vault-confirm", "text": "na0754-fj-passphrase"},
+  {"op": "prop_eq", "sel": "#btn-vault-create", "prop": "disabled", "expect": false, "poll": 5},
+  {"op": "click", "sel": "#btn-vault-create"},
+  {"op": "poll_visible", "screen": "scr-wizard-identity"},
+  {"op": "type", "sel": "#alias-input", "text": "FJ"},
+  {"op": "prop_eq", "sel": "#btn-identity-done", "prop": "disabled", "expect": false, "poll": 5},
+  {"op": "click", "sel": "#btn-identity-done"},
+  {"op": "poll_visible", "screen": "scr-main"},
+  {"op": "click", "sel": "#btn-settings"},
+  {"op": "poll_visible", "screen": "scr-settings"},
+  {"op": "click", "sel": "[data-pane=\"server\"]"},
+  {"op": "prop_eq", "sel": "#pane-server", "prop": "className", "expect": "pane", "poll": 10},
+
+  {"op": "note", "text": "SETTLE. Same instrument as the re-aimed f_i row and for the same reason: renderFieldState() writes #relay-ca-path.placeholder at the very END of refreshServerState(), and index.html no longer carries a static placeholder attribute, so an empty-to-populated transition genuinely marks the async refresh as complete. The pane className flips SYNCHRONOUSLY and waiting on it alone races."},
+  {"op": "prop_eq", "sel": "#relay-ca-path", "prop": "placeholder", "expect": "/path/to/ca.pem", "poll": 15},
+
+  {"op": "note", "text": "Y6 arm 1 - THE SAVE BUTTON IS ABSENT. Its whole job was to persist an UNTESTED configuration, which is exactly what the invariant forbids. find_count is the surface half; server_pane.rs carries the negative source pin so it stays gone."},
+  {"op": "find_count", "sel": "#btn-relay-save", "expect": 0},
+  {"op": "find_count", "sel": "#btn-relay-test", "expect": 1},
+
+  {"op": "note", "text": "Y6 arm 2 - THE HELPER SENTENCES ARE ABSENT. Both per-field status lines are gone from the DOM entirely, not merely blanked."},
+  {"op": "find_count", "sel": "#relay-token-help", "expect": 0},
+  {"op": "find_count", "sel": "#relay-ca-status", "expect": 0},
+
+  {"op": "note", "text": "Y6 arm 3 - THE x CONTROLS ARE PRESENT BUT HIDDEN WHILE NOTHING IS STORED. Visible-only-when-stored is the ruled behaviour; on a fresh profile neither secret exists, so both carry the hidden class."},
+  {"op": "find_count", "sel": "#relay-token-clear", "expect": 1},
+  {"op": "prop_eq", "sel": "#relay-token-clear", "prop": "className", "expect": "secondary hidden", "poll": 10},
+  {"op": "prop_eq", "sel": "#relay-ca-clear", "prop": "className", "expect": "secondary hidden", "poll": 10},
+
+  {"op": "note", "text": "Y6 arm 4 - THE ~ EXPANSION IS VISIBLE IN THE FIELD BEFORE THE PATH IS USED. Typing a ~/ path and pressing Test must rewrite the field to the absolute path FIRST. The probe then fails on the network (nothing is reachable here), which is the point: the expansion is observable independently of the probe's outcome, and because the test failed NOTHING is persisted."},
+  {"op": "clear_type", "sel": "#relay-url", "text": "https://relay.example.test:8443"},
+  {"op": "clear_type", "sel": "#relay-ca-path", "text": "~/na0754-ca.pem"},
+  {"op": "click", "sel": "#btn-relay-test"},
+  {"op": "exec", "script": "return document.getElementById('relay-ca-path').value.indexOf('~') === -1 && document.getElementById('relay-ca-path').value.charAt(0) === '/';", "expect": true},
+
+  {"op": "note", "text": "Y5 arm - THE CA PATH THAT DOES NOT EXIST IS NAMED, not congratulated. Before this lane, relay_ca_file_set stored ANY non-empty string without touching the filesystem (it never validated - the doc comment claiming otherwise was false, ENG-0222), so a garbage path was accepted and then reported as configured. Now the probe's own CA rung runs BEFORE any socket and returns the specific code, which the pane renders as its own line."},
+  {"op": "poll_visible", "screen": "scr-settings"},
+  {"op": "read_text", "sel": "#relay-ca-error", "literal": "No file at that path.", "poll": 15},
+
+  {"op": "note", "text": "Y1 arm, SURFACE HALF - THE FAILED TEST SAVED NOTHING, and the pane SAYS SO. The engine half (settings.json and both vault secrets byte-unchanged, with a differ-control proving each observable can move) is na0754_persist_boundary.rs; this is the user-facing statement of the same fact. settings.json is additionally proven field-wise below."},
+  {"op": "read_text", "sel": "#relay-detail", "literal": "Nothing saved — your previous settings are unchanged.", "poll": 15},
+
+  {"op": "note", "text": "Y1 arm, DISK HALF - settings.json never gained the address. NOTE THE INSTRUMENT AND ITS BOUNDARY: the runner has no file-hash op, so this is a PER-KEY claim, not a byte-identity one. It is nevertheless complete for this file, because settings.json's key set is exactly three and is pinned by the settings_key_allowlist unit test plus serde deny_unknown_fields - a fourth key cannot appear without failing an existing test. relay_url is OMITTED entirely while empty (skip_serializing_if), so the absent-key read below is the correct assertion for 'never written'."},
+  {"op": "json_field_eq", "file": "qsld-data/settings.json", "key": "relay_url", "expect": null, "poll": 5},
+  {"op": "json_field_eq", "file": "qsld-data/settings.json", "key": "autolock_minutes", "expect": 60, "poll": 5},
+
+  {"op": "note", "text": "Y4 - OFFLINE DELETE. A stored secret must ALWAYS be removable, even with no relay reachable - and before this lane it was not: both clears sat behind the address step of the commit path, so a mistyped address made a stored token undeletable (ENG-0225). Here the token is stored directly, the x is clicked with nothing reachable, and the stored state goes away. The clear touches no socket: it is a vault write through the gateway."},
+  {"op": "exec", "script": "return window.__TAURI__.core.invoke('relay_token_set', {token: 'FJ-OFFLINE-TOKEN'}).then(function(){ return true; });", "expect": true},
+  {"op": "click", "sel": "[data-pane=\"identity\"]"},
+  {"op": "click", "sel": "[data-pane=\"server\"]"},
+  {"op": "prop_eq", "sel": "#relay-token-clear", "prop": "className", "expect": "secondary", "poll": 15},
+  {"op": "prop_eq", "sel": "#relay-token", "prop": "placeholder", "expect": "••••••••", "poll": 10},
+  {"op": "click", "sel": "#relay-token-clear"},
+  {"op": "prop_eq", "sel": "#relay-token-clear", "prop": "className", "expect": "secondary hidden", "poll": 15},
+  {"op": "prop_eq", "sel": "#relay-token", "prop": "placeholder", "expect": "", "poll": 10},
+
+  {"op": "teardown"}
+ ]
+}
