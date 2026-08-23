@@ -1790,10 +1790,15 @@ fn the_invite_module_adds_no_timer() {
     // setTimeout IS used, once, for the transient "Copied" label. That is a
     // one-shot label reset, not a poll of backend state; pinning the count keeps
     // the distinction honest rather than banning the primitive outright.
+    // v3 has TWO one-shots and neither is a poll. Pinning the COUNT keeps the distinction
+    // honest: a third would have to be justified, and `setInterval` stays banned outright.
+    //   1. the copy link's "copied" → "copy code" revert
+    //   2. the revoke flip-then-leave pause — the row shows "Revoked" where the user is looking
+    //      before it goes, because a row that simply vanished is indistinguishable from a bug
     assert_eq!(
         module.matches("setTimeout").count(),
-        1,
-        "exactly one setTimeout — the transient Copy acknowledgement, never a poll"
+        2,
+        "exactly two one-shot timers — the copy revert and the revoke flip pause; never a poll"
     );
 }
 
@@ -2002,9 +2007,15 @@ fn the_clipboard_fallback_is_a_capability_test_and_relabels_the_button() {
         js.contains(r#"HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate""#),
         "the button must not promise a copy the platform will refuse"
     );
+    // v3: the in-box icon is gone; ONE text link below the box is both the re-copy control
+    // and the fallback's recovery path, so the recovery line names THAT.
     assert!(
-        js.contains(r#""Copy didn't complete — use the copy icon.""#),
-        "the recovery line names the glyph"
+        js.contains(r#""Copy didn't complete — use the copy code link below.""#),
+        "the recovery line names the text link that is actually there"
+    );
+    assert!(
+        !js.contains("use the copy icon"),
+        "the retired icon must not survive in copy the user reads"
     );
     assert!(
         !js.contains("setTimeout(() => navigator.clipboard"),
@@ -2020,13 +2031,15 @@ fn the_clipboard_fallback_is_a_capability_test_and_relabels_the_button() {
 #[test]
 fn the_failed_row_never_calls_itself_safe() {
     let js = ui_file("main.js");
+    // v3 splits what v2 crammed into one chip: the CHIP states the fact, and the row's own
+    // muted line carries the honesty about the relay. Both are pinned.
     assert!(
-        js.contains("Didn't finish — remove from list"),
-        "the ruled chip text"
+        js.contains(r#"chip.textContent = "Didn't finish";"#),
+        "the v3 chip states the fact"
     );
     assert!(
-        js.contains("If the relay registered it, that slot expires on its own and can't be revoked from here."),
-        "the ruled honesty sentence rides the row"
+        js.contains("didn't finish — if the relay registered it, that slot expires on its own and can't be revoked from here"),
+        "the row line carries the honesty about the relay"
     );
     for banned in ["safe to clear", "Safe to clear", "safe to remove"] {
         assert!(
@@ -2089,5 +2102,57 @@ fn the_vault_arm_carries_its_source_code_and_never_says_unlock_it() {
         !detail.contains("unlock"),
         "the rendered copy must not tell the user to unlock — that is true in only one of the \
          three provenances this code carries: {detail}"
+    );
+}
+
+/// ⚠⚠ v3 — THE LABEL-CLEAR TRIPWIRE. The operator's flight found that one typed label SILENTLY
+/// RODE EVERY LATER MINT: the field was cleared when the surface opened but NOT when the user
+/// came back to it from the list, so the second invite inherited the first invite's note
+/// without anyone touching the box.
+///
+/// ⚠ WHY A SOURCE SEAL AND NOT ONLY A DRIVEN ONE: the harness drives the field too (scenario
+/// `f_k`), but the defect was a MISSING CALL on one of two paths, and the durable property is
+/// that BOTH paths go through the one function that owns "entering the mint fresh". Two call
+/// sites that must each remember to clear is how this happened in the first place.
+///
+/// ⚠ MUST GO RED IF: either entry path stops calling `inviteEnterMintFresh`, or that function
+/// stops clearing the field.
+#[test]
+fn entering_the_mint_fresh_always_clears_the_recipient_label() {
+    let js = ui_file("main.js");
+
+    // The one owner exists and actually clears.
+    let f = js
+        .find("function inviteEnterMintFresh() {")
+        .expect("the single owner of `entering the mint fresh` exists");
+    let body = &js[f..];
+    let end = body.find("\n}\n").expect("it ends");
+    let body = &body[..end];
+    assert!(
+        body.contains(r#"byId("invite-label").value = "";"#),
+        "entering the mint fresh MUST clear the recipient label"
+    );
+    assert!(
+        body.contains(r#"byId("invite-code").textContent = "";"#),
+        "and the one-time code, which must never survive into a new mint"
+    );
+
+    // BOTH entry paths route through it — the fix is structural, not a habit at two call sites.
+    let open = js
+        .find("async function openInviteModal() {")
+        .expect("open exists");
+    let open_body = &js[open..open + 400];
+    assert!(
+        open_body.contains("inviteEnterMintFresh();"),
+        "opening the surface enters the mint fresh"
+    );
+    let back = js
+        .find(r#"byId("btn-invite-back").addEventListener"#)
+        .expect("the back control exists");
+    let back_body = &js[back..back + 400];
+    assert!(
+        back_body.contains("inviteEnterMintFresh();"),
+        "⚠ THIS is the path the operator's flight caught: returning from the list MUST enter the \
+         mint fresh, or the previous label silently rides the next invite"
     );
 }

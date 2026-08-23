@@ -679,34 +679,31 @@ a.rm:hover { color: var(--fg); }
    "link" look. `every_button_is_tiered_or_nav` requires exactly one tier or one nav role, and
    inventing a third category to dodge it is precisely what that rule exists to prevent. */
 
-/* ⚠ THE CODE BOX AND ITS GLYPH. The glyph is revealed on HOVER or KEYBOARD FOCUS of the
-   wrapper — never a permanent "Copy again" button, because its own click is its own gesture
-   and that is the whole reason it works when the single-gesture write does not. */
-.code-wrap { position: relative; }
-.glyph-copy {
-  position: absolute; top: var(--sp-2); right: var(--sp-2);
-  width: 26px; height: 26px; padding: 0; border-radius: var(--radius-small);
-  background: var(--bg-raised); color: var(--fg-muted);
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 120ms ease;
-}
-.glyph-copy svg { width: 14px; height: 14px; }
-.code-wrap:hover .glyph-copy,
-.code-wrap:focus-within .glyph-copy,
-.glyph-copy:focus { opacity: 1; }
-.glyph-copy:hover { color: var(--fg); border-color: var(--accent-fill); }
+/* v3: the copy control is a TEXT LINK below the box, right-aligned — the in-box icon is
+   removed. `a.rm` is the shipped text-link style (:596) and is reused rather than re-minted. */
+.copy-row { display: flex; justify-content: flex-end; margin-top: var(--sp-2); }
 /* the minted code's accent border — the one-time value, shown once */
 .code-box.minted { border-color: var(--ok); }
 
-/* The list rows: numbered, labeled, dated, with a state chip and its action. */
-.invite-row { padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
-.invite-row:last-child { border-bottom: none; }
+/* The empty state: centred and quiet — the list answers "what is open", and nothing open is a
+   legitimate answer rather than an error. */
+.invite-empty { text-align: center; padding: var(--sp-5) 0; }
+.invite-empty p { margin: 0 0 var(--sp-1) 0; }
+
+/* The list rows: one bordered row CARD each — numbered, labeled, dated, with its state chip
+   and its action on the right of the same visual row. */
+.invite-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3); margin-bottom: var(--sp-2);
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius-small);
+}
+.invite-row-main { min-width: 0; }
+.invite-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex-shrink: 0; }
 .invite-row-head { font-size: var(--fs-body); color: var(--fg); font-weight: var(--fw-mid); }
 .invite-row-meta { font-size: var(--fs-hint); color: var(--fg-muted); margin-top: var(--sp-1); }
 .invite-chip {
-  display: inline-block; margin-top: var(--sp-2);
+  display: inline-block;
   background: var(--bg-inset); border: 1px solid var(--border); border-radius: 999px;
   padding: var(--sp-1) var(--sp-x10); font-size: var(--fs-micro); color: var(--fg-secondary);
 }
 .invite-chip.dim { color: var(--fg-muted); }
-.invite-row-act { margin-top: var(--sp-2); }

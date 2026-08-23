@@ -2603,6 +2603,50 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     the comment explaining why that class is not used; the vault-arm needle fired on the comment
     saying the copy must not say "unlock it". Both were testing a MENTION; both were rebuilt to
     test what SHIPS. *Documenting a removal re-plants it.*
+  - ---
+  - ⚠⚠ **v3 — THE CORRECTION PASS, APPENDED (mark-don't-rewrite).** The operator flew v2 and
+    found three things. Two are defects of mine; one was the Director's, and it is rowed there.
+  - ⚠⚠ **THE LABEL FIELD NEVER CLEARED, AND EVERY LATER MINT SILENTLY INHERITED THE FIRST
+    LABEL.** The field was cleared when the surface OPENED but not when the user returned to
+    the mint from the list — two call sites, each expected to remember. **The cure is
+    structural, not a third reminder:** one function, `inviteEnterMintFresh`, owns "entering
+    the mint fresh", and BOTH paths route through it. A tripwire seals it from the source
+    (both call sites) and the harness drives mint → list → back → mint asserting the field is
+    EMPTY; the control suppresses the clear on the back path — the operator's exact defect —
+    and goes RED. ⇒ **A value that is silently wrong is worse than one that is visibly wrong**,
+    and two sites that must each remember is how it happened.
+  - **THE COPY CONTROL.** The in-box icons are removed. One always-visible TEXT LINK below the
+    code box, right-aligned, reading **"copy code"** → **"copied"** for a few seconds → back.
+    It is BOTH the re-copy control and the recovery path when the single-gesture Activate &
+    Copy could not copy, and the capability-test fallback now points at it. ⚠ It is an anchor
+    carrying the shipped `a.rm` text-link style, not a button: the design system's tier rule has
+    no "text link" category, and inventing one to dodge the rule is what that rule prevents.
+    `tabindex` + Enter/Space are added because a copy control that needs a mouse is worse than
+    the precedent it reuses.
+  - **THE LIST NOW HAS REFERENCE MARKUP, AND THE VISIBILITY RULE IS THE SHARP PART.** LIVE rows
+    and FAILED rows only, **newest first**; **Revoked and Expired never render**. The list
+    answers *what is open*, and an expired invite's answer is its absence. Dead records are
+    inert, sealed and never counted; true vault deletion is the queued engine-hygiene lane.
+    Header carries "N of 10 slots used — codes expire on their own".
+  - ⚠ **REVOKE FLIPS IN PLACE, THEN LEAVES.** On success the chip flips to "Revoked" where the
+    user is looking for ~2 s, then the row goes and the counter frees — visible success, then
+    tidy. **A row that simply vanished is indistinguishable from a bug**, which is what the v1
+    silent close got wrong. **On failure the row does not change**: a revoke that did not reach
+    the relay did not happen, and the UI never pretends otherwise.
+  - **THE ACCEPTED ROW is interim** — a chip and no buttons, undeletable by the operator's own
+    rule. Its permanent home is the People pane; when Lane C ships, this row's job moves there.
+  - ⚠ **TWO FLIGHT OBSERVATIONS EXPLAINED, NO CHANGE — recorded so the questions stay answered.**
+    (i) No ghost row appeared: **correct absence** — no create failed. (ii) The minted invite's
+    ROW persisted across lock/unlock: correct — **the one-time CODE is dead while the INVITE is
+    alive**, and a live invite must stay listable and revocable. Both promises are kept, and
+    they are different promises.
+  - ⚠ **DELIBERATE OMISSION, ON THE RECORD: no history/archive view.** An expired invite's
+    answer is its absence; the remedy is a fresh mint. Revisitable if real use ever asks.
+  - ⛳ **A GATE CAUGHT A COMMENT, FOR THE FOURTH TIME IN THIS LANE.**
+    `every_button_is_tiered_or_nav` scans raw markup and **does not skip HTML comments**
+    (measured: its loop has no `<!--` handling), so a comment that NAMED the tag tripped a gate
+    about markup. The comment now DESCRIBES the tag instead. *Documenting a construct re-plants
+    it* — `.verify-code`, the vault arm, and now this.
   - ⚠ **Claim boundary.** No `qsc`/protocol source byte, no harness engine byte, no mockup byte,
     no `.github/**`, no `Cargo.toml`/`Cargo.lock`; **two measured needs in `qsc` were FILED, never
     patched** (`ENG-0228`, `ENG-0229`), per the `ENG-0218` precedent. No test weakened, skipped or

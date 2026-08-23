@@ -1921,6 +1921,23 @@ function inviteShowMint() {
   byId("invite-pre").classList.remove("hidden");
   byId("invite-post").classList.add("hidden");
 }
+
+// ⚠⚠ v3 — ENTERING THE MINT FRESH. The operator's flight found that a typed label SILENTLY RODE
+// EVERY LATER MINT: the field was cleared when the surface opened but not when the user came
+// back to it from the list, so the second invite inherited the first invite's note without
+// anyone touching the box. A silent wrong value is worse than a visible one.
+//
+// ⚠ ONE function owns this, and BOTH paths into the mint call it, so the two cannot drift apart
+// again — which is how the defect existed in the first place.
+function inviteEnterMintFresh() {
+  byId("invite-label").value = "";
+  byId("invite-code").textContent = "";
+  byId("invite-meta-note").textContent = "";
+  byId("invite-meta-expiry").textContent = "";
+  byId("invite-copy-note").classList.add("hidden");
+  inviteId = null;
+  inviteShowMint();
+}
 function inviteShowPost() {
   byId("invite-pre").classList.add("hidden");
   byId("invite-post").classList.remove("hidden");
@@ -1945,6 +1962,7 @@ async function inviteRefresh() {
   }
   const live = inviteRows.filter((r) => r.state === "active").length;
   byId("invite-count").textContent = String(live);
+  byId("invite-slots").textContent = `${live} of ${INVITE_SOFT_CAP} slots used — codes expire on their own`;
   let relayUrl = "";
   try {
     const cfg = await invoke("relay_config_get");
@@ -1961,10 +1979,7 @@ async function inviteRefresh() {
 
 async function openInviteModal() {
   clearInviteErrors();
-  inviteShowMint();
-  byId("invite-code").textContent = "";
-  byId("invite-label").value = "";
-  inviteId = null;
+  inviteEnterMintFresh();
   byId("btn-invite-activate").textContent = HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate";
   byId("invite-overlay").classList.remove("hidden");
   await inviteRefresh();
@@ -2034,9 +2049,11 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
     return;
   }
   byId("invite-code").textContent = code;
-  byId("invite-copy-note").textContent = copied
-    ? "Copied to your clipboard."
-    : "Copy didn't complete — use the copy icon.";
+  // v3: on success the link itself is the affordance and no note is needed; the note exists
+  // only to say when the single gesture could NOT copy, and it points at the link.
+  const note = byId("invite-copy-note");
+  note.textContent = copied ? "" : "Copy didn't complete — use the copy code link below.";
+  note.classList.toggle("hidden", copied);
   inviteShowPost();
   await adoptMinted(before);
   await inviteRefresh();
@@ -2044,19 +2061,28 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
 
 // The copy glyph: its own click is its own gesture, so it always works — which is why it is the
 // recovery path and why "Copy again" is not a button.
-byId("btn-invite-copy").addEventListener("click", async () => {
+// v3: ONE text link is both the re-copy control and the fallback's recovery path. Its own
+// click is its own gesture, which is precisely why it works when the single-gesture write did
+// not — the user activation is fresh here and is never spent on an await.
+async function inviteCopyLink() {
   const code = byId("invite-code").textContent;
   if (!code) return;
-  const btn = byId("btn-invite-copy");
+  const link = byId("btn-invite-copy");
   try {
     await navigator.clipboard.writeText(code);
-    byId("invite-copy-note").textContent = "Copied to your clipboard.";
-    btn.classList.add("acked");
+    link.textContent = "copied";
     if (inviteCopyTimer) clearTimeout(inviteCopyTimer);
-    inviteCopyTimer = setTimeout(() => btn.classList.remove("acked"), 1500);
+    inviteCopyTimer = setTimeout(() => { link.textContent = "copy code"; }, 2500);
   } catch (_) {
     byId("invite-copy-note").textContent = "Copy didn't complete — select the code and copy it.";
+    byId("invite-copy-note").classList.remove("hidden");
   }
+}
+byId("btn-invite-copy").addEventListener("click", () => inviteCopyLink());
+// The precedent style (`a.rm`) is not focusable on its own; Enter/Space keep the control
+// operable without a mouse.
+byId("btn-invite-copy").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); inviteCopyLink(); }
 });
 
 byId("btn-invite-cancel").addEventListener("click", async () => {
@@ -2075,74 +2101,113 @@ byId("btn-invite-cancel").addEventListener("click", async () => {
   }
 });
 
-// ── the list view ──────────────────────────────────────────────────────────
-function inviteStateChip(state) {
-  if (state === "active") return { text: "Not yet accepted", cls: "" };
-  if (state === "redeemed") return { text: "Redeemed", cls: "" };
-  if (state === "expired") return { text: "Expired", cls: "dim" };
-  if (state === "revoked") return { text: "Revoked", cls: "dim" };
-  // ⚠ B-1: the word "safe" DOES NOT SHIP. `Creating` does not mean the relay never confirmed —
-  // it means the local transition did not complete, and the relay may well hold the slot.
-  return { text: "Didn't finish — remove from list", cls: "dim" };
+// ── the list view — THE REFERENCE MARKUP GOVERNS (v3) ─────────────────────
+//
+// ⚠⚠ VISIBILITY RULE: LIVE rows and FAILED rows only, NEWEST FIRST. Revoked and Expired
+// records DO NOT RENDER — ever. They are inert, sealed and never counted; true vault deletion
+// of dead records is the queued engine-hygiene lane, not this surface's job. The list answers
+// "what is open", and an expired invite's answer is its absence.
+//
+// ⚠ NO HISTORY VIEW, deliberately (bank §5). The remedy for an expired invite is a fresh mint.
+function inviteVisibleRows() {
+  const now = Math.floor(Date.now() / 1000);
+  return inviteRows
+    .filter((r) => {
+      if (r.state === "creating") return true;                 // FAILED row
+      if (r.state === "redeemed") return true;                  // ACCEPTED row (interim)
+      if (r.state === "active") return r.expiry > now;          // LIVE row
+      return false;                                             // revoked / expired: never
+    })
+    .sort((a, b) => (b.created || 0) - (a.created || 0));       // newest first
+}
+
+function inviteRowEl(r, n) {
+  const now = Math.floor(Date.now() / 1000);
+  const row = document.createElement("div");
+  row.className = "invite-row";
+  row.dataset.inviteId = r.invite_id;
+
+  const main = document.createElement("div");
+  main.className = "invite-row-main";
+  const l1 = document.createElement("div");
+  l1.className = "invite-row-head";
+  const label = r.label ? r.label : "(no label)";
+  // The FAILED row is numbered "—": it never became one of your open invites.
+  l1.textContent = `${r.state === "creating" ? "—" : n} — ${label}`;
+  const l2 = document.createElement("div");
+  l2.className = "invite-row-meta";
+  if (r.state === "creating") {
+    l2.textContent = "didn't finish — if the relay registered it, that slot expires on its own and can't be revoked from here";
+  } else if (r.state === "redeemed") {
+    l2.textContent = `created ${humanWhen(r.created)}`;
+  } else {
+    l2.textContent = `created ${humanWhen(r.created)} — expires in ${humanDuration(r.expiry - now)}`;
+  }
+  main.append(l1, l2);
+
+  const side = document.createElement("div");
+  side.className = "invite-row-side";
+  const chip = document.createElement("span");
+  chip.className = "invite-chip";
+  if (r.state === "creating") {
+    chip.className += " dim";
+    chip.textContent = "Didn't finish";
+    const b = document.createElement("a");
+    b.className = "rm"; b.setAttribute("role", "button"); b.tabIndex = 0;
+    b.textContent = "Remove"; b.dataset.clear = r.invite_id;
+    side.append(chip, b);
+  } else if (r.state === "redeemed") {
+    // ACCEPTED — interim until Lane C, whose People pane is its permanent home.
+    // ⚠ NO buttons: undeletable by the operator's own rule.
+    chip.textContent = "✓ Accepted";
+    side.append(chip);
+  } else {
+    chip.textContent = "Not yet accepted";
+    const b = document.createElement("a");
+    b.className = "rm"; b.setAttribute("role", "button"); b.tabIndex = 0;
+    b.textContent = "Revoke"; b.dataset.revoke = r.invite_id;
+    side.append(chip, b);
+  }
+  row.append(main, side);
+  return row;
 }
 
 async function renderInviteList() {
   const host = byId("invite-rows");
   host.innerHTML = "";
-  byId("invite-list-empty").classList.toggle("hidden", inviteRows.length > 0);
-  inviteRows.forEach((r, i) => {
-    const row = document.createElement("div");
-    row.className = "invite-row";
-    row.dataset.inviteId = r.invite_id;
-    const chip = inviteStateChip(r.state);
-    const left = r.expiry - Math.floor(Date.now() / 1000);
-    const head = document.createElement("div");
-    head.className = "invite-row-head";
-    head.textContent = `${i + 1}. ${r.label ? r.label : "(no label)"}`;
-    const meta = document.createElement("div");
-    meta.className = "invite-row-meta";
-    meta.textContent = `created ${humanWhen(r.created)} · ${
-      r.state === "active" && left > 0 ? "expires in " + humanDuration(left) : chip.text
-    }`;
-    const chipEl = document.createElement("span");
-    chipEl.className = "invite-chip " + chip.cls;
-    chipEl.textContent = chip.text;
-    const act = document.createElement("div");
-    act.className = "invite-row-act";
-    if (r.state === "creating") {
-      const b = document.createElement("button");
-      b.className = "secondary";
-      b.textContent = "Remove";
-      b.dataset.clear = r.invite_id;
-      act.appendChild(b);
-      const note = document.createElement("p");
-      note.className = "hint";
-      note.textContent = "If the relay registered it, that slot expires on its own and can't be revoked from here.";
-      act.appendChild(note);
-    } else if (r.revocable && r.state === "active") {
-      const b = document.createElement("button");
-      b.className = "secondary";
-      b.textContent = "Revoke";
-      b.dataset.revoke = r.invite_id;
-      act.appendChild(b);
-    }
-    row.append(head, meta, chipEl, act);
-    host.appendChild(row);
-  });
+  const vis = inviteVisibleRows();
+  byId("invite-list-empty").classList.toggle("hidden", vis.length > 0);
+  vis.forEach((r, i) => host.appendChild(inviteRowEl(r, i + 1)));
 }
 
-// Revoke and Clear act IN PLACE: the row's state flips where the user is looking.
+// ⚠⚠ REVOKE: FLIP IN PLACE, THEN LEAVE. On success the chip flips to "Revoked" where the user
+// is looking, for ~2s, and only then does the row go and the counter free — visible success,
+// then tidy. A row that simply vanished would be indistinguishable from a bug.
+//
+// ⚠ ON FAILURE THE ROW DOES NOT CHANGE. A revoke that did not reach the relay did not happen,
+// and the UI never pretends otherwise — the honest error line renders instead, in the reused
+// vocabulary. This is the half the v1 silent-close got wrong.
 byId("invite-rows").addEventListener("click", async (ev) => {
-  const rev = ev.target.dataset && ev.target.dataset.revoke;
-  const clr = ev.target.dataset && ev.target.dataset.clear;
+  const t = ev.target;
+  const rev = t.dataset && t.dataset.revoke;
+  const clr = t.dataset && t.dataset.clear;
   if (!rev && !clr) return;
   clearInviteErrors();
+  const row = t.closest(".invite-row");
   try {
-    if (rev) await invoke("invite_revoke", { inviteId: rev });
-    else await invoke("invite_clear", { inviteId: clr });
+    if (rev) {
+      await invoke("invite_revoke", { inviteId: rev });
+      const chip = row.querySelector(".invite-chip");
+      if (chip) { chip.textContent = "Revoked"; chip.className = "invite-chip dim"; }
+      t.remove();
+      await new Promise((r) => setTimeout(r, 2000));
+    } else {
+      await invoke("invite_clear", { inviteId: clr });
+    }
     await inviteRefresh();
     await renderInviteList();
   } catch (e) {
+    // The row is untouched: nothing flipped, nothing left.
     renderInviteError("invite-error-list", e && e.code, e && e.detail, rev ? "revoke" : "clear");
   }
 });
@@ -2155,7 +2220,7 @@ byId("btn-invite-review").addEventListener("click", async () => {
 });
 byId("btn-invite-back").addEventListener("click", async () => {
   clearInviteErrors();
-  inviteShowMint();
+  inviteEnterMintFresh();     // ⚠ the v3 fix: this path is the one that leaked the old label
   await inviteRefresh();
 });
 byId("btn-invite-open").addEventListener("click", () => openInviteModal());

@@ -168,9 +168,23 @@
    "poll": 5
   },
   {
+   "op": "note",
+   "text": "v3 empty state: the list answers 'what is open', and nothing open is a legitimate answer \u2014 not an error."
+  },
+  {
    "op": "read_text",
-   "sel": "#invite-list-empty",
-   "literal": "No invites yet."
+   "sel": "#invite-list-empty .muted",
+   "literal": "No open invites."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-list-empty .hint",
+   "literal": "Codes you\u2019ve sent expire on their own within 3 days."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-slots",
+   "literal": "0 of 10 slots used \u2014 codes expire on their own"
   },
   {
    "op": "click",
@@ -237,6 +251,101 @@
   {
    "op": "note",
    "text": "\u26a0 NOT DRIVEN HERE: a successful mint, the clipboard write, Cancel, and the per-row Remove. No fixture relay exists (ENG-0226), so the green path is the operator's card. The clipboard mechanism is sealed in design_polish.rs, and readText is DENIED to the harness so no automated check could verify clipboard CONTENT anyway."
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 v3 LABEL-CLEAR TRIPWIRE, driven. The operator's flight found one typed label riding EVERY later mint. Type a label, go to the list, come back \u2014 the field must be EMPTY."
+  },
+  {
+   "op": "type",
+   "sel": "#invite-label",
+   "text": "Mom"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-label",
+   "prop": "value",
+   "expect": "Mom",
+   "poll": 3
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-review"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-list-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-back"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-label",
+   "prop": "value",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 AND the same on a fresh open of the surface \u2014 both paths route through the one owner."
+  },
+  {
+   "op": "type",
+   "sel": "#invite-label",
+   "text": "Dad"
+  },
+  {
+   "op": "exec",
+   "script": "document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'})); return 'sent';"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-open"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-label",
+   "prop": "value",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "v3 copy control: ONE always-visible text link below the box, both re-copy and the fallback's recovery. \u26a0 NOT DRIVEN: its click needs a minted code, which needs the real relay (ENG-0226) \u2014 the operator's re-fly card covers it."
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-invite-copy",
+   "expect": 1
+  },
+  {
+   "op": "read_tc",
+   "sel": "#btn-invite-copy",
+   "literal": "copy code"
+  },
+  {
+   "op": "find_count",
+   "sel": ".glyph-copy",
+   "expect": 0
   },
   {
    "op": "teardown"
