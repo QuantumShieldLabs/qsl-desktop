@@ -2309,8 +2309,16 @@ fn the_surface_widened_and_the_new_invite_button_is_one_line() {
     let css = ui_file("style.css");
     let html = ui_file("index.html");
     assert!(
-        css.contains("max-width: 580px;"),
+        css.contains("max-width: 500px;"),
         "the ratified width, expressed once"
+    );
+    // ⚠ v5 RE-AIM: 580 → the 500 class, against the rendered mockups. Expressed exactly ONCE
+    // in the stylesheet, so all three states share it — three states that could drift apart
+    // into different widths is what the uniformity rule exists to prevent.
+    assert_eq!(
+        css.matches("max-width: 500px;").count(),
+        1,
+        "ONE expression of the surface width, shared by pre-mint, post-mint and the list"
     );
     assert!(
         css.contains("button.nowrap { white-space: nowrap; }"),
@@ -2341,5 +2349,87 @@ fn the_meta_row_sits_above_the_code_and_names_it() {
     assert!(
         js.contains(r#"row.label ? "Invite for: " + row.label : "Invite code""#),
         "the left cell names the note when there is one, else says plainly what it is"
+    );
+}
+
+/// v5 — REVOKE IS PLAIN RED, ON THE SHIPPED DANGER-LINK TOKEN.
+///
+/// ⚠ MUST GO RED IF: the underline returns, or the colour is repainted to the link blue, or a
+/// literal hex replaces the token. Revoke destroys something at the relay; Remove does not, and
+/// the two must not look alike.
+///
+/// ⚠ The token choice is `--danger-link`, NOT `--danger-text`: the former was minted for this
+/// exact shape (E.6, the "Delete vault?" link) and carries its own hover target. Reusing the
+/// pairing is what keeps the two danger surfaces consistent.
+#[test]
+fn revoke_is_plain_red_on_the_shipped_danger_link_token() {
+    let css = ui_file("style.css");
+    let js = ui_file("main.js");
+    assert!(
+        css.contains("a.rm.plain.link-danger { color: var(--danger-link); }"),
+        "the colour comes from the shipped token, never a literal"
+    );
+    assert!(
+        css.contains("a.rm.plain.link-danger:hover { color: var(--danger-text); }"),
+        "the hover target is E.6's own pairing, reused rather than re-decided"
+    );
+    // No hex may appear on this control — tokens are the colour authority.
+    let rule_start = css
+        .find("a.rm.plain.link-danger {")
+        .expect("the rule exists");
+    // ⚠ CLAMPED: this rule is the last block in the stylesheet, so an unclamped end index
+    // runs past EOF and panics instead of asserting.
+    let rule = &css[rule_start..(rule_start + 120).min(css.len())];
+    assert!(!rule.contains('#'), "no hex on the danger link: {rule}");
+    // The markup carries plain (no underline) AND the danger class.
+    assert!(
+        js.contains(r#"b.className = "rm plain link-danger";"#),
+        "Revoke is plain AND danger-coloured"
+    );
+    // ⚠ And Remove is NOT: it clears a local row that can never become actionable.
+    // ⚠ Remove stays NEUTRAL. The needle reads the Remove branch's OWN assignment rather than
+    // searching the file, so it cannot be satisfied by the Revoke branch above it.
+    let rm = js
+        .find(r#"b.textContent = "Remove";"#)
+        .expect("the Remove control exists");
+    let rm_assign = js[..rm]
+        .rfind("b.className =")
+        .expect("its class assignment");
+    assert_eq!(
+        &js[rm_assign..rm_assign + 25],
+        r#"b.className = "rm plain";"#,
+        "Remove stays neutral — painting it red would claim it destroys something at the relay"
+    );
+}
+
+/// v5 — THE CHIP AND ITS ACTION SHARE ONE VISUAL ROW.
+///
+/// ⚠ MUST GO RED IF: they stack again. The v3 build rendered them in a column, diverging from
+/// the v3 bank's own reference markup — a divergence no seal could see, because nothing
+/// measured the rendered geometry. This one does, in the harness; the source side is pinned
+/// here so the two halves cannot drift apart.
+#[test]
+fn the_chip_and_its_action_are_laid_out_on_one_row() {
+    let css = ui_file("style.css");
+    let start = css
+        .find(".invite-row-side {")
+        .expect("the cluster rule exists");
+    // ⚠ CLAMPED for the same reason the danger rule above is: an unclamped end index panics
+    // instead of asserting the moment this rule becomes the last block in the stylesheet.
+    let rule = &css[start..(start + 200).min(css.len())];
+    assert!(
+        rule.contains("flex-direction: row;"),
+        "one visual row, not a column: {rule}"
+    );
+    assert!(
+        rule.contains("align-items: center;"),
+        "vertically centred against the text block"
+    );
+    assert!(rule.contains("justify-content: flex-end;"), "right-aligned");
+    // And the row itself centres its two blocks against each other.
+    let row = css.find(".invite-row {").expect("the row rule exists");
+    assert!(
+        css[row..(row + 220).min(css.len())].contains("align-items: center;"),
+        "the row centres the text block and the cluster against each other"
     );
 }

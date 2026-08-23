@@ -623,9 +623,12 @@ a.rm:hover { color: var(--fg); }
   padding: var(--sp-4);
 }
 .modal {
-  /* v4: the surface WIDENS so the list's rows and the one-line New-invite button fit
-     without wrapping. 580px is the ratified target; it is expressed once, here. */
-  width: 100%; max-width: 580px; max-height: 100%; overflow-y: auto;
+  /* ⚠ THE SURFACE WIDTH IS EXPRESSED EXACTLY ONCE, HERE, AND ALL THREE STATES SHARE IT —
+     pre-mint, post-mint and the list. That uniformity is DELIBERATE and recorded: a surface
+     that resized as the user moved between its own states would read as three different panels
+     rather than one. v5 narrows 580 → the 500 class against the rendered mockups; the code
+     wraps to about four lines at this width and the v4 breathing-room islands are preserved. */
+  width: 100%; max-width: 500px; max-height: 100%; overflow-y: auto;
   background: var(--bg-raised); border: 1px solid var(--border);
   border-radius: var(--radius); padding: var(--sp-x28);
   box-shadow: var(--modal-shadow);
@@ -695,16 +698,22 @@ a.rm:hover { color: var(--fg); }
 /* The list rows: one bordered row CARD each — numbered, labeled, dated, with its state chip
    and its action on the right of the same visual row. */
 .invite-row {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
   padding: var(--sp-3); margin-bottom: var(--sp-2);
   background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius-small);
 }
 .invite-row-main { min-width: 0; }
-.invite-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-1); flex-shrink: 0; }
+/* ⚠ v5 — THE CHIP AND ITS ACTION SHARE ONE VISUAL ROW, right-aligned and vertically CENTRED
+   against the row's text block. The v3 build stacked them in a COLUMN, diverging from the v3
+   bank's own reference markup; this restores what the markup always said. */
+.invite-row-side {
+  display: flex; flex-direction: row; align-items: center; justify-content: flex-end;
+  gap: var(--sp-3); flex-shrink: 0;
+}
 .invite-row-head { font-size: var(--fs-body); color: var(--fg); font-weight: var(--fw-mid); }
 .invite-row-meta { font-size: var(--fs-hint); color: var(--fg-muted); margin-top: var(--sp-1); }
 .invite-chip {
-  display: inline-block;
+  display: inline-block; white-space: nowrap;
   background: var(--bg-inset); border: 1px solid var(--border); border-radius: 999px;
   padding: var(--sp-1) var(--sp-x10); font-size: var(--fs-micro); color: var(--fg-secondary);
 }
@@ -734,3 +743,16 @@ button.nowrap { white-space: nowrap; }
 
 /* Roomier rows at the new width. */
 .invite-row { padding: var(--sp-4); }
+
+/* ==========================================================================
+   NA-0755 v5 — REVOKE IS PLAIN RED.
+   ⚠ The colour is the shipped danger-LINK token, not the danger TEXT token: `--danger-link`
+   was minted for exactly this shape (E.6, the "Delete vault?" link) and its hover target is
+   `--danger-text`. That pairing is REUSED verbatim rather than re-decided here, and tokens are
+   the colour authority — no mockup hex is copied.
+   ⚠ NEVER UNDERLINED: it reuses the `a.rm.plain` idiom v4 minted, plus the danger colour.
+   ⚠ `Remove` on a failed row stays NEUTRAL on purpose — it clears a local row that can never
+   become actionable, and painting it red would claim it destroys something at the relay.
+   ========================================================================== */
+a.rm.plain.link-danger { color: var(--danger-link); }
+a.rm.plain.link-danger:hover { color: var(--danger-text); }

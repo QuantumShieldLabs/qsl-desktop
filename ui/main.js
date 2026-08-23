@@ -2158,7 +2158,10 @@ function inviteRowEl(r, n) {
     chip.className += " dim";
     chip.textContent = "Didn't finish";
     const b = document.createElement("a");
-    b.className = "rm"; b.setAttribute("role", "button"); b.tabIndex = 0;
+    // ⚠ Remove stays NEUTRAL, deliberately: it clears a local row that can never become
+    // actionable. Painting it danger-red would claim it destroys something at the relay, which
+    // is exactly the false promise the B-1 wording fight removed.
+    b.className = "rm plain"; b.setAttribute("role", "button"); b.tabIndex = 0;
     b.textContent = "Remove"; b.dataset.clear = r.invite_id;
     side.append(chip, b);
   } else if (r.state === "redeemed") {
@@ -2169,7 +2172,9 @@ function inviteRowEl(r, n) {
   } else {
     chip.textContent = "Not yet accepted";
     const b = document.createElement("a");
-    b.className = "rm"; b.setAttribute("role", "button"); b.tabIndex = 0;
+    // v5: plain (never underlined) and the shipped danger-LINK colour — the token minted for
+    // this exact shape. Revoke is destructive and now reads that way without shouting.
+    b.className = "rm plain link-danger"; b.setAttribute("role", "button"); b.tabIndex = 0;
     b.textContent = "Revoke"; b.dataset.revoke = r.invite_id;
     side.append(chip, b);
   }

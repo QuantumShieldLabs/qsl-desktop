@@ -2680,6 +2680,8 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     not match. **Recorded here so a future reader finds a decision, not drift**, and a negative
     pin keeps the superseded sentence from shipping alongside its replacement. The
     mockup-refresh note rides the records.
+  - ~~**THE LIST WIDENS** to the ratified ~580px~~ — **SUPERSEDED AT v5 (the v5 block below):
+    the width is the shipped 500 class, applied to ALL THREE states.** The rest of the row stands.
   - **THE LIST WIDENS** to the ratified ~580px, rows gain roomier padding, and *"← New invite"*
     is `white-space: nowrap` — **one line, always**. ⚠ The width fixes the symptom the operator
     saw; `nowrap` fixes the property, so a future narrowing cannot quietly reintroduce it.
@@ -2697,3 +2699,34 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     acceptance card, recorded [O]. The clipboard measurement is **one platform**: this build
     box's WebKitGTK under X11; macOS and Windows are unmeasured. Nothing is merged by the seat;
     the operator merges.
+
+  - **v5 — WIDTH, ROW GEOMETRY, RED REVOKE (2026-08-23, operator-directed; UI-only).**
+    - ⚠⚠ **THE WIDTH BECOMES A CLASS, NOT A NUMBER, AND IT IS APPLIED TO ALL THREE STATES.** v4
+      widened the list alone to ~580px. That fixed the list and *created* a defect nothing sealed:
+      the mint, the post-activate code view and the list were then three different widths, so the
+      surface visibly resized as the user moved through a single flow. v5 refines 580 → the shipped
+      **500 class** and applies it uniformly. ⛳ **The rationale is the refinement, not the number:**
+      one flow, one frame — a container that changes size between steps of the same task reads as a
+      layout bug even when each step is correctly sized on its own. A per-state width is a family of
+      numbers that must be held in agreement by hand; a shared class cannot drift.
+    - **THE ROW IS ONE VISUAL ROW.** The state chip and Revoke sit INLINE, right-aligned, vertically
+      centred against the label/date block at the left. They had wrapped to a second line, making a
+      two-line row out of one fact.
+    - **REVOKE IS PLAIN RED — the shipped DANGER token, no underline.** It is the only destructive
+      control in the row and now says so by colour alone. ⚠ **Remove stays neutral, deliberately:**
+      Remove clears a failed local record and destroys nothing at the relay, so painting it red would
+      spend the danger colour on a safe act and cheapen it where it matters.
+    - ⚠⚠ **THE SEALS ARE MEASURED PROPERTIES, NOT ASSERTED CSS — the v5 method advance.** A seal that
+      greps the stylesheet for `align-items: center` proves a *rule was written*; it cannot prove the
+      row *renders* on one line, because any later rule may override it. v5's seals run in the live
+      webview against a rendered row: (i) **one row** — the chip's and Revoke's bounding boxes are read
+      and their vertical spans asserted to OVERLAP; (ii) **the token** — `--danger-link` is resolved
+      **through the same rendering engine** via a probe span and Revoke's *computed* colour compared to
+      it, so the seal **never compares against a literal** and cannot pass by coincidence of a
+      hard-coded value that happens to match; (iii) **no underline** — computed `textDecorationLine`
+      is `none`. All three are one probe returning `{onOneRow, tokenMatch, deco}`, and each was proven
+      RED by its own counterfactual: stack the row → RED; restore the underline → RED; repaint to the
+      link blue → RED (`tokenMatch:false` **while `onOneRow` and `deco` stayed true** — the control
+      isolates exactly the property it names); narrow the width off the class → RED.
+    - ⚠ **Claim boundary, v5.** ZERO engine bytes, ZERO `Cargo.toml`/`Cargo.lock`, ZERO `.github/**`,
+      ZERO `qsc`/protocol source. UI and its seals only. Nothing merged by the seat; the operator merges.

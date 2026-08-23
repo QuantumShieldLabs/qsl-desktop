@@ -412,8 +412,26 @@
   },
   {
    "op": "exec",
+   "script": "var hd=document.querySelector('#invite-mint .modal-head');var t=hd.querySelector('h2').getBoundingClientRect();var b=hd.querySelector('#btn-invite-review').getBoundingClientRect();var overlap=(t.top < b.bottom) && (b.top < t.bottom);return JSON.stringify({headOneRow:overlap, btnOneLine:(b.height < 44)});",
+   "expect": "{\"headOneRow\":true,\"btnOneLine\":true}"
+  },
+  {
+   "op": "exec",
    "script": "var m=document.querySelector('#invite-overlay .modal'); return JSON.stringify({maxw:getComputedStyle(m).maxWidth});",
-   "expect": "{\"maxw\":\"580px\"}"
+   "expect": "{\"maxw\":\"500px\"}"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 v5 \u00a72 \u2014 MEASURED PROPERTIES, not asserted CSS. A synthetic list row is rendered so the geometry can be read; the source side is pinned in design_polish.rs."
+  },
+  {
+   "op": "exec",
+   "script": "\nwindow.__g={};\n(function(){\n  var host=document.getElementById('invite-rows');\n  var row=document.createElement('div'); row.className='invite-row';\n  var main=document.createElement('div'); main.className='invite-row-main';\n  main.innerHTML='<div class=\"invite-row-head\">1 \u2014 probe</div><div class=\"invite-row-meta\">created x \u2014 expires in y</div>';\n  var side=document.createElement('div'); side.className='invite-row-side';\n  var chip=document.createElement('span'); chip.className='invite-chip'; chip.textContent='Not yet accepted';\n  var a=document.createElement('a'); a.className='rm plain link-danger'; a.textContent='Revoke';\n  side.append(chip,a); row.append(main,side); host.appendChild(row);\n  document.getElementById('invite-list-view').classList.remove('hidden');\n  var cr=chip.getBoundingClientRect(), ar=a.getBoundingClientRect();\n  var overlap=Math.min(cr.bottom,ar.bottom)-Math.max(cr.top,ar.top);\n  // the danger token resolved by the SAME engine \u2014 never a literal\n  var probe=document.createElement('span'); probe.style.color='var(--danger-link)';\n  document.body.appendChild(probe); var want=getComputedStyle(probe).color; probe.remove();\n  window.__g={ onOneRow: overlap > 0, tokenMatch: getComputedStyle(a).color === want,\n               deco: getComputedStyle(a).textDecorationLine, want: want };\n  row.remove();\n})();\nreturn JSON.stringify(window.__g);"
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify({onOneRow:window.__g.onOneRow, tokenMatch:window.__g.tokenMatch, deco:window.__g.deco});",
+   "expect": "{\"onOneRow\":true,\"tokenMatch\":true,\"deco\":\"none\"}"
   },
   {
    "op": "teardown"
