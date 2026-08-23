@@ -84,6 +84,18 @@ function show(id) {
   // Item 13 (§5 STATE RULE): every screen transition clears the ceremony
   // and passphrase fields — no typed secret survives a state transition.
   clearCeremonyState();
+  // NA-0755 (D-0036, R380 §7): the one-time invite code is held to the SAME
+  // rule, and it is held STRUCTURALLY rather than by remembering.
+  //
+  // ⚠ Why it must live HERE and not at the call sites. The invite modal is a
+  // body-level overlay and is deliberately NOT a `SCREENS` member, so the loop
+  // below cannot hide it. There are eight `show()` call sites and one of them
+  // is the autolock path (`:232`) — an autolock firing with the modal open
+  // would otherwise leave a live one-time code rendered OVER the unlock screen.
+  // One line here covers every transition, including ones not yet written; the
+  // alternative is a habit that must be re-derived at each new call site, and a
+  // habit that must be re-derived is not a control.
+  closeInviteModal();
   for (const s of SCREENS) byId(s).classList.toggle("hidden", s !== id);
   currentScreen = id;
   // Item 15 (R1): the backend disables the state-dependent menu entries
@@ -684,9 +696,14 @@ async function enterMain() {
   }
   byId("status-line").textContent = statusFooterLine(reason, relayUrl);
 }
-byId("btn-add-contact").addEventListener("click", () => {
-  byId("stub-note").classList.remove("hidden"); // honest stub (lane 2 lands the flow)
-});
+// NA-0755 (D-0036): UN-STUBBED. This button now opens the real invite flow.
+//
+// ⚠ `#stub-note` and its OTHER TWO revealers (`btn-rail-contacts` below and
+// `btn-rail-contacts-s` in the settings rail) are deliberately LEFT IN PLACE:
+// the Contacts pane is Lane C and is still unbuilt, so the honest stub is still
+// the truth on those paths. Only THIS handler stops revealing it — which is why
+// the seal is scoped to this handler and not to the element's existence.
+byId("btn-add-contact").addEventListener("click", () => openInviteModal());
 byId("btn-rail-contacts").addEventListener("click", () => {
   byId("stub-note").classList.remove("hidden");
 });
@@ -1743,6 +1760,487 @@ function mapErr(e, table) {
   for (const k of Object.keys(table)) if (s.includes(k)) return table[k];
   return s;
 }
+
+// ---- NA-0755 v2 (D-0036): THE INVITE SURFACE — THE SINGLE-VIEW MINT AND THE LIST ----
+//
+// Supersedes the v1 two-step modal, which the operator flew and which came back RED.
+//
+// ⚠ ZERO new commands beyond `invite_clear`. The other six invite verbs were already
+// registered at NA-0751.
+
+let inviteId = null;            // the DISPLAYED invite, for Cancel
+let inviteRows = [];            // the last list read, for the list view
+let inviteCopyTimer = null;
+
+// The TTL this app requests. 259200 = 72h = the `qsc` CLI's own `default_value_t`, adopted
+// rather than invented so both front ends ask for the same thing.
+//
+// ⚠ IT IS A REQUEST. `resolve_expiry` clamps it to the relay's advertised ceiling and
+// subtracts a 300s skew margin, and a clamp is a NORMAL outcome. That is why every expiry the
+// user sees is READ BACK from `invite_list`, never printed from this constant.
+const INVITE_TTL_SECS = 259200;
+const INVITE_SOFT_CAP = 10;
+
+// ⚠⚠ THE CLIPBOARD, AND WHY IT IS SHAPED LIKE THIS — MEASURED, NOT ASSUMED.
+//
+// The design assumed a "~4 s user-activation timeout". Measured in this webview:
+//     plain `await` then writeText  ->  RESOLVES at 750ms, REJECTS at 1000ms
+// A create needs two network round-trips, so on that route "Activate & Copy" would have failed
+// EVERY time, not occasionally. But:
+//     ClipboardItem built SYNCHRONOUSLY around a pending promise -> RESOLVES at 4000ms
+// So the single gesture is buildable: the item is constructed in the click handler, and its
+// promise resolves to the code when `invite_create` returns.
+//
+// ⚠ The fallback is a CAPABILITY TEST, never a timeout guess. Where `ClipboardItem` is absent
+// the button reads "Activate" and the copy glyph — its own gesture, always valid — is the
+// recovery. The label must never promise what the platform refuses.
+//
+// ⚠ On a create FAILURE the promise rejects, the write rejects, and NOTHING is copied. That is
+// correct: a code that does not exist must not reach the clipboard.
+const HAS_CLIPBOARD_ITEM = typeof ClipboardItem !== "undefined" && !!(navigator.clipboard && navigator.clipboard.write);
+
+// R380 §2 / §5 + R381 §1 — the ruled mapping from a typed facade failure onto modal copy.
+// PURE and TOTAL: (code, detail) -> {banner, detail}. Severity is ACCENT, never red.
+const INVITE_ENDPOINT_DETAILS = [
+  "relay_endpoint_missing", "relay_endpoint_invalid",
+  "relay_endpoint_invalid_host", "relay_endpoint_invalid_scheme",
+];
+function inviteErrorLine(code, detail, verb) {
+  const c = String(code || "");
+  const d = String(detail || "");
+  if (c === "relay_tls_untrusted") {
+    return { banner: "Certificate not trusted",
+      detail: "This relay presented a certificate your computer doesn't recognise. That's expected if the operator runs their own certificate authority — and it's also what an interception attack looks like. Add their CA certificate under Settings → Relay." };
+  }
+  if (c === "relay_ca_file") {
+    return { banner: "Certificate authority file couldn't be read",
+      detail: "The certificate authority file couldn't be read. Check the path under Settings → Relay — this is a local file problem, not a problem with the relay's certificate." };
+  }
+  if (c === "relay_unauthorized") {
+    return { banner: "Token rejected",
+      detail: "The relay requires an access token and didn't accept the one this app sent. Check it with the operator, then set it under Settings → Relay." };
+  }
+  if (INVITE_ENDPOINT_DETAILS.includes(c) || (c === "other" && INVITE_ENDPOINT_DETAILS.includes(d))) {
+    return { banner: "Relay address isn't usable",
+      detail: "Set a valid relay address under Settings → Relay, then try again." };
+  }
+  if (c === "soft_cap_reached") {
+    return { banner: "Too many live invites",
+      detail: "You already have 10 invites waiting. Revoke one you no longer need, then create another." };
+  }
+  if (c === "rate_limited") {
+    return { banner: "The relay is rate-limiting",
+      detail: "The relay asked this app to slow down. Wait a moment and try again." };
+  }
+  if (c === "relay_slots_full") {
+    return { banner: "The relay has no invite slots free",
+      detail: "The relay's invite table is full. Ask the operator, or try again later." };
+  }
+  if (c === "relay_rejected") {
+    // R380 §2(A): BOTH provenances named, because the client cannot tell them apart — every
+    // non-TLS send failure returns the caller's own fallback, so an unreachable relay and a
+    // relay that refused arrive as the SAME code. Measured, 4112ms.
+    return { banner: "The relay didn't create the invite",
+      detail: "Nothing was created — the relay couldn't be reached, or it refused the request. Check Settings → Relay; its Test connection button can tell which." };
+  }
+  if (c === "not_found") {
+    return { banner: "That invite is already gone",
+      detail: "This app has no record of that invite any more." };
+  }
+  if (c === "revoke_invalid") {
+    return { banner: "Couldn't revoke this invite",
+      detail: "This invite has no revoke token stored, so it can't be revoked from here." };
+  }
+  if (c === "clear_refused") {
+    // The SHORT wire discriminant. The engine const is `invite_clear_refused`; zero of the
+    // other wire codes carry an `invite_` prefix and this one does not either.
+    return { banner: "That invite can't be removed",
+      detail: "Only an invite that didn't finish can be removed from the list. A live invite is revoked, not removed." };
+  }
+  if (c === "locked") {
+    return { banner: "Vault is locked", detail: "Unlock to continue." };
+  }
+  if (c === "vault_unavailable") {
+    // ⚠ MUST NOT say "unlock it": this code carries THREE provenances — locked mid-operation,
+    // vault DAMAGE, or a key-source failure — and the copy must be true in all three.
+    //
+    // R381 §1: the arm is now SELF-DIAGNOSING. `detail` carries the underlying source code, and
+    // it rides as a SUBDUED PARENTHETICAL so the sentence stays plain while the screenshot
+    // names its own provenance. The payload is closed at seven static tokens — no user bytes.
+    const suffix = d ? ` (${d})` : "";
+    return { banner: "The vault couldn't be read",
+      detail: `The vault couldn't be read. If this keeps happening, check Settings → Vault.${suffix}` };
+  }
+  // ── UNREACHABLE FROM LANE A — PREPARED FOR LANE B (R380 §5). No seal: a seal that cannot
+  // fail is not a seal. Both are produced only inside `verify_redeemed_bundle`.
+  if (c === "commitment_mismatch") {
+    return { banner: "This invite's keys don't match",
+      detail: "The keys in this invite don't match what it commits to. Someone may be interfering. Ask the person who sent it for a new invite through a different channel." };
+  }
+  if (c === "signature_invalid") {
+    return { banner: "This invite has been altered",
+      detail: "This invite's signature doesn't check out, so its contents have been changed since it was made. Someone may be interfering. Ask for a new invite through a different channel." };
+  }
+  const shown = c === "other" && d ? d : c || "unknown";
+  return { banner: verb === "revoke" ? "Couldn't revoke the invite"
+         : verb === "clear" ? "Couldn't remove the invite"
+         : "Couldn't create the invite",
+    detail: "The relay or this app reported: " + shown };
+}
+
+function renderInviteError(boxId, code, detail, verb) {
+  const box = byId(boxId);
+  const line = inviteErrorLine(code, detail, verb);
+  setBanner(box.querySelector(".status-banner"), "accent", line.banner);
+  box.querySelector(".hint").textContent = line.detail;
+  box.classList.remove("hidden");
+}
+function clearInviteErrors() {
+  for (const id of ["invite-error-mint", "invite-error-post", "invite-error-list"]) {
+    byId(id).classList.add("hidden");
+  }
+}
+
+// ⚠ The one-time boundary's local half: the code lives in the DOM node and nowhere else. No
+// module variable holds it, nothing writes it to settings, and closing removes it. `inviteId`
+// is NOT the code — it is the public slot id the list already publishes.
+function closeInviteModal() {
+  const ov = byId("invite-overlay");
+  if (!ov || ov.classList.contains("hidden")) return;
+  ov.classList.add("hidden");
+  byId("invite-code").textContent = "";
+  byId("invite-label").value = "";
+  inviteId = null;
+  clearInviteErrors();
+  inviteShowMint();
+}
+
+function inviteShowMint() {
+  byId("invite-mint").classList.remove("hidden");
+  byId("invite-list-view").classList.add("hidden");
+  byId("invite-pre").classList.remove("hidden");
+  byId("invite-post").classList.add("hidden");
+}
+
+// ⚠⚠ v3 — ENTERING THE MINT FRESH. The operator's flight found that a typed label SILENTLY RODE
+// EVERY LATER MINT: the field was cleared when the surface opened but not when the user came
+// back to it from the list, so the second invite inherited the first invite's note without
+// anyone touching the box. A silent wrong value is worse than a visible one.
+//
+// ⚠ ONE function owns this, and BOTH paths into the mint call it, so the two cannot drift apart
+// again — which is how the defect existed in the first place.
+function inviteEnterMintFresh() {
+  byId("invite-label").value = "";
+  byId("invite-code").textContent = "";
+  byId("invite-meta-note").textContent = "Invite code";
+  byId("invite-meta-expiry").textContent = "";
+  byId("invite-copy-note").classList.add("hidden");
+  inviteId = null;
+  inviteShowMint();
+}
+function inviteShowPost() {
+  byId("invite-pre").classList.add("hidden");
+  byId("invite-post").classList.remove("hidden");
+}
+function inviteShowList() {
+  byId("invite-mint").classList.add("hidden");
+  byId("invite-list-view").classList.remove("hidden");
+}
+
+function humanWhen(unixSecs) {
+  // F-3: `created` is an Option at the DTO precisely so the 1970 sentinel cannot arrive here.
+  if (!unixSecs) return "—";
+  return new Date(unixSecs * 1000).toLocaleDateString();
+}
+
+// Refresh-on-open (the bank's decision 1), never polling. A background check is FILED.
+async function inviteRefresh() {
+  try {
+    inviteRows = await invoke("invite_list");
+  } catch (_) {
+    inviteRows = [];
+  }
+  const live = inviteRows.filter((r) => r.state === "active").length;
+  byId("invite-count").textContent = String(live);
+  byId("invite-slots").textContent = `${live} of ${INVITE_SOFT_CAP} slots used — codes expire on their own`;
+  let relayUrl = "";
+  try {
+    const cfg = await invoke("relay_config_get");
+    relayUrl = cfg.relay_url || "";
+  } catch (_) { relayUrl = "" ; }
+  const noRelay = relayUrl === "";
+  const capFull = live >= INVITE_SOFT_CAP;
+  // An enabled button whose only outcome is an error is the control-that-cannot-succeed shape.
+  byId("btn-invite-activate").disabled = noRelay || capFull;
+  byId("invite-no-relay").classList.toggle("hidden", !noRelay);
+  byId("invite-cap-full").classList.toggle("hidden", !capFull || noRelay);
+  return relayUrl;
+}
+
+async function openInviteModal() {
+  clearInviteErrors();
+  inviteEnterMintFresh();
+  byId("btn-invite-activate").textContent = HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate";
+  byId("invite-overlay").classList.remove("hidden");
+  await inviteRefresh();
+}
+
+// `invite_create` returns the CODE, not the id Cancel needs, so the id is recovered by
+// COMPOSITION from an `invite_list` diff — the same call that carries the REAL expiry.
+// ⚠⚠ v4 — ONE SOURCE, TWO DISPLAYS. The meta row's expiry and the warning's closing figure
+// are the SAME invite's remaining life, computed ONCE here and written to both. They are two
+// renderings of one fact and must never be able to disagree: a warning that says "3 days" over
+// a code the meta row says expires in 2 is a lie the user has no way to resolve.
+//
+// ⚠ The value is READ BACK from the invite, never printed from the TTL we requested — the
+// relay clamps that, and a clamp is a normal outcome.
+function inviteWriteExpiry(secondsLeft) {
+  const human = secondsLeft > 0 ? humanDuration(secondsLeft) : "—";
+  byId("invite-meta-expiry").textContent = secondsLeft > 0 ? "Expires in " + human : "";
+  byId("invite-warn-days").textContent = human;
+}
+
+async function adoptMinted(before) {
+  inviteId = null;
+  byId("invite-meta-expiry").textContent = "";
+  byId("invite-meta-note").textContent = "Invite code";
+  try {
+    inviteRows = await invoke("invite_list");
+  } catch (_) {
+    return;
+  }
+  const fresh = inviteRows.filter((r) => !before.includes(r.invite_id));
+  if (fresh.length !== 1) return;      // ambiguous -> claim nothing
+  const row = fresh[0];
+  inviteId = row.invite_id;
+  inviteWriteExpiry(row.expiry - Math.floor(Date.now() / 1000));
+  // LEFT of the meta row names what this is: the note when one was given, else plain.
+  byId("invite-meta-note").textContent = row.label ? "Invite for: " + row.label : "Invite code";
+}
+
+byId("btn-invite-activate").addEventListener("click", async (ev) => {
+  clearInviteErrors();
+  const label = byId("invite-label").value.trim();
+  const btn = byId("btn-invite-activate");
+  btn.disabled = true;
+
+  let relayUrl = "";
+  try {
+    const cfg = await invoke("relay_config_get");
+    relayUrl = cfg.relay_url || "";
+  } catch (_) { relayUrl = ""; }
+  let before = [];
+  try { before = (await invoke("invite_list")).map((r) => r.invite_id); } catch (_) { before = []; }
+
+  const mint = invoke("invite_create", {
+    selfLabel: null, relay: relayUrl, ttlSecs: INVITE_TTL_SECS,
+    recipientLabel: label === "" ? null : label,
+  });
+
+  let copied = false;
+  if (HAS_CLIPBOARD_ITEM) {
+    // ⚠ THE ITEM IS BUILT SYNCHRONOUSLY, INSIDE THE GESTURE. That is the whole mechanism: the
+    // promise resolves later, when the create returns, and the write still succeeds.
+    try {
+      const item = new ClipboardItem({
+        "text/plain": mint.then((code) => new Blob([code], { type: "text/plain" })),
+      });
+      await navigator.clipboard.write([item]);
+      copied = true;
+    } catch (_) {
+      copied = false;   // a create failure rejects the promise; nothing is copied. Correct.
+    }
+  }
+
+  let code;
+  try {
+    code = await mint;
+  } catch (e) {
+    btn.disabled = false;
+    renderInviteError("invite-error-mint", e && e.code, e && e.detail, "create");
+    await inviteRefresh();
+    return;
+  }
+  byId("invite-code").textContent = code;
+  // v3: on success the link itself is the affordance and no note is needed; the note exists
+  // only to say when the single gesture could NOT copy, and it points at the link.
+  const note = byId("invite-copy-note");
+  note.textContent = copied ? "" : "Copy didn't complete — use the copy code link below.";
+  note.classList.toggle("hidden", copied);
+  inviteShowPost();
+  await adoptMinted(before);
+  await inviteRefresh();
+});
+
+// The copy glyph: its own click is its own gesture, so it always works — which is why it is the
+// recovery path and why "Copy again" is not a button.
+// v3: ONE text link is both the re-copy control and the fallback's recovery path. Its own
+// click is its own gesture, which is precisely why it works when the single-gesture write did
+// not — the user activation is fresh here and is never spent on an await.
+async function inviteCopyLink() {
+  const code = byId("invite-code").textContent;
+  if (!code) return;
+  const link = byId("btn-invite-copy");
+  try {
+    await navigator.clipboard.writeText(code);
+    link.textContent = "copied";
+    link.classList.add("copied");      // v4: green, per the ratified mockups
+    if (inviteCopyTimer) clearTimeout(inviteCopyTimer);
+    inviteCopyTimer = setTimeout(() => {
+      link.textContent = "copy code";
+      link.classList.remove("copied");
+    }, 2500);
+  } catch (_) {
+    byId("invite-copy-note").textContent = "Copy didn't complete — select the code and copy it.";
+    byId("invite-copy-note").classList.remove("hidden");
+  }
+}
+byId("btn-invite-copy").addEventListener("click", () => inviteCopyLink());
+// The precedent style (`a.rm`) is not focusable on its own; Enter/Space keep the control
+// operable without a mouse.
+byId("btn-invite-copy").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); inviteCopyLink(); }
+});
+
+// ⚠ v4: the "Cancel Invite" handler is REMOVED with its button. The single kill mechanism is
+// Revoke in the list — one word, one place. Mid-mint regret is Review invites → Revoke, one
+// extra click for a rare case, and that trade is recorded rather than lost.
+
+// ── the list view — THE REFERENCE MARKUP GOVERNS (v3) ─────────────────────
+//
+// ⚠⚠ VISIBILITY RULE: LIVE rows and FAILED rows only, NEWEST FIRST. Revoked and Expired
+// records DO NOT RENDER — ever. They are inert, sealed and never counted; true vault deletion
+// of dead records is the queued engine-hygiene lane, not this surface's job. The list answers
+// "what is open", and an expired invite's answer is its absence.
+//
+// ⚠ NO HISTORY VIEW, deliberately (bank §5). The remedy for an expired invite is a fresh mint.
+function inviteVisibleRows() {
+  const now = Math.floor(Date.now() / 1000);
+  return inviteRows
+    .filter((r) => {
+      if (r.state === "creating") return true;                 // FAILED row
+      if (r.state === "redeemed") return true;                  // ACCEPTED row (interim)
+      if (r.state === "active") return r.expiry > now;          // LIVE row
+      return false;                                             // revoked / expired: never
+    })
+    .sort((a, b) => (b.created || 0) - (a.created || 0));       // newest first
+}
+
+function inviteRowEl(r, n) {
+  const now = Math.floor(Date.now() / 1000);
+  const row = document.createElement("div");
+  row.className = "invite-row";
+  row.dataset.inviteId = r.invite_id;
+
+  const main = document.createElement("div");
+  main.className = "invite-row-main";
+  const l1 = document.createElement("div");
+  l1.className = "invite-row-head";
+  const label = r.label ? r.label : "(no label)";
+  // The FAILED row is numbered "—": it never became one of your open invites.
+  l1.textContent = `${r.state === "creating" ? "—" : n} — ${label}`;
+  const l2 = document.createElement("div");
+  l2.className = "invite-row-meta";
+  if (r.state === "creating") {
+    l2.textContent = "didn't finish — if the relay registered it, that slot expires on its own and can't be revoked from here";
+  } else if (r.state === "redeemed") {
+    l2.textContent = `created ${humanWhen(r.created)}`;
+  } else {
+    l2.textContent = `created ${humanWhen(r.created)} — expires in ${humanDuration(r.expiry - now)}`;
+  }
+  main.append(l1, l2);
+
+  const side = document.createElement("div");
+  side.className = "invite-row-side";
+  const chip = document.createElement("span");
+  chip.className = "invite-chip";
+  if (r.state === "creating") {
+    chip.className += " dim";
+    chip.textContent = "Didn't finish";
+    const b = document.createElement("a");
+    // ⚠ Remove stays NEUTRAL, deliberately: it clears a local row that can never become
+    // actionable. Painting it danger-red would claim it destroys something at the relay, which
+    // is exactly the false promise the B-1 wording fight removed.
+    b.className = "rm plain"; b.setAttribute("role", "button"); b.tabIndex = 0;
+    b.textContent = "Remove"; b.dataset.clear = r.invite_id;
+    side.append(chip, b);
+  } else if (r.state === "redeemed") {
+    // ACCEPTED — interim until Lane C, whose People pane is its permanent home.
+    // ⚠ NO buttons: undeletable by the operator's own rule.
+    chip.textContent = "✓ Accepted";
+    side.append(chip);
+  } else {
+    chip.textContent = "Not yet accepted";
+    const b = document.createElement("a");
+    // v5: plain (never underlined) and the shipped danger-LINK colour — the token minted for
+    // this exact shape. Revoke is destructive and now reads that way without shouting.
+    b.className = "rm plain link-danger"; b.setAttribute("role", "button"); b.tabIndex = 0;
+    b.textContent = "Revoke"; b.dataset.revoke = r.invite_id;
+    side.append(chip, b);
+  }
+  row.append(main, side);
+  return row;
+}
+
+async function renderInviteList() {
+  const host = byId("invite-rows");
+  host.innerHTML = "";
+  const vis = inviteVisibleRows();
+  byId("invite-list-empty").classList.toggle("hidden", vis.length > 0);
+  vis.forEach((r, i) => host.appendChild(inviteRowEl(r, i + 1)));
+}
+
+// ⚠⚠ REVOKE: FLIP IN PLACE, THEN LEAVE. On success the chip flips to "Revoked" where the user
+// is looking, for ~2s, and only then does the row go and the counter free — visible success,
+// then tidy. A row that simply vanished would be indistinguishable from a bug.
+//
+// ⚠ ON FAILURE THE ROW DOES NOT CHANGE. A revoke that did not reach the relay did not happen,
+// and the UI never pretends otherwise — the honest error line renders instead, in the reused
+// vocabulary. This is the half the v1 silent-close got wrong.
+byId("invite-rows").addEventListener("click", async (ev) => {
+  const t = ev.target;
+  const rev = t.dataset && t.dataset.revoke;
+  const clr = t.dataset && t.dataset.clear;
+  if (!rev && !clr) return;
+  clearInviteErrors();
+  const row = t.closest(".invite-row");
+  try {
+    if (rev) {
+      await invoke("invite_revoke", { inviteId: rev });
+      const chip = row.querySelector(".invite-chip");
+      if (chip) { chip.textContent = "Revoked"; chip.className = "invite-chip dim"; }
+      t.remove();
+      await new Promise((r) => setTimeout(r, 2000));
+    } else {
+      await invoke("invite_clear", { inviteId: clr });
+    }
+    await inviteRefresh();
+    await renderInviteList();
+  } catch (e) {
+    // The row is untouched: nothing flipped, nothing left.
+    renderInviteError("invite-error-list", e && e.code, e && e.detail, rev ? "revoke" : "clear");
+  }
+});
+
+byId("btn-invite-review").addEventListener("click", async () => {
+  clearInviteErrors();
+  await inviteRefresh();
+  await renderInviteList();
+  inviteShowList();
+});
+byId("btn-invite-back").addEventListener("click", async () => {
+  clearInviteErrors();
+  inviteEnterMintFresh();     // ⚠ the v3 fix: this path is the one that leaked the old label
+  await inviteRefresh();
+});
+byId("btn-invite-open").addEventListener("click", () => openInviteModal());
+byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
+byId("invite-overlay").addEventListener("click", (ev) => {
+  if (ev.target === byId("invite-overlay")) closeInviteModal();
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") closeInviteModal();
+});
 
 // ---- boot -----------------------------------------------------------------
 (async () => {

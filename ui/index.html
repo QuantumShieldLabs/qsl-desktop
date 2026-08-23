@@ -140,7 +140,14 @@
     </nav>
     <section class="list-pane">
       <div class="list-header">
-        <h2>Chats</h2>
+        <div class="list-head-row">
+          <h2>Chats</h2>
+          <!-- NA-0755 (D-0036): the SECOND entry to the invite modal. It exists so the
+               flow stays reachable after the first contact lands and the welcome pane —
+               the only other entry — is gone. `.rail-btn`+`.tip` is the shipped
+               small-icon-button pattern; no new button CSS is minted for it. -->
+          <button class="rail-btn tip" id="btn-invite-open" data-tip="Invite someone" aria-label="Invite someone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        </div>
         <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Search</span></div>
       </div>
       <p class="empty-note">No conversations yet.</p>
@@ -374,6 +381,113 @@
     </main>
   </div>
 </section>
+
+<!-- ===================================================================
+     NA-0755 v2 (D-0036) — THE INVITE SURFACE: THE SINGLE-VIEW MINT AND THE LIST.
+
+     Supersedes the v1 two-step modal, which the operator flew and which came back RED.
+     Governing design: RBANK_invite_v2_single_view_20260822.md
+     (sha256 381c928081be614f99cd373bc86f8f00f1c71ec02531d9ead45c5bc9b2de0597).
+
+     ⚠ DELIBERATELY NOT A `SCREENS` MEMBER. `show()` closes it, so every transition —
+     including autolock — clears the code rather than leaving it over the unlock screen.
+
+     ⚠ NO EXPLAINER STEP. Both entries open straight to the mint.
+     ⚠ "Activate & Copy" IS THE SINGLE COMMIT: before the click nothing exists anywhere.
+     ⚠ The code box is natively selectable and never `user-select: none`.
+-->
+<div id="invite-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+  <div class="modal">
+
+    <!-- ── THE MINT VIEW ─────────────────────────────────────────────── -->
+    <div id="invite-mint">
+      <div class="modal-head">
+        <h2 id="invite-title">Invite someone</h2>
+        <!-- The slot counter is ALWAYS visible in BOTH states, so the cap can never ambush. -->
+        <button class="secondary" id="btn-invite-review">Review invites (<span id="invite-count">0</span> of 10) &rarr;</button>
+      </div>
+
+      <!-- ── before activation ── -->
+      <div id="invite-pre">
+        <span class="field-label" id="invite-label-caption">Who is this invite for? (optional &mdash; stays on this device)</span>
+        <input type="text" id="invite-label" class="full" autocomplete="off" spellcheck="false" placeholder="e.g. Dana" aria-labelledby="invite-label-caption">
+        <p class="hint">Your private note. It is never sent anywhere &mdash; it just reminds you who you meant this for.</p>
+        <div class="block"><button class="primary full" id="btn-invite-activate">Activate &amp; Copy</button></div>
+        <p id="invite-no-relay" class="hint hidden">Set a relay address in Settings &rarr; Relay before creating an invite.</p>
+        <p id="invite-cap-full" class="hint hidden">You already have 10 invites waiting. Revoke one you no longer need, then create another.</p>
+        <div id="invite-error-mint" class="hidden">
+          <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+          <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+        </div>
+      </div>
+
+      <!-- ── after activation, SAME view ── -->
+      <div id="invite-post" class="hidden">
+        <!-- v4: the meta row moves ABOVE the code. LEFT names what this is — "Invite for:
+             <note>" when a note was given, else plain "Invite code". RIGHT carries the expiry.
+             ⚠ The meta row, the box and the copy link travel as ONE island (`.code-island`)
+             with clear space above and below, so the code reads as a single object. -->
+        <div class="code-island">
+          <div class="meta-line">
+            <span id="invite-meta-note">Invite code</span>
+            <span id="invite-meta-expiry"></span>
+          </div>
+          <!-- ⚠ `.code-box` wraps and stays selectable. It is NOT the verification code's box,
+               whose nowrap + overflow:hidden pair produced NA-0753's silent clip — an invite
+               code is 133-154 characters, roughly twice as long. -->
+          <div class="code-box minted" id="invite-code" tabindex="0"></div>
+          <!-- One always-visible text link: BOTH the re-copy control and the recovery path when
+               the single-gesture copy could not copy. v4: PLAIN, never underlined; "copied"
+               renders green. An anchor, not a button element — the design system's tier rule has
+               no text-link category, and the tag is DESCRIBED rather than spelled because that
+               gate scans raw markup and does not skip comments. -->
+          <div class="copy-row">
+            <a class="rm plain" id="btn-invite-copy" role="button" tabindex="0">copy code</a>
+          </div>
+          <p class="hint hidden" id="invite-copy-note"></p>
+        </div>
+
+        <!-- ⚠ THE WARNING IS OPERATOR-AUTHORED AND VERBATIM. The leading clause renders bold.
+             The day figure comes from the SAME live invite value as the meta row above — one
+             source, two displays, so they cannot disagree. -->
+        <div class="callout" id="invite-warning"><strong>Only send this code to the person it&rsquo;s intended for&hellip;</strong> over a secure channel that you fully trust such as a text message, a call, or in person. It works only once, then dies. If unused, it expires on its own in <span id="invite-warn-days">3 days</span>.</div>
+        <!-- v4: "Cancel Invite" is REMOVED. The single kill mechanism is Revoke in the list —
+             one word, one place. Mid-mint regret is Review invites → Revoke: one extra click
+             for a rare case, recorded as chosen rather than lost. -->
+        <div id="invite-error-post" class="hidden">
+          <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+          <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── THE LIST VIEW ─────────────────────────────────────────────── -->
+    <div id="invite-list-view" class="hidden">
+      <div class="modal-head">
+        <div>
+          <h2>Your invites</h2>
+          <p class="hint" id="invite-slots">0 of 10 slots used &mdash; codes expire on their own</p>
+        </div>
+        <button class="secondary nowrap" id="btn-invite-back">&larr; New invite</button>
+      </div>
+      <!-- ⚠ VISIBILITY RULE: LIVE rows and FAILED rows only, newest first. Revoked and Expired
+           records DO NOT RENDER, ever. True vault deletion of dead records is the queued
+           engine-hygiene lane; invisible records are inert, sealed, and never counted. -->
+      <div id="invite-list-empty" class="invite-empty">
+        <p class="muted">No open invites.</p>
+        <p class="hint">Codes you&rsquo;ve sent expire on their own within 3 days.</p>
+      </div>
+      <div id="invite-rows"></div>
+      <div id="invite-error-list" class="hidden">
+        <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+        <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+      </div>
+    </div>
+
+    <div class="block"><button class="secondary full" id="btn-invite-close">Close</button></div>
+  </div>
+</div>
+
 
 <script src="main.js"></script>
 </body>

@@ -42,6 +42,13 @@
   /* §1 success text + neutral status (also the disabled tier) */
   --ok: #8FDCA8;
   --neutral-bg: #2A2A2E;
+  /* NA-0755 (D-0036): the modal scrim and its shadow. These are TOKENS because
+     `colors_only_in_token_block` requires it — the rule caught an inline rgba in
+     the first draft of this lane and was right to. Neutral black, NOT the
+     mockup's tinted scrim: the bank forbids copying a mockup colour, and only
+     the ALPHA (a legibility figure) is taken from it. */
+  --scrim: rgba(0, 0, 0, 0.66);
+  --modal-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 
   /* status colors retained from D596 (R2: the attempts alert stays
      amber; red is reserved for the armed-erasure state) */
@@ -588,3 +595,164 @@ details.tech[open] .srv-stack { margin-top: var(--sp-3); }
    buttons both labelled "Clear" were (ENG-0073, from the NA-0673 flight). */
 a.rm { color: var(--accent-text); font-size: var(--fs-hint); text-decoration: underline; cursor: pointer; }
 a.rm:hover { color: var(--fg); }
+
+/* ==========================================================================
+   NA-0755 (D-0036) — THE INVITE MODAL. The CLASS-SCOPED complement, and it is
+   exactly that: every selector below was MEASURED absent from this file before
+   it was minted, and every selector the modal needed and FOUND was reused
+   instead -- button.primary/.secondary/.full, .btnrow (the mockup's `.row`),
+   .callout (the mockup's `.warn`, renamed at :277 because the old name lied),
+   .muted, .hint, .field-label, .error, .status-banner, .hidden, .rail-btn+.tip.
+
+   Layout reference: mockup-14 (states 1-2) and mockup-13a (the overlay), both
+   at 142c1eb6. COLOUR COMES FROM SHIPPED TOKENS ONLY -- not one hex value is
+   copied from either mockup.
+   ========================================================================== */
+
+/* The "+" entry needs `Chats` and the button on ONE line; `.list-header` is a
+   COLUMN flex (:465) and stays that way, so the row is a wrapper inside it
+   rather than a change to the header's own axis. */
+.list-head-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+
+/* The backdrop. `position: fixed` (not the mockup's `absolute`) because the
+   mockup draws inside a phone frame and this is the real window. */
+.overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--scrim);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--sp-4);
+}
+.modal {
+  /* ⚠ THE SURFACE WIDTH IS EXPRESSED EXACTLY ONCE, HERE, AND ALL THREE STATES SHARE IT —
+     pre-mint, post-mint and the list. That uniformity is DELIBERATE and recorded: a surface
+     that resized as the user moved between its own states would read as three different panels
+     rather than one. v5 narrows 580 → the 500 class against the rendered mockups; the code
+     wraps to about four lines at this width and the v4 breathing-room islands are preserved. */
+  width: 100%; max-width: 500px; max-height: 100%; overflow-y: auto;
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: var(--sp-x28);
+  box-shadow: var(--modal-shadow);
+}
+.modal h2 { font-size: var(--fs-title); font-weight: var(--fw-title); margin: 0 0 var(--sp-1) 0; }
+.modal .muted { margin: 0 0 var(--sp-x20) 0; }
+
+/* The step chip. */
+.tag {
+  font-size: var(--fs-micro); color: var(--fg-muted);
+  text-transform: uppercase; letter-spacing: 1px; margin: 0 0 var(--sp-3) 0;
+}
+
+/* ⚠ THE CODE BOX WRAPS. It is NOT `.verify-code`.
+   `.verify-code` is `white-space: nowrap; overflow: hidden` plus fitCode(), and
+   its own comment (:317) records the re-flight where that combination produced a
+   SILENT CLIP. An invite code is `QSLI-1-` + base64url(76 + len(relay_ep)) =
+   133-154 characters -- roughly twice the mockup's placeholder -- so nowrap
+   would clip it every time, with every seal still green.
+   The correct shipped precedent is `.fingerprint` (:353): break anywhere, and
+   re-enable selection, which `body`'s `user-select: none` (:100) otherwise denies.
+   Selection matters even though copy works: it is the manual fallback. */
+.code-box {
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  padding: var(--sp-x14) var(--sp-4);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-hint); line-height: 1.5;
+  overflow-wrap: anywhere; word-break: break-all;
+  -webkit-user-select: text; user-select: text;
+}
+
+/* Expiry + acceptance state. The Note chip is Lane C's (R380 §6). */
+.meta-line {
+  color: var(--fg-muted); font-size: var(--fs-hint);
+  margin-top: var(--sp-x14); display: flex; justify-content: space-between; gap: var(--sp-2);
+}
+
+/* The mockup's vertical rhythm wrapper. */
+.block { margin-top: var(--sp-x20); }
+
+/* ==========================================================================
+   NA-0755 v2 (D-0036) — THE SINGLE-VIEW MINT AND THE LIST.
+   Every selector below was MEASURED absent before it was minted; everything the
+   surface needed and FOUND was reused (button tiers, .btnrow, .callout, .muted,
+   .hint, .field-label, .error, .status-banner, .hidden, .code-box, .meta-line).
+   Colour comes from :root tokens only — `colors_only_in_token_block` enforces it.
+   ========================================================================== */
+
+.modal-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin: 0 0 var(--sp-3) 0; }
+
+/* ⚠ The Review and Back controls carry the shipped `secondary` tier rather than a new
+   "link" look. `every_button_is_tiered_or_nav` requires exactly one tier or one nav role, and
+   inventing a third category to dodge it is precisely what that rule exists to prevent. */
+
+/* v3: the copy control is a TEXT LINK below the box, right-aligned — the in-box icon is
+   removed. `a.rm` is the shipped text-link style (:596) and is reused rather than re-minted. */
+.copy-row { display: flex; justify-content: flex-end; margin-top: var(--sp-2); }
+/* the minted code's accent border — the one-time value, shown once */
+.code-box.minted { border-color: var(--ok); }
+
+/* The empty state: centred and quiet — the list answers "what is open", and nothing open is a
+   legitimate answer rather than an error. */
+.invite-empty { text-align: center; padding: var(--sp-5) 0; }
+.invite-empty p { margin: 0 0 var(--sp-1) 0; }
+
+/* The list rows: one bordered row CARD each — numbered, labeled, dated, with its state chip
+   and its action on the right of the same visual row. */
+.invite-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3); margin-bottom: var(--sp-2);
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--radius-small);
+}
+.invite-row-main { min-width: 0; }
+/* ⚠ v5 — THE CHIP AND ITS ACTION SHARE ONE VISUAL ROW, right-aligned and vertically CENTRED
+   against the row's text block. The v3 build stacked them in a COLUMN, diverging from the v3
+   bank's own reference markup; this restores what the markup always said. */
+.invite-row-side {
+  display: flex; flex-direction: row; align-items: center; justify-content: flex-end;
+  gap: var(--sp-3); flex-shrink: 0;
+}
+.invite-row-head { font-size: var(--fs-body); color: var(--fg); font-weight: var(--fw-mid); }
+.invite-row-meta { font-size: var(--fs-hint); color: var(--fg-muted); margin-top: var(--sp-1); }
+.invite-chip {
+  display: inline-block; white-space: nowrap;
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: 999px;
+  padding: var(--sp-1) var(--sp-x10); font-size: var(--fs-micro); color: var(--fg-secondary);
+}
+.invite-chip.dim { color: var(--fg-muted); }
+
+/* ==========================================================================
+   NA-0755 v4 — THE POLISH PASS. Ratified across five mockup rounds.
+   ========================================================================== */
+
+/* ⚠ THE CODE ISLAND. The meta row, the box and the copy link travel as ONE object with clear
+   space above and below, so the code reads as a single thing rather than three stacked ones. */
+.code-island { margin: var(--sp-5) 0; }
+.code-island .meta-line { margin-top: 0; margin-bottom: var(--sp-2); }
+
+/* v4: the copy link is PLAIN — never underlined — and "copied" renders green.
+   `.rm` supplies the accent colour and size; `.plain` removes only the underline, so the
+   shipped text-link style is reused rather than re-minted. */
+a.rm.plain { text-decoration: none; }
+a.rm.plain.copied { color: var(--ok); }
+
+/* Breathing room between the warning and the Close control. */
+#invite-warning { margin-top: var(--sp-5); margin-bottom: var(--sp-5); }
+
+/* ⚠ ONE LINE, ALWAYS. At the old width "← New invite" wrapped; the width change fixes the
+   symptom and this fixes the property, so a future narrowing cannot reintroduce it. */
+button.nowrap { white-space: nowrap; }
+
+/* Roomier rows at the new width. */
+.invite-row { padding: var(--sp-4); }
+
+/* ==========================================================================
+   NA-0755 v5 — REVOKE IS PLAIN RED.
+   ⚠ The colour is the shipped danger-LINK token, not the danger TEXT token: `--danger-link`
+   was minted for exactly this shape (E.6, the "Delete vault?" link) and its hover target is
+   `--danger-text`. That pairing is REUSED verbatim rather than re-decided here, and tokens are
+   the colour authority — no mockup hex is copied.
+   ⚠ NEVER UNDERLINED: it reuses the `a.rm.plain` idiom v4 minted, plus the danger colour.
+   ⚠ `Remove` on a failed row stays NEUTRAL on purpose — it clears a local row that can never
+   become actionable, and painting it red would claim it destroys something at the relay.
+   ========================================================================== */
+a.rm.plain.link-danger { color: var(--danger-link); }
+a.rm.plain.link-danger:hover { color: var(--danger-text); }

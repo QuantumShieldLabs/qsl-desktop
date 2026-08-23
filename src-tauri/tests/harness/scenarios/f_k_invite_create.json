@@ -1,0 +1,440 @@
+{
+ "scenario": "na0755_gui_k_invite_create",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "note",
+   "text": "NA-0755 v2 \u2014 the SINGLE-VIEW mint. Fresh profile: onboard first, because invite_create needs an unlocked vault and an identity."
+  },
+  {
+   "op": "clear_type",
+   "sel": "#vault-pass",
+   "text": "na0755-v2-fk-pass"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0755-v2-fk-pass"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FK"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "Z1 baseline: the stub note starts hidden. This is what the un-stub seal is measured against."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#stub-note",
+   "prop": "className",
+   "expect": "hint stub-gap hidden",
+   "poll": 3
+  },
+  {
+   "op": "find_count",
+   "sel": "#invite-overlay",
+   "expect": 1
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "ENTRY 1 \u2014 the welcome button. It opens STRAIGHT to the mint: there is no explainer step in v2."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-add-contact"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "Z1 NEGATIVE PIN, HANDLER-scoped (R380 \u00a74): btn-add-contact no longer reveals #stub-note. The element and its TWO Lane-C revealers survive \u2014 the global 'the stub message is GONE' claim measured FALSE and was struck."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#stub-note",
+   "prop": "className",
+   "expect": "hint stub-gap hidden",
+   "poll": 3
+  },
+  {
+   "op": "find_count",
+   "sel": "#stub-note",
+   "expect": 1
+  },
+  {
+   "op": "note",
+   "text": "The mint IS the landing. Copy pinned as RENDERED; the mockup-verbatim SOURCE bytes are pinned in design_polish.rs."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-title",
+   "literal": "Invite someone"
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-label-caption",
+   "literal": "Who is this invite for? (optional \u2014 stays on this device)"
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-invite-activate",
+   "literal": "Activate & Copy"
+  },
+  {
+   "op": "note",
+   "text": "R382 \u00a73 \u2014 with no relay configured the SINGLE COMMIT is DISABLED, not left to fail. An enabled button whose only outcome is an error is the control-that-cannot-succeed shape."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-invite-activate",
+   "prop": "disabled",
+   "expect": true,
+   "poll": 5
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-no-relay",
+   "literal": "Set a relay address in Settings \u2192 Relay before creating an invite."
+  },
+  {
+   "op": "note",
+   "text": "The slot counter is visible in BOTH states, so the cap can never ambush."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-count",
+   "literal": "0"
+  },
+  {
+   "op": "note",
+   "text": "The list view is one click away, and it is empty on a fresh profile."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-review"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-list-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "v3 empty state: the list answers 'what is open', and nothing open is a legitimate answer \u2014 not an error."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-list-empty .muted",
+   "literal": "No open invites."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-list-empty .hint",
+   "literal": "Codes you\u2019ve sent expire on their own within 3 days."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-slots",
+   "literal": "0 of 10 slots used \u2014 codes expire on their own"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-back"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "Escape closes, and the code box is cleared \u2014 the one-time boundary's local half."
+  },
+  {
+   "op": "exec",
+   "script": "document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'})); return 'sent';"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-code",
+   "literal": ""
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "ENTRY 2 \u2014 the '+' in the Chats header opens the SAME surface, so the flow survives the welcome pane disappearing."
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-invite-open",
+   "expect": 1
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-open"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 NOT DRIVEN HERE: a successful mint, the clipboard write, Cancel, and the per-row Remove. No fixture relay exists (ENG-0226), so the green path is the operator's card. The clipboard mechanism is sealed in design_polish.rs, and readText is DENIED to the harness so no automated check could verify clipboard CONTENT anyway."
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 v3 LABEL-CLEAR TRIPWIRE, driven. The operator's flight found one typed label riding EVERY later mint. Type a label, go to the list, come back \u2014 the field must be EMPTY."
+  },
+  {
+   "op": "type",
+   "sel": "#invite-label",
+   "text": "Mom"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-label",
+   "prop": "value",
+   "expect": "Mom",
+   "poll": 3
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-review"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-list-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-back"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-label",
+   "prop": "value",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 AND the same on a fresh open of the surface \u2014 both paths route through the one owner."
+  },
+  {
+   "op": "type",
+   "sel": "#invite-label",
+   "text": "Dad"
+  },
+  {
+   "op": "exec",
+   "script": "document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'})); return 'sent';"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-open"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-label",
+   "prop": "value",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "v3 copy control: ONE always-visible text link below the box, both re-copy and the fallback's recovery. \u26a0 NOT DRIVEN: its click needs a minted code, which needs the real relay (ENG-0226) \u2014 the operator's re-fly card covers it."
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-invite-copy",
+   "expect": 1
+  },
+  {
+   "op": "read_tc",
+   "sel": "#btn-invite-copy",
+   "literal": "copy code"
+  },
+  {
+   "op": "find_count",
+   "sel": ".glyph-copy",
+   "expect": 0
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 v4 POLISH \u2014 the ratified layout, driven where the harness can reach it."
+  },
+  {
+   "op": "note",
+   "text": "Cancel Invite is GONE: the single kill is Revoke in the list. Pinned as an ABSENCE."
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-invite-cancel",
+   "expect": 0
+  },
+  {
+   "op": "note",
+   "text": "The meta row sits ABOVE the code and names what the code is; before a mint it reads plainly."
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-meta-note",
+   "literal": "Invite code"
+  },
+  {
+   "op": "find_count",
+   "sel": "#invite-post .code-island .meta-line",
+   "expect": 1
+  },
+  {
+   "op": "note",
+   "text": "The warning is operator-authored and pinned character-for-character, house ellipsis included."
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-warning strong",
+   "literal": "Only send this code to the person it\u2019s intended for\u2026"
+  },
+  {
+   "op": "note",
+   "text": "ONE SOURCE, TWO DISPLAYS: the warning's figure is a span fed from the same value as the meta row."
+  },
+  {
+   "op": "find_count",
+   "sel": "#invite-warn-days",
+   "expect": 1
+  },
+  {
+   "op": "note",
+   "text": "The copy link is plain \u2014 never underlined \u2014 and one line."
+  },
+  {
+   "op": "exec",
+   "script": "var e=document.getElementById('btn-invite-copy'); return JSON.stringify({cls:e.className, deco:getComputedStyle(e).textDecorationLine});",
+   "expect": "{\"cls\":\"rm plain\",\"deco\":\"none\"}"
+  },
+  {
+   "op": "note",
+   "text": "The New-invite button is ONE LINE at the widened surface."
+  },
+  {
+   "op": "exec",
+   "script": "var b=document.getElementById('btn-invite-back'); var cs=getComputedStyle(b); return JSON.stringify({ws:cs.whiteSpace, oneLine:(b.getBoundingClientRect().height < 44)});",
+   "expect": "{\"ws\":\"nowrap\",\"oneLine\":true}"
+  },
+  {
+   "op": "exec",
+   "script": "var hd=document.querySelector('#invite-mint .modal-head');var t=hd.querySelector('h2').getBoundingClientRect();var b=hd.querySelector('#btn-invite-review').getBoundingClientRect();var overlap=(t.top < b.bottom) && (b.top < t.bottom);return JSON.stringify({headOneRow:overlap, btnOneLine:(b.height < 44)});",
+   "expect": "{\"headOneRow\":true,\"btnOneLine\":true}"
+  },
+  {
+   "op": "exec",
+   "script": "var m=document.querySelector('#invite-overlay .modal'); return JSON.stringify({maxw:getComputedStyle(m).maxWidth});",
+   "expect": "{\"maxw\":\"500px\"}"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 v5 \u00a72 \u2014 MEASURED PROPERTIES, not asserted CSS. A synthetic list row is rendered so the geometry can be read; the source side is pinned in design_polish.rs."
+  },
+  {
+   "op": "exec",
+   "script": "\nwindow.__g={};\n(function(){\n  var host=document.getElementById('invite-rows');\n  var row=document.createElement('div'); row.className='invite-row';\n  var main=document.createElement('div'); main.className='invite-row-main';\n  main.innerHTML='<div class=\"invite-row-head\">1 \u2014 probe</div><div class=\"invite-row-meta\">created x \u2014 expires in y</div>';\n  var side=document.createElement('div'); side.className='invite-row-side';\n  var chip=document.createElement('span'); chip.className='invite-chip'; chip.textContent='Not yet accepted';\n  var a=document.createElement('a'); a.className='rm plain link-danger'; a.textContent='Revoke';\n  side.append(chip,a); row.append(main,side); host.appendChild(row);\n  document.getElementById('invite-list-view').classList.remove('hidden');\n  var cr=chip.getBoundingClientRect(), ar=a.getBoundingClientRect();\n  var overlap=Math.min(cr.bottom,ar.bottom)-Math.max(cr.top,ar.top);\n  // the danger token resolved by the SAME engine \u2014 never a literal\n  var probe=document.createElement('span'); probe.style.color='var(--danger-link)';\n  document.body.appendChild(probe); var want=getComputedStyle(probe).color; probe.remove();\n  window.__g={ onOneRow: overlap > 0, tokenMatch: getComputedStyle(a).color === want,\n               deco: getComputedStyle(a).textDecorationLine, want: want };\n  row.remove();\n})();\nreturn JSON.stringify(window.__g);"
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify({onOneRow:window.__g.onOneRow, tokenMatch:window.__g.tokenMatch, deco:window.__g.deco});",
+   "expect": "{\"onOneRow\":true,\"tokenMatch\":true,\"deco\":\"none\"}"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}
