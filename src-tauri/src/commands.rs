@@ -804,19 +804,34 @@ impl Drop for EnvGuard {
 
 /// One facade failure, as the front end receives it.
 ///
-/// `code` is the facade's own stable wire discriminant — one of the pinned THIRTY-EIGHT
-/// (25 non-`Store` variants + `Store`'s 13-member fan-out over `ErrorCode::as_str`).
+/// `code` is the facade's own stable wire discriminant — one of the pinned THIRTY-NINE
+/// (26 non-`Store` variants + `Store`'s 13-member fan-out over `ErrorCode::as_str`).
 /// It is NOT `{e:?}`: a Debug rendering is a Rust detail that may change without the
 /// wire contract changing, and the front end string-matches on this value.
 ///
-/// ⚠ THE SET IS 38, NOT 26, because `Store` fans out. One of those thirty-eight,
+/// ⚠ THE SET IS 39, NOT 27, because `Store` fans out. One of those thirty-nine,
 /// `lock_upgrade_refused`, is the code the `Store` variant exists to keep reachable —
 /// collapsing `Store` to a single discriminant would make it unreachable to a GUI.
+///
+/// ⚠ NA-0755 v2 moved it 38 → 39: `clear_refused` joined the set. The count is asserted in
+/// PROSE at two places in this file and in five more across both repos, and the SR-15 read
+/// measured that a checker finding only the two obvious ones under-sweeps by ~5×.
 #[derive(Serialize)]
 pub struct ErrorDto {
     pub code: String,
-    /// Carried for `FacadeError::Other` alone — the residual's payload. `None` for every
-    /// named variant, so a screen cannot accidentally render a detail that is not there.
+    /// The residual's payload for `FacadeError::Other`, and — since NA-0755 v2 — the SOURCE
+    /// CODE for `VaultUnavailable`.
+    ///
+    /// ⚠ **THIS DOC'S PREVIOUS SENTENCE WAS FALSIFIED AND IS REPLACED.** It read *"Carried for
+    /// `FacadeError::Other` alone … `None` for every named variant, so a screen cannot
+    /// accidentally render a detail that is not there."* That is no longer true: exactly ONE
+    /// named variant now carries a payload. It is stated rather than quietly widened, because
+    /// the front end's own rendering rule depends on knowing which arms can be non-`None`.
+    ///
+    /// ⚠ Still safe to render: `VaultUnavailable`'s payload is closed at SEVEN static
+    /// lowercase tokens (the six `VAULT_FAMILY` members plus `identity_secret_unavailable`), so
+    /// **no user bytes can ride it**. `Other`'s payload is shape-sealed to `^[a-z][a-z0-9_]*$`.
+    /// Every other named variant is still `None`.
     pub detail: Option<String>,
 }
 
@@ -825,6 +840,10 @@ impl From<qsc::facade::FacadeError> for ErrorDto {
         let code = e.as_wire().to_string();
         let detail = match &e {
             qsc::facade::FacadeError::Other(s) => Some(s.clone()),
+            // NA-0755 v2 (R381 §1): the self-diagnosing vault arm. `vault_unavailable` collapses
+            // six provenances into one word, which is exactly why the operator's screenshot
+            // could not diagnose itself. The source code rides `detail` for this arm alone.
+            qsc::facade::FacadeError::VaultUnavailable(src) => src.map(|s| s.to_string()),
             _ => None,
         };
         ErrorDto { code, detail }
@@ -927,6 +946,17 @@ pub struct InviteDto {
     pub state: String,
     pub expiry: u64,
     pub revocable: bool,
+    /// The local note: who this invite is for. `None`, never `Some("")` — the engine normalises
+    /// at the mint boundary so no consumer has to special-case an empty string.
+    ///
+    /// ⚠ SEMANTICALLY SENSITIVE: it names who you associate with. Vault-backed at rest, never
+    /// sent (the invite payload has no room for it by construction), and egress-sealed.
+    pub label: Option<String>,
+    /// Unix seconds at mint, or `None` when the record carries the serde-default zero.
+    ///
+    /// ⚠ `Option`, not a bare `u64`: the engine's field defaults to 0 = 1 Jan 1970, and a screen
+    /// promising "dated" rows must render "—" for that rather than a confident wrong answer.
+    pub created: Option<u64>,
 }
 
 impl From<&qsc::facade::InviteSummary> for InviteDto {
@@ -936,6 +966,8 @@ impl From<&qsc::facade::InviteSummary> for InviteDto {
             state: i.state.as_wire().to_string(),
             expiry: i.expiry,
             revocable: i.revocable,
+            label: i.label.clone(),
+            created: i.created,
         }
     }
 }
@@ -1013,12 +1045,18 @@ pub async fn invite_list(st: State<'_, AppState>) -> Result<Vec<InviteDto>, Erro
         .await
 }
 
+/// ⚠ `recipient_label` is LAST and is NOT `self_label` (SR-15 **B-2**). `self_label` selects
+/// WHICH IDENTITY mints; `recipient_label` names WHO THE INVITE IS FOR. Both are `Option`s of
+/// the same type, so the compiler cannot tell a transposition from the truth — and on a profile
+/// with zero identities the swap is silently adopted as the identity's own label. The engine
+/// carries the transposition seal; this layer carries the naming and the position.
 #[tauri::command]
 pub async fn invite_create(
     st: State<'_, AppState>,
     self_label: Option<String>,
     relay: String,
     ttl_secs: u64,
+    recipient_label: Option<String>,
 ) -> Result<String, ErrorDto> {
     st.gw
         .call(move || {
@@ -1026,8 +1064,21 @@ pub async fn invite_create(
                 self_label.as_deref(),
                 &relay,
                 ttl_secs,
+                recipient_label.as_deref(),
             )?)
         })
+        .await
+}
+
+/// Remove a local `creating` row that can never become actionable.
+///
+/// ⚠ NOT a repair. If the relay registered the slot it stays open until it expires and cannot be
+/// revoked from here — the token was dropped unpersisted by construction. The copy says exactly
+/// that and never says "safe".
+#[tauri::command]
+pub async fn invite_clear(st: State<'_, AppState>, invite_id: String) -> Result<(), ErrorDto> {
+    st.gw
+        .call(move || Ok(qsc::facade::invite_clear(&invite_id)?))
         .await
 }
 

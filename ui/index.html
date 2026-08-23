@@ -383,70 +383,78 @@
 </section>
 
 <!-- ===================================================================
-     NA-0755 (D-0036) — THE INVITE MODAL, mockup-14 states 1-2.
+     NA-0755 v2 (D-0036) — THE INVITE SURFACE: THE SINGLE-VIEW MINT AND THE LIST.
 
-     ⚠ DELIBERATELY NOT A `SCREENS` MEMBER. `show()` toggles exactly the seven
-     screen sections; this overlay sits beside them so it can float over the main
-     screen without becoming a navigation destination. The cost of that choice is
-     that a screen transition would otherwise leave it up — which is why `show()`
-     itself closes it (main.js), covering every transition INCLUDING autolock.
+     Supersedes the v1 two-step modal, which the operator flew and which came back RED.
+     Governing design: RBANK_invite_v2_single_view_20260822.md
+     (sha256 381c928081be614f99cd373bc86f8f00f1c71ec02531d9ead45c5bc9b2de0597).
 
-     Copy authority: docs/mockups/mockup-14-invite-create.html at 142c1eb6
-     (blob 338042f03120e28f7c9ca5273867cd15903ae324), states 1-2, VERBATIM.
-     The mockup's own `.warn` is NOT used: style.css:277 records its rename to
-     `.callout` because "a class named `warn` rendering in accent is a lie".
-     The state-1 note field and the state-2 Note chip are DEFERRED TO LANE C
-     (R380 §6): nothing stores a per-invite note, and the only free-text
-     parameter, `self_label`, is the SENDER's identity and fails closed. -->
+     ⚠ DELIBERATELY NOT A `SCREENS` MEMBER. `show()` closes it, so every transition —
+     including autolock — clears the code rather than leaving it over the unlock screen.
+
+     ⚠ NO EXPLAINER STEP. Both entries open straight to the mint.
+     ⚠ "Activate & Copy" IS THE SINGLE COMMIT: before the click nothing exists anywhere.
+     ⚠ The code box is natively selectable and never `user-select: none`.
+-->
 <div id="invite-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="invite-title">
   <div class="modal">
 
-    <!-- STATE 1: before generating -->
-    <div id="invite-state-1">
-      <p class="tag">Invite &mdash; step 1</p>
-      <h2 id="invite-title">Invite someone</h2>
-      <p class="muted">Create a one-time invite code and send it to the person you want to add &mdash;
-      by text, email, or in person. Anyone who has the code can connect to you once, so share
-      it through a channel you trust.</p>
-      <div class="block"><button class="primary full" id="btn-invite-create">Create invite code</button></div>
-      <!-- R380 §3: the gate. Create is DISABLED while no relay is configured — an
-           enabled button whose only outcome is an error is the control-that-cannot-
-           succeed shape. The line names where to fix it. -->
-      <p id="invite-no-relay" class="hint hidden">Set a relay address in Settings &rarr; Relay before creating an invite.</p>
-      <div id="invite-error-1" class="hidden">
-        <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
-        <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+    <!-- ── THE MINT VIEW ─────────────────────────────────────────────── -->
+    <div id="invite-mint">
+      <div class="modal-head">
+        <h2 id="invite-title">Invite someone</h2>
+        <!-- The slot counter is ALWAYS visible in BOTH states, so the cap can never ambush. -->
+        <button class="secondary" id="btn-invite-review">Review invites (<span id="invite-count">0</span> of 10) &rarr;</button>
+      </div>
+
+      <!-- ── before activation ── -->
+      <div id="invite-pre">
+        <span class="field-label" id="invite-label-caption">Who is this invite for? (optional &mdash; stays on this device)</span>
+        <input type="text" id="invite-label" class="full" autocomplete="off" spellcheck="false" placeholder="e.g. Dana" aria-labelledby="invite-label-caption">
+        <p class="hint">Your private note. It is never sent anywhere &mdash; it just reminds you who you meant this for.</p>
+        <div class="block"><button class="primary full" id="btn-invite-activate">Activate &amp; Copy</button></div>
+        <p id="invite-no-relay" class="hint hidden">Set a relay address in Settings &rarr; Relay before creating an invite.</p>
+        <p id="invite-cap-full" class="hint hidden">You already have 10 invites waiting. Revoke one you no longer need, then create another.</p>
+        <div id="invite-error-mint" class="hidden">
+          <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+          <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+        </div>
+      </div>
+
+      <!-- ── after activation, SAME view ── -->
+      <div id="invite-post" class="hidden">
+        <span class="field-label">Invite code</span>
+        <!-- ⚠ `.code-box` wraps and stays selectable. It is NOT `.verify-code`, whose
+             nowrap+overflow:hidden pair produced NA-0753's silent clip — and an invite code is
+             133-154 characters, roughly twice a verification code. The copy glyph appears on
+             HOVER OR KEYBOARD FOCUS; its own click is its own gesture, so it always works. -->
+        <div class="code-wrap">
+          <div class="code-box minted" id="invite-code" tabindex="0"></div>
+          <button class="secondary glyph-copy" id="btn-invite-copy" aria-label="Copy invite code" title="Copy invite code">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          </button>
+        </div>
+        <p class="hint" id="invite-copy-note">Copied to your clipboard.</p>
+        <div class="meta-line"><span id="invite-meta-note"></span><span id="invite-meta-expiry"></span></div>
+        <div class="callout">Share it through a channel you trust &mdash; a text, a call, or in person.
+        The code works only once and expires on its own.</div>
+        <div class="block"><button class="secondary full" id="btn-invite-cancel">Cancel Invite</button></div>
+        <div id="invite-error-post" class="hidden">
+          <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+          <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+        </div>
       </div>
     </div>
 
-    <!-- STATE 2: generated -->
-    <div id="invite-state-2" class="hidden">
-      <p class="tag">Invite &mdash; step 2</p>
-      <h2>Send this invite</h2>
-      <p class="muted">Copy the code and send it to your contact. When they accept, you'll both
-      verify fingerprints before the conversation is trusted.</p>
-
-      <span class="field-label">Invite code</span>
-      <!-- ⚠ `.code-box`, NOT `.verify-code`. The verification code's box is
-           `white-space:nowrap; overflow:hidden` with fitCode(); an invite code is
-           133-154 characters and that combination would clip it SILENTLY — the exact
-           NA-0753 defect. `.code-box` follows `.fingerprint` instead: word-break with
-           `user-select:text`, which `body`'s `user-select:none` otherwise denies. -->
-      <div class="code-box" id="invite-code"></div>
-      <div class="btnrow">
-        <button class="primary" id="btn-invite-copy">Copy code</button>
-        <button class="secondary" id="btn-invite-new">New code</button>
+    <!-- ── THE LIST VIEW ─────────────────────────────────────────────── -->
+    <div id="invite-list-view" class="hidden">
+      <div class="modal-head">
+        <h2>Your invites</h2>
+        <button class="secondary" id="btn-invite-back">&larr; New invite</button>
       </div>
-
-      <div class="meta-line"><span id="invite-expiry"></span><span>Not yet accepted</span></div>
-
-      <div class="callout">Share it through a channel you trust &mdash; a text, a call, or in person.
-      The code works only once and expires on its own.</div>
-
-      <div class="block">
-        <button class="secondary full" id="btn-invite-revoke">Revoke this invite</button>
-      </div>
-      <div id="invite-error-2" class="hidden">
+      <p class="hint" id="invite-list-empty">No invites yet.</p>
+      <div id="invite-rows"></div>
+      <div id="invite-error-list" class="hidden">
         <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
         <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
       </div>
@@ -455,6 +463,7 @@
     <div class="block"><button class="secondary full" id="btn-invite-close">Close</button></div>
   </div>
 </div>
+
 
 <script src="main.js"></script>
 </body>

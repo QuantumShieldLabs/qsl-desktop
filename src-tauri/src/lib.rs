@@ -364,8 +364,9 @@ pub fn configure_builder<R: tauri::Runtime>(
             // expand a leading `~/` visibly before the path is used.
             commands::relay_probe,
             commands::home_dir,
-            // NA-0751 (D-0032) — the Slice-4 gateway surface, twelve pass-through
-            // wrappers over `qsc::facade`. `invite_list_at` is deliberately absent:
+            // NA-0751 (D-0032) — the Slice-4 gateway surface, THIRTEEN pass-through
+            // wrappers over `qsc::facade` (twelve at NA-0751; `invite_clear` joined at
+            // NA-0755 v2, and its registration is covered by the same seal). `invite_list_at` is deliberately absent:
             // it is a clock-injection seam and must not be reachable from the front end.
             commands::connect_status,
             commands::contact_list,
@@ -379,6 +380,7 @@ pub fn configure_builder<R: tauri::Runtime>(
             commands::invite_accept,
             commands::invite_finish,
             commands::invite_revoke,
+            commands::invite_clear,
             ui_surface_changed,
         ])
 }

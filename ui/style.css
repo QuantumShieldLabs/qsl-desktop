@@ -664,3 +664,49 @@ a.rm:hover { color: var(--fg); }
 
 /* The mockup's vertical rhythm wrapper. */
 .block { margin-top: var(--sp-x20); }
+
+/* ==========================================================================
+   NA-0755 v2 (D-0036) — THE SINGLE-VIEW MINT AND THE LIST.
+   Every selector below was MEASURED absent before it was minted; everything the
+   surface needed and FOUND was reused (button tiers, .btnrow, .callout, .muted,
+   .hint, .field-label, .error, .status-banner, .hidden, .code-box, .meta-line).
+   Colour comes from :root tokens only — `colors_only_in_token_block` enforces it.
+   ========================================================================== */
+
+.modal-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin: 0 0 var(--sp-3) 0; }
+
+/* ⚠ The Review and Back controls carry the shipped `secondary` tier rather than a new
+   "link" look. `every_button_is_tiered_or_nav` requires exactly one tier or one nav role, and
+   inventing a third category to dodge it is precisely what that rule exists to prevent. */
+
+/* ⚠ THE CODE BOX AND ITS GLYPH. The glyph is revealed on HOVER or KEYBOARD FOCUS of the
+   wrapper — never a permanent "Copy again" button, because its own click is its own gesture
+   and that is the whole reason it works when the single-gesture write does not. */
+.code-wrap { position: relative; }
+.glyph-copy {
+  position: absolute; top: var(--sp-2); right: var(--sp-2);
+  width: 26px; height: 26px; padding: 0; border-radius: var(--radius-small);
+  background: var(--bg-raised); color: var(--fg-muted);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 120ms ease;
+}
+.glyph-copy svg { width: 14px; height: 14px; }
+.code-wrap:hover .glyph-copy,
+.code-wrap:focus-within .glyph-copy,
+.glyph-copy:focus { opacity: 1; }
+.glyph-copy:hover { color: var(--fg); border-color: var(--accent-fill); }
+/* the minted code's accent border — the one-time value, shown once */
+.code-box.minted { border-color: var(--ok); }
+
+/* The list rows: numbered, labeled, dated, with a state chip and its action. */
+.invite-row { padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
+.invite-row:last-child { border-bottom: none; }
+.invite-row-head { font-size: var(--fs-body); color: var(--fg); font-weight: var(--fw-mid); }
+.invite-row-meta { font-size: var(--fs-hint); color: var(--fg-muted); margin-top: var(--sp-1); }
+.invite-chip {
+  display: inline-block; margin-top: var(--sp-2);
+  background: var(--bg-inset); border: 1px solid var(--border); border-radius: 999px;
+  padding: var(--sp-1) var(--sp-x10); font-size: var(--fs-micro); color: var(--fg-secondary);
+}
+.invite-chip.dim { color: var(--fg-muted); }
+.invite-row-act { margin-top: var(--sp-2); }

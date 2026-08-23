@@ -2564,6 +2564,45 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     counterfactual controls**, every one RED on breakage — and **two were re-aimed after
     measuring the wrong thing**: one replaced a pre-existing `.callout` elsewhere in the file and
     PASSED, one carried a needle missing a leading dot and never ran.
+  - ---
+  - ⚠⚠ **v2 — THE OPERATOR'S CARD CAME BACK RED, AND THIS RECORD'S v1 SHAPE IS SUPERSEDED.**
+    The two-step modal above shipped and was flown. Three findings [O]: ~10 "New code" presses
+    ended in the `vault_unavailable` copy where the soft-cap message belongs; the codes looked
+    identical; Revoke fired silently. **Measured at three layers, the misroute DID NOT
+    REPRODUCE** — the engine's 11th sequential create returns `soft_cap_reached`, the desktop
+    IPC delivers it intact, and the operator's own ten-click gesture renders *"Too many live
+    invites"*. And the ten codes were **all distinct**: the sameness was the shared `QSLI-1-`
+    prefix plus shared payload bands, a rendering problem the reshape fixes. ⇒ **no cause is
+    claimed** for the `vault_unavailable` he saw; the arm is made self-diagnosing instead.
+  - ⛳⛳ **THE CLIPBOARD MEASUREMENT IS WHAT MADE v2 BUILDABLE.** The design bank assumed a
+    "~4 s user-activation timeout". Measured in this webview: a plain `await` then `writeText`
+    **RESOLVES at 750 ms and REJECTS at 1000 ms** — a create needs two network round-trips, so
+    "Activate & Copy" would have failed **every** time on that route, not occasionally. But
+    `ClipboardItem` built **synchronously inside the handler** around a pending promise
+    **RESOLVED at 4000 ms**. The single gesture ships on that mechanism, the fallback is a
+    **capability test** (`typeof ClipboardItem === "undefined"`) rather than a timeout guess,
+    and a create failure rejects the write so **nothing is copied** — which is correct.
+  - **WHAT v2 SHIPS:** the single-view mint (no explainer step; the label field; Activate & Copy
+    as the sole commit; the code shown once with an accent border; a copy glyph revealed on
+    hover or keyboard focus, whose own click is its own gesture; **Cancel Invite** as the only
+    post-activate action) and the list view (numbered, labeled, dated rows with per-row Revoke,
+    and per-row Remove on failed rows). The slot counter is visible in **both** states.
+  - ⚠ **B-1: THE WORD "SAFE" DOES NOT SHIP.** The bank's chip read *"Failed — safe to clear"*.
+    `Creating` does **not** mean the relay never confirmed — it means the local transition did
+    not complete, and the relay may hold the slot un-revocably because the token was dropped
+    unpersisted. The chip reads **"Didn't finish — remove from list"**, and the row carries
+    *"If the relay registered it, that slot expires on its own and can't be revoked from here."*
+  - ⚠ **THE PIN MOVED, SCOPED (`R383` §2):** `9dcded4d` → `d3fefd12` (the new protocol main),
+    ONE value, with the WF-0089 **zero-change control run FIRST**: with the pin unchanged the
+    lock moved **0 lines**, so the 4-line lock delta that followed is attributable to the pin
+    and to nothing else. No dependency edge moved.
+  - ⚠ **THREE TESTS WERE RENAMED BECAUSE THEY HAD GONE FALSE WHILE STAYING GREEN**, and the
+    CI-enforced inventory moved **in the same commit**: a rename is a DISAPPEARANCE to that
+    gate, and it fired exactly as the read predicted. `EXPECTED_TEST_INVENTORY` 158 → **163**.
+  - ⛳ **A SEAL CAUGHT ITS OWN AUTHOR, TWICE IN THIS LANE.** The `.verify-code` needle fired on
+    the comment explaining why that class is not used; the vault-arm needle fired on the comment
+    saying the copy must not say "unlock it". Both were testing a MENTION; both were rebuilt to
+    test what SHIPS. *Documenting a removal re-plants it.*
   - ⚠ **Claim boundary.** No `qsc`/protocol source byte, no harness engine byte, no mockup byte,
     no `.github/**`, no `Cargo.toml`/`Cargo.lock`; **two measured needs in `qsc` were FILED, never
     patched** (`ENG-0228`, `ENG-0229`), per the `ENG-0218` precedent. No test weakened, skipped or

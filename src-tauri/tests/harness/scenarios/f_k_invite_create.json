@@ -7,17 +7,17 @@
   },
   {
    "op": "note",
-   "text": "Z1/Z2 \u2014 NA-0755. Fresh profile: onboard first so the vault is unlocked and an identity exists; invite_create requires both."
+   "text": "NA-0755 v2 \u2014 the SINGLE-VIEW mint. Fresh profile: onboard first, because invite_create needs an unlocked vault and an identity."
   },
   {
    "op": "clear_type",
    "sel": "#vault-pass",
-   "text": "na0755-fk-passphrase"
+   "text": "na0755-v2-fk-pass"
   },
   {
    "op": "type",
    "sel": "#vault-confirm",
-   "text": "na0755-fk-passphrase"
+   "text": "na0755-v2-fk-pass"
   },
   {
    "op": "prop_eq",
@@ -56,7 +56,7 @@
   },
   {
    "op": "note",
-   "text": "Z1 \u2014 the stub note starts hidden; this is the BASELINE the un-stub seal is measured against."
+   "text": "Z1 baseline: the stub note starts hidden. This is what the un-stub seal is measured against."
   },
   {
    "op": "prop_eq",
@@ -76,6 +76,10 @@
    "prop": "className",
    "expect": "overlay hidden",
    "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "ENTRY 1 \u2014 the welcome button. It opens STRAIGHT to the mint: there is no explainer step in v2."
   },
   {
    "op": "click",
@@ -90,7 +94,7 @@
   },
   {
    "op": "note",
-   "text": "Z1 NEGATIVE PIN, re-scoped per R380 \u00a74 to the HANDLER: btn-add-contact no longer reveals #stub-note. The GLOBAL 'the stub message is GONE' claim measured FALSE and was struck \u2014 the element and its two Lane-C revealers survive."
+   "text": "Z1 NEGATIVE PIN, HANDLER-scoped (R380 \u00a74): btn-add-contact no longer reveals #stub-note. The element and its TWO Lane-C revealers survive \u2014 the global 'the stub message is GONE' claim measured FALSE and was struck."
   },
   {
    "op": "prop_eq",
@@ -100,26 +104,13 @@
    "poll": 3
   },
   {
-   "op": "note",
-   "text": "Z1 POSITIVE PIN for Lane C: the stub element is still PRESENT, so its removal would fail here."
-  },
-  {
    "op": "find_count",
    "sel": "#stub-note",
    "expect": 1
   },
   {
    "op": "note",
-   "text": "Z5 \u2014 mockup-14 state 1 copy, character-for-character from the blob at 142c1eb6."
-  },
-  {
-   "op": "note",
-   "text": "\u26a0 INSTRUMENT LESSON, measured here: `read_text` reads WebDriver's rendered text, which applies `text-transform`. `.tag` is uppercase in BOTH the mockup and the ship, so a copy pin through read_text measures PRESENTATION, not the string. The rendered form is pinned here (it is what the user sees); the mockup-verbatim SOURCE bytes are pinned in design_polish.rs, which is where character-for-character pins belong."
-  },
-  {
-   "op": "read_text",
-   "sel": "#invite-state-1 .tag",
-   "literal": "INVITE \u2014 STEP 1"
+   "text": "The mint IS the landing. Copy pinned as RENDERED; the mockup-verbatim SOURCE bytes are pinned in design_polish.rs."
   },
   {
    "op": "read_text",
@@ -128,21 +119,21 @@
   },
   {
    "op": "read_text",
-   "sel": "#invite-state-1 .muted",
-   "literal": "Create a one-time invite code and send it to the person you want to add \u2014 by text, email, or in person. Anyone who has the code can connect to you once, so share it through a channel you trust."
+   "sel": "#invite-label-caption",
+   "literal": "Who is this invite for? (optional \u2014 stays on this device)"
   },
   {
    "op": "read_text",
-   "sel": "#btn-invite-create",
-   "literal": "Create invite code"
+   "sel": "#btn-invite-activate",
+   "literal": "Activate & Copy"
   },
   {
    "op": "note",
-   "text": "Z2 \u2014 the no-relay gate. A fresh profile has relay_url == \"\" (measured), so Create cannot succeed and is DISABLED rather than left to fail."
+   "text": "R382 \u00a73 \u2014 with no relay configured the SINGLE COMMIT is DISABLED, not left to fail. An enabled button whose only outcome is an error is the control-that-cannot-succeed shape."
   },
   {
    "op": "prop_eq",
-   "sel": "#btn-invite-create",
+   "sel": "#btn-invite-activate",
    "prop": "disabled",
    "expect": true,
    "poll": 5
@@ -153,123 +144,48 @@
    "literal": "Set a relay address in Settings \u2192 Relay before creating an invite."
   },
   {
-   "op": "click",
-   "sel": "#btn-invite-close"
+   "op": "note",
+   "text": "The slot counter is visible in BOTH states, so the cap can never ambush."
   },
   {
-   "op": "prop_eq",
-   "sel": "#invite-overlay",
-   "prop": "className",
-   "expect": "overlay hidden",
-   "poll": 5
-  },
-  {
-   "op": "poll_visible",
-   "screen": "scr-main"
+   "op": "read_text",
+   "sel": "#invite-count",
+   "literal": "0"
   },
   {
    "op": "note",
-   "text": "Z1 \u2014 the second entry. It exists so the flow stays reachable once the welcome pane is gone."
-  },
-  {
-   "op": "find_count",
-   "sel": "#btn-invite-open",
-   "expect": 1
+   "text": "The list view is one click away, and it is empty on a fresh profile."
   },
   {
    "op": "click",
-   "sel": "#btn-invite-open"
+   "sel": "#btn-invite-review"
   },
   {
    "op": "prop_eq",
-   "sel": "#invite-overlay",
-   "prop": "className",
-   "expect": "overlay",
-   "poll": 5
-  },
-  {
-   "op": "click",
-   "sel": "#btn-invite-close"
-  },
-  {
-   "op": "exec",
-   "script": "window.__s=0; window.__TAURI__.core.invoke('relay_config_set',{url:'https://relay.invalid.test'}).then(()=>window.__s=1).catch(()=>window.__s=-1); return 'started';"
-  },
-  {
-   "op": "exec",
-   "script": "return JSON.stringify({set: window.__s});",
-   "expect": "{\"set\":1}"
-  },
-  {
-   "op": "note",
-   "text": "Refresh-on-open: the gate re-reads the relay configuration when the modal OPENS. No timer was added and none was needed."
-  },
-  {
-   "op": "click",
-   "sel": "#btn-invite-open"
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#btn-invite-create",
-   "prop": "disabled",
-   "expect": false,
-   "poll": 5
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#invite-no-relay",
-   "prop": "className",
-   "expect": "hint hidden",
-   "poll": 3
-  },
-  {
-   "op": "note",
-   "text": "Z2 \u2014 the create arm. \u26a0 \u226510s tolerance is MEASURED, not guessed: an unreachable .test relay costs two failed network calls (the pre-clamp relay_server_info, bounded at 10s, then the create POST) and was driven at 4112 ms."
-  },
-  {
-   "op": "click",
-   "sel": "#btn-invite-create"
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#invite-error-1",
+   "sel": "#invite-list-view",
    "prop": "className",
    "expect": "",
-   "poll": 20
-  },
-  {
-   "op": "note",
-   "text": "R380 \u00a72 option (A): BOTH provenances named. relay_send_outcome_from_parts returns the caller's fallback for every non-TLS failure, so unreachable and refused arrive as the SAME code (relay_rejected, driven). Claiming 'couldn't reach the relay' here would be unmeasured."
+   "poll": 5
   },
   {
    "op": "read_text",
-   "sel": "#invite-error-1 .status-text",
-   "literal": "The relay didn't create the invite"
+   "sel": "#invite-list-empty",
+   "literal": "No invites yet."
   },
   {
-   "op": "read_text",
-   "sel": "#invite-error-1 .hint",
-   "literal": "Nothing was created \u2014 the relay couldn't be reached, or it refused the request. Check Settings \u2192 Relay; its Test connection button can tell which."
-  },
-  {
-   "op": "note",
-   "text": "Z4 \u2014 a FAILED create mints nothing on screen: the modal stays in state 1 and the code box is empty."
+   "op": "click",
+   "sel": "#btn-invite-back"
   },
   {
    "op": "prop_eq",
-   "sel": "#invite-state-2",
+   "sel": "#invite-mint",
    "prop": "className",
-   "expect": "hidden",
-   "poll": 3
-  },
-  {
-   "op": "read_tc",
-   "sel": "#invite-code",
-   "literal": ""
+   "expect": "",
+   "poll": 5
   },
   {
    "op": "note",
-   "text": "Z1 \u2014 Escape closes. This is the first keydown handler in main.js; there was no modal machinery to inherit one from."
+   "text": "Escape closes, and the code box is cleared \u2014 the one-time boundary's local half."
   },
   {
    "op": "exec",
@@ -290,6 +206,37 @@
   {
    "op": "poll_visible",
    "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "ENTRY 2 \u2014 the '+' in the Chats header opens the SAME surface, so the flow survives the welcome pane disappearing."
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-invite-open",
+   "expect": 1
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-open"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 NOT DRIVEN HERE: a successful mint, the clipboard write, Cancel, and the per-row Remove. No fixture relay exists (ENG-0226), so the green path is the operator's card. The clipboard mechanism is sealed in design_polish.rs, and readText is DENIED to the harness so no automated check could verify clipboard CONTENT anyway."
   },
   {
    "op": "teardown"

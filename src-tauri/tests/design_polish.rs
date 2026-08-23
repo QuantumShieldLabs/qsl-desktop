@@ -1469,36 +1469,63 @@ fn html_says(hay: &str, needle: &str) -> bool {
 #[test]
 fn invite_modal_copy_is_mockup_verbatim() {
     let html = ui_file("index.html");
-    // STATE 1 — note the closing clause: "through a channel you trust", NOT the
-    // brief's "only with the person you mean" (Δ1, ruled to the mockup at R380 §6).
-    assert!(html_says(&html, "Invite &mdash; step 1"), "state 1 tag");
-    assert!(html_says(&html, "Invite someone"), "state 1 heading");
+    // ⚠⚠ RE-SCOPED AT v2. The v1 form pinned mockup-14's TWO-STEP copy, including the
+    // "Invite — step 1" / "step 2" tags. The v2 design is a SINGLE VIEW WITH NO EXPLAINER
+    // STEP, so those tags are gone BY DESIGN, not by drift — pinning them would have held the
+    // surface to a shape the operator's own flight retired. What survives is the copy the v2
+    // bank still carries, and it is still checked character-for-character.
+    assert!(html_says(&html, "Invite someone"), "the mint heading");
+    // ⚠⚠ THE EXPLAINER PARAGRAPH IS DELIBERATELY GONE AT v2, and this is where that is
+    // recorded. mockup-14's step-1 body ("Create a one-time invite code and send it to the
+    // person you want to add …") was an EXPLAINER STEP, and the v2 bank rules the mint view
+    // "the landing — '+' and the welcome button open straight here; NO EXPLAINER STEP".
+    // Pinning it would hold the surface to the shape the operator's flight retired.
+    //
+    // ⚠ The ACCEPTED COST is stated rather than left implicit: the "share it through a channel
+    // you trust" guidance no longer greets the user BEFORE minting. It survives where it is
+    // actionable — in the callout beside the live code, asserted below — which is the moment
+    // the advice can still change what they do.
     assert!(
         html_says(
             &html,
-            "Create a one-time invite code and send it to the person you want to add &mdash; \
-             by text, email, or in person. Anyone who has the code can connect to you once, \
-             so share it through a channel you trust."
+            "Share it through a channel you trust &mdash; a text, a call, or in person. \
+             The code works only once and expires on its own."
         ),
-        "state 1 body — the mockup's closing clause, not the brief's"
+        "the trust guidance survives at the point of use"
     );
-    assert!(html_says(&html, "Create invite code"), "state 1 button");
-    // STATE 2 — "verify fingerprints before the conversation is trusted", NOT the
-    // brief's "confirm the connection before anything else happens" (Δ3).
-    assert!(html_says(&html, "Invite &mdash; step 2"), "state 2 tag");
-    assert!(html_says(&html, "Send this invite"), "state 2 heading");
+    // v2's single commit, and the label field the mockup always had.
+    assert!(
+        html_says(&html, "Activate &amp; Copy"),
+        "the single-commit button"
+    );
     assert!(
         html_says(
             &html,
-            "Copy the code and send it to your contact. When they accept, you'll both \
-             verify fingerprints before the conversation is trusted."
+            "Who is this invite for? (optional &mdash; stays on this device)"
         ),
-        "state 2 body — the mockup's fingerprint sentence, not the brief's"
+        "the recipient-label caption, mockup-verbatim"
     );
-    assert!(html_says(&html, "Invite code"), "state 2 field label");
-    for b in ["Copy code", "New code", "Revoke this invite"] {
-        assert!(html_says(&html, b), "state 2 button: {b}");
-    }
+    assert!(
+        html_says(
+            &html,
+            "Your private note. It is never sent anywhere &mdash; it just reminds you who you \
+             meant this for."
+        ),
+        "the label hint, mockup-verbatim"
+    );
+    assert!(html_says(&html, "Invite code"), "the code field label");
+    assert!(
+        html_says(&html, "Cancel Invite"),
+        "the ONLY post-activate action"
+    );
+    // ⚠ v2 retires "New code" and "Copy code" as BUTTONS: re-minting is a fresh activation and
+    // copy-again is a glyph, whose own click is its own gesture. Pinned NEGATIVELY so a
+    // re-introduction is a deliberate act, not a drift.
+    assert!(!html_says(&html, ">New code<"), "v2 has no New code button");
+    assert!(
+        !html_says(&html, ">Copy code<"),
+        "v2 has no Copy code button"
+    );
     // Δ5 — the callout. The mockup's first sentence, NOT the brief's invented
     // "Treat the code like a house key while it's live."
     assert!(
@@ -1507,7 +1534,7 @@ fn invite_modal_copy_is_mockup_verbatim() {
             "Share it through a channel you trust &mdash; a text, a call, or in person. \
              The code works only once and expires on its own."
         ),
-        "the callout carries the mockup's sentence"
+        "the callout still carries the mockup's sentence verbatim"
     );
     assert!(
         !html_says(&html, "house key"),
@@ -1717,8 +1744,8 @@ fn the_two_security_tells_stay_distinct_from_each_other() {
 fn create_is_disabled_when_no_relay_is_configured() {
     let js = ui_file("main.js");
     let start = js
-        .find("async function openInviteModal()")
-        .expect("open exists");
+        .find("async function inviteRefresh()")
+        .expect("the refresh-on-open gate exists");
     let body = &js[start..];
     let end = body.find("\n}\n").expect("open ends");
     let body = &body[..end];
@@ -1726,8 +1753,15 @@ fn create_is_disabled_when_no_relay_is_configured() {
         body.contains(r#"const noRelay = relayUrl === "";"#),
         "the gate reads the empty string"
     );
+    // ⚠ v2 gates on BOTH conditions: no relay, and the soft cap. The bank's cap-full state is
+    // "Activate disabled with the TRUE message" — the message the operator never saw because
+    // v1 routed the cap outcome through the wrong arm.
     assert!(
-        body.contains(r#"byId("btn-invite-create").disabled = noRelay;"#),
+        body.contains("const capFull = live >= INVITE_SOFT_CAP;"),
+        "the cap is part of the gate, not only an error arm"
+    );
+    assert!(
+        body.contains(r#"byId("btn-invite-activate").disabled = noRelay || capFull;"#),
         "the gate DISABLES create"
     );
     assert!(
@@ -1812,9 +1846,17 @@ fn the_invite_code_box_wraps_and_is_selectable() {
         "the modal must not APPLY .verify-code — naming it in a comment is fine and is why \
          this needle matches the attribute rather than the word"
     );
+    // ⚠ v2 gives the minted code a second class (`code-box minted` — the one-time accent
+    // border), so the needle matches the class TOKEN inside the attribute rather than the whole
+    // attribute value. Matching the whole value would have gone red on a purely additive
+    // change, which is a pin that punishes the wrong thing.
     assert!(
-        modal.contains(r#"class="code-box""#),
-        "the code box is .code-box"
+        modal.contains(r#"class="code-box"#),
+        "the code box carries .code-box"
+    );
+    assert!(
+        modal.contains("code-box minted"),
+        "the minted code carries its one-time accent class"
     );
 }
 
@@ -1884,4 +1926,168 @@ fn the_invite_modal_never_renders_danger_severity() {
 fn modal_end(html: &str, from: usize) -> usize {
     let tail = &html[from..];
     from + tail.find("<script src=").unwrap_or(tail.len())
+}
+
+// ===========================================================================
+// NA-0755 v2 — THE SINGLE-VIEW MINT. Seals for the reshape, and for the one
+// mechanism the whole design rests on.
+// ===========================================================================
+
+/// ⛳⛳ THE CLIPBOARD MECHANISM — the measurement that saved the design, held in place.
+///
+/// The v2 bank assumed a "~4 s user-activation timeout" and specified a fallback for it.
+/// MEASURED in this webview: a plain `await` then `writeText` RESOLVES at 750 ms and
+/// **REJECTS at 1000 ms**. A create needs two network round-trips, so on that route
+/// "Activate & Copy" would have failed EVERY time. `ClipboardItem` built SYNCHRONOUSLY around a
+/// pending promise **RESOLVED at 4000 ms** — that is why the single gesture works.
+///
+/// ⚠ MUST GO RED IF: the item stops being constructed inside the handler, or the code is
+/// awaited BEFORE the clipboard write. Either change silently reintroduces the failure the
+/// measurement found, and it would look correct in review.
+///
+/// ⚠ CLAIM BOUNDARY, carried verbatim from the measurement: WebKitGTK under X11 on the build
+/// box. macOS and Windows are unmeasured; the fallback below is what covers them.
+#[test]
+fn the_single_gesture_copy_builds_its_clipboard_item_before_awaiting_the_create() {
+    let js = ui_file("main.js");
+    let start = js
+        .find(r#"byId("btn-invite-activate").addEventListener"#)
+        .expect("the activate handler exists");
+    let body = &js[start..];
+    let end = body.find("\n});\n").expect("the handler ends");
+    let body = &body[..end];
+
+    let mint = body
+        .find("const mint = invoke(\"invite_create\"")
+        .expect("the create is started");
+    let item = body
+        .find("new ClipboardItem({")
+        .expect("the item is constructed");
+    let write = body
+        .find("navigator.clipboard.write([item])")
+        .expect("the write happens");
+    let awaited = body
+        .find("code = await mint;")
+        .expect("the code is awaited");
+
+    assert!(
+        mint < item,
+        "the create promise must exist BEFORE the item wraps it"
+    );
+    assert!(item < write, "the item is built before the write");
+    assert!(
+        write < awaited,
+        "⚠ THE WRITE MUST PRECEDE `await mint`. Awaiting the code first spends the user \
+         activation — measured to expire between 750ms and 1000ms — and the write then rejects."
+    );
+    assert!(
+        body.contains("mint.then((code) => new Blob([code]"),
+        "the item's payload is the PENDING promise, not a resolved string"
+    );
+}
+
+/// The fallback is a CAPABILITY TEST, never a timeout guess.
+///
+/// ⚠ MUST GO RED IF: it becomes a timer, a try/catch on duration, or a platform sniff. The bank's
+/// rule is that the label must never promise what the platform refuses — so the label is derived
+/// from the capability, and both branches are pinned.
+#[test]
+fn the_clipboard_fallback_is_a_capability_test_and_relabels_the_button() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"const HAS_CLIPBOARD_ITEM = typeof ClipboardItem !== "undefined""#),
+        "the fallback is decided by capability"
+    );
+    assert!(
+        js.contains(r#"HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate""#),
+        "the button must not promise a copy the platform will refuse"
+    );
+    assert!(
+        js.contains(r#""Copy didn't complete — use the copy icon.""#),
+        "the recovery line names the glyph"
+    );
+    assert!(
+        !js.contains("setTimeout(() => navigator.clipboard"),
+        "the fallback must never be a timeout guess"
+    );
+}
+
+/// B-1 — THE WORD "SAFE" DOES NOT SHIP, and the chip says what is true.
+///
+/// ⚠ MUST GO RED IF: "safe to clear" reappears. `Creating` does not mean the relay never
+/// confirmed — the relay may hold the slot, un-revocably, because the token was dropped
+/// unpersisted. Calling that "safe" is a claim about the relay that nothing established.
+#[test]
+fn the_failed_row_never_calls_itself_safe() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains("Didn't finish — remove from list"),
+        "the ruled chip text"
+    );
+    assert!(
+        js.contains("If the relay registered it, that slot expires on its own and can't be revoked from here."),
+        "the ruled honesty sentence rides the row"
+    );
+    for banned in ["safe to clear", "Safe to clear", "safe to remove"] {
+        assert!(
+            !js.contains(banned),
+            "the word `safe` must not ship: `{banned}`"
+        );
+    }
+}
+
+/// The FE emits `recipientLabel` LAST, which is what the gateway test's arg-shape pin expects.
+///
+/// ⚠ MUST GO RED IF: the key is inserted between `selfLabel` and `relay`. That ordering is not
+/// cosmetic — `na0751_gateway_surface.rs` pins the emitted shape, and a same-typed neighbour to
+/// `self_label` is the transposition hazard the SR-15 read measured as failing open.
+#[test]
+fn the_front_end_emits_the_recipient_label_last() {
+    let js = ui_file("main.js");
+    let i = js
+        .find("invoke(\"invite_create\"")
+        .expect("the create call exists");
+    let call = &js[i..i + 260];
+    let self_l = call.find("selfLabel").expect("selfLabel present");
+    let relay = call.find("relay:").expect("relay present");
+    let ttl = call.find("ttlSecs").expect("ttlSecs present");
+    let recip = call.find("recipientLabel").expect("recipientLabel present");
+    assert!(
+        self_l < relay && relay < ttl && ttl < recip,
+        "recipientLabel must be LAST — never adjacent to selfLabel: {call}"
+    );
+}
+
+/// R381 §1 — the self-diagnosing vault arm renders its provenance as a SUBDUED SUFFIX.
+///
+/// ⚠ MUST GO RED IF: the suffix is dropped, or the sentence starts telling the user to unlock.
+/// `vault_unavailable` carries THREE provenances — locked mid-operation, vault DAMAGE, or a
+/// key-source failure — so "unlock it" is wrong in two of them.
+#[test]
+fn the_vault_arm_carries_its_source_code_and_never_says_unlock_it() {
+    let js = ui_file("main.js");
+    let i = js
+        .find(r#"if (c === "vault_unavailable")"#)
+        .expect("the arm exists");
+    let arm = &js[i..i + 900];
+    assert!(
+        arm.contains("const suffix = d ? ` (${d})` : \"\";"),
+        "the payload rides as a suffix"
+    );
+    assert!(
+        arm.contains("The vault couldn't be read."),
+        "the three-provenance sentence"
+    );
+    // ⚠⚠ THE NEEDLE MATCHES THE RENDERED COPY, NOT THE ARM — and it was rebuilt here after
+    // catching its OWN AUTHOR. The first draft searched the whole arm for "unlock it" and fired
+    // on the COMMENT that says the copy must not contain it: the "documenting a removal
+    // re-plants it" hazard, arriving inside the seal written to prevent the defect — for the
+    // second time in this lane. A seal must test what SHIPS, so it reads the `detail:` string.
+    let detail_start = arm.find("detail: `").expect("the rendered detail exists");
+    let detail = &arm[detail_start..arm[detail_start..].find("` };").unwrap() + detail_start];
+    assert!(
+        !detail.contains("unlock"),
+        "the rendered copy must not tell the user to unlock — that is true in only one of the \
+         three provenances this code carries: {detail}"
+    );
 }

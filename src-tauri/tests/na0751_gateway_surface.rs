@@ -7,9 +7,9 @@
 //! pattern. DTO wire keys are pinned as SERIALIZED, because the wire shape is what
 //! a screen consumes, not the Rust type.
 //!
-//! ⚠ THE ERROR SET IS THIRTY-EIGHT, NOT TWENTY-SIX. `FacadeError::Store` fans out
-//! over `ErrorCode::as_str`, so the pinned discriminant set is 25 non-`Store`
-//! variants + 13 `Store` codes. One of them, `lock_upgrade_refused`, is the code
+//! ⚠ THE ERROR SET IS THIRTY-NINE, NOT TWENTY-SEVEN. `FacadeError::Store` fans out
+//! over `ErrorCode::as_str`, so the pinned discriminant set is 26 non-`Store`
+//! variants + 13 `Store` codes. (38 → 39 at NA-0755 v2: `clear_refused` joined.) One of them, `lock_upgrade_refused`, is the code
 //! the `Store` variant exists to keep reachable; a collapse of `Store` to one
 //! discriminant would make it unreachable to a GUI, and this file asserts it
 //! survives all the way to the DTO the front end receives.
@@ -130,7 +130,11 @@ fn the_twelve() -> Vec<(&'static str, Value)> {
         ("invite_list", Value::Null),
         (
             "invite_create",
-            json!({"selfLabel": null, "relay": "http://127.0.0.1:9", "ttlSecs": 3600}),
+            // ⚠ `recipientLabel` is APPENDED LAST, matching the order the front end emits and
+            // the order `design_polish.rs` pins. Inserting it between `selfLabel` and `relay`
+            // would red that pin — a pin whose outcome depends on where a key is typed.
+            json!({"selfLabel": null, "relay": "http://127.0.0.1:9", "ttlSecs": 3600,
+                   "recipientLabel": null}),
         ),
         (
             "invite_redeem",
@@ -145,6 +149,7 @@ fn the_twelve() -> Vec<(&'static str, Value)> {
             json!({"selfLabel": null, "alias": "nobody", "relay": "http://127.0.0.1:9", "max": 4}),
         ),
         ("invite_revoke", json!({"inviteId": "nope"})),
+        ("invite_clear", json!({"inviteId": "nope"})),
     ]
 }
 
@@ -158,9 +163,14 @@ fn the_twelve() -> Vec<(&'static str, Value)> {
 ///
 /// ⚠ `connect_status` is deliberately NOT in this list: it returns a STATUS, never
 /// a `Result::Err`, on a locked vault — that is its `VaultLocked` reason, and it is
-/// asserted separately below. Eleven verbs gate on the lock; one reports it.
+/// asserted separately below. Twelve verbs gate on the lock; one reports it.
+///
+/// ⚠ **THE NAME IS COUNT-NEUTRAL ON PURPOSE** (SR-15 **M-5**). The previous name carried
+/// "twelve" in the identifier, so growing the surface forced a rename — and a rename is a
+/// DISAPPEARANCE to the CI-enforced test inventory. The count now lives in an assertion, where
+/// it can move without dragging a CI gate behind it.
 #[test]
-fn all_twelve_gateway_commands_reach_the_facade_through_real_ipc() {
+fn every_gateway_command_reaches_the_facade_through_real_ipc() {
     let rig = Rig::new();
     let wv = rig.webview();
 
@@ -173,7 +183,7 @@ fn all_twelve_gateway_commands_reach_the_facade_through_real_ipc() {
         let code = err_code(&wv, cmd, args);
         seen.push((cmd.to_string(), code));
     }
-    assert_eq!(seen.len(), 11, "eleven lock-gated verbs were driven");
+    assert_eq!(seen.len(), 12, "twelve lock-gated verbs were driven");
 
     // Every one refuses for the LOCK, by the facade's own vocabulary — not by an
     // IPC accident and not by a different cause that would also produce an Err.
@@ -216,7 +226,15 @@ fn all_twelve_gateway_commands_reach_the_facade_through_real_ipc() {
 }
 
 /// The `ErrorDto` a failing command puts on the wire carries the facade's stable
-/// discriminant, and `detail` is absent for a named variant.
+/// discriminant, and `detail` is absent for THIS named variant.
+///
+/// ⚠⚠ **THE DOC AND THE ASSERTION MESSAGE WERE BOTH FALSIFIED BY NA-0755 v2 AND ARE
+/// CORRECTED HERE** (SR-15 **M-4**). They said *"`detail` is absent for a named variant"* and
+/// *"a NAMED variant carries no detail"* — a FALSE GENERALITY now that `VaultUnavailable`
+/// carries its source code. The test kept passing either way, because it drives
+/// `invite_revoke` on a locked vault, which returns `Locked` via `require_unlocked_here` and
+/// never reaches the widened arm. **A green test asserting a falsehood is a negative-value
+/// instrument** — it would have gone on certifying the old rule forever.
 #[test]
 fn the_error_dto_wire_shape_is_the_stable_discriminant_not_a_debug_rendering() {
     let rig = Rig::new();
@@ -238,22 +256,23 @@ fn the_error_dto_wire_shape_is_the_stable_discriminant_not_a_debug_rendering() {
     assert_eq!(
         v["detail"],
         Value::Null,
-        "a NAMED variant carries no detail"
+        "`Locked` carries no detail — scoped to THIS variant, not to named variants in general: \
+         `VaultUnavailable` carries its source code since NA-0755 v2"
     );
 }
 
-/// THE THIRTY-EIGHT.
+/// THE THIRTY-NINE.
 ///
 /// Every one of the facade's discriminants survives the desktop's `ErrorDto`
 /// conversion, all distinct, with `lock_upgrade_refused` among them.
 #[test]
-fn the_pinned_discriminant_set_is_thirty_eight_and_survives_the_dto() {
+fn the_pinned_discriminant_set_survives_the_dto_at_its_asserted_size() {
     use qsc::facade::FacadeError as E;
     use qsc::model::ErrorCode as C;
 
     let singles = [
         E::Locked,
-        E::VaultUnavailable,
+        E::VaultUnavailable(None),
         E::Expired,
         E::AlreadyRedeemed,
         E::RevokedLocally,
@@ -276,9 +295,10 @@ fn the_pinned_discriminant_set_is_thirty_eight_and_survives_the_dto() {
         E::RelayCaFile,
         E::RelayEndpointInvalid,
         E::StoreUnavailable,
+        E::InviteClearRefused,
         E::Other(String::new()),
     ];
-    assert_eq!(singles.len(), 25, "25 non-Store variants");
+    assert_eq!(singles.len(), 26, "26 non-Store variants");
 
     let store_codes = [
         C::MissingHome,
@@ -307,14 +327,14 @@ fn the_pinned_discriminant_set_is_thirty_eight_and_survives_the_dto() {
         wire.push(qsl_desktop_app::commands::ErrorDto::from(E::Store(c)).code);
     }
 
-    assert_eq!(wire.len(), 38, "the pinned discriminant set is 38, not 26");
+    assert_eq!(wire.len(), 39, "the pinned discriminant set is 39, not 27");
     let mut sorted = wire.clone();
     sorted.sort();
     sorted.dedup();
     assert_eq!(
         sorted.len(),
-        38,
-        "all 38 discriminants are DISTINCT at the DTO"
+        39,
+        "all 39 discriminants are DISTINCT at the DTO"
     );
 
     assert!(
@@ -343,10 +363,16 @@ fn the_pinned_discriminant_set_is_thirty_eight_and_survives_the_dto() {
     );
 }
 
-/// `FacadeError::Other` is the ONE variant that carries a payload, and the DTO
-/// carries it — the residual stays diagnosable instead of collapsing to a bare code.
+/// `FacadeError::Other` carries a payload and the DTO carries it — the residual stays
+/// diagnosable instead of collapsing to a bare code.
+///
+/// ⚠⚠ **RENAMED AND RE-DOCUMENTED AT NA-0755 v2** (SR-15 **M-4**). The old name and doc said
+/// `Other` was **the ONE** variant with a payload and that the named ones have none — FALSE
+/// since `VaultUnavailable` became self-diagnosing, and **false while staying green**, because
+/// this test drives `Locked` and never reaches the widened arm. The claim is now scoped to what
+/// it actually exercises, and the widened arm has its own coverage.
 #[test]
-fn the_residual_variant_carries_its_payload_and_the_named_ones_do_not() {
+fn the_residual_variant_carries_its_payload_through_the_dto() {
     use qsc::facade::FacadeError as E;
     let other = qsl_desktop_app::commands::ErrorDto::from(E::Other("upstream detail".into()));
     assert_eq!(other.code, "other");
