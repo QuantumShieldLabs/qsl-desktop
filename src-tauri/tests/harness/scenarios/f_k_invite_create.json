@@ -348,6 +348,74 @@
    "expect": 0
   },
   {
+   "op": "note",
+   "text": "\u26a0 v4 POLISH \u2014 the ratified layout, driven where the harness can reach it."
+  },
+  {
+   "op": "note",
+   "text": "Cancel Invite is GONE: the single kill is Revoke in the list. Pinned as an ABSENCE."
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-invite-cancel",
+   "expect": 0
+  },
+  {
+   "op": "note",
+   "text": "The meta row sits ABOVE the code and names what the code is; before a mint it reads plainly."
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-meta-note",
+   "literal": "Invite code"
+  },
+  {
+   "op": "find_count",
+   "sel": "#invite-post .code-island .meta-line",
+   "expect": 1
+  },
+  {
+   "op": "note",
+   "text": "The warning is operator-authored and pinned character-for-character, house ellipsis included."
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-warning strong",
+   "literal": "Only send this code to the person it\u2019s intended for\u2026"
+  },
+  {
+   "op": "note",
+   "text": "ONE SOURCE, TWO DISPLAYS: the warning's figure is a span fed from the same value as the meta row."
+  },
+  {
+   "op": "find_count",
+   "sel": "#invite-warn-days",
+   "expect": 1
+  },
+  {
+   "op": "note",
+   "text": "The copy link is plain \u2014 never underlined \u2014 and one line."
+  },
+  {
+   "op": "exec",
+   "script": "var e=document.getElementById('btn-invite-copy'); return JSON.stringify({cls:e.className, deco:getComputedStyle(e).textDecorationLine});",
+   "expect": "{\"cls\":\"rm plain\",\"deco\":\"none\"}"
+  },
+  {
+   "op": "note",
+   "text": "The New-invite button is ONE LINE at the widened surface."
+  },
+  {
+   "op": "exec",
+   "script": "var b=document.getElementById('btn-invite-back'); var cs=getComputedStyle(b); return JSON.stringify({ws:cs.whiteSpace, oneLine:(b.getBoundingClientRect().height < 44)});",
+   "expect": "{\"ws\":\"nowrap\",\"oneLine\":true}"
+  },
+  {
+   "op": "exec",
+   "script": "var m=document.querySelector('#invite-overlay .modal'); return JSON.stringify({maxw:getComputedStyle(m).maxWidth});",
+   "expect": "{\"maxw\":\"580px\"}"
+  },
+  {
    "op": "teardown"
   }
  ]

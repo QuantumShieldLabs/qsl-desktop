@@ -423,32 +423,37 @@
 
       <!-- ── after activation, SAME view ── -->
       <div id="invite-post" class="hidden">
-        <span class="field-label">Invite code</span>
-        <!-- ⚠ `.code-box` wraps and stays selectable. It is NOT `.verify-code`, whose
-             nowrap+overflow:hidden pair produced NA-0753's silent clip — and an invite code is
-             133-154 characters, roughly twice a verification code. The copy glyph appears on
-             HOVER OR KEYBOARD FOCUS; its own click is its own gesture, so it always works. -->
-        <div class="code-box minted" id="invite-code" tabindex="0"></div>
-        <!-- v3: the in-box icon is REMOVED. One always-visible text link below the box, right
-             aligned, is BOTH the re-copy control and the recovery path when the single-gesture
-             Activate & Copy could not copy — the capability-test fallback points here.
-             ⚠ An anchor, NOT a button element: the shipped text-link style is `a.rm`
-             (style.css:596), and the design system's tier rule has no "text link" category —
-             inventing one to dodge it is exactly what that rule prevents. `tabindex` +
-             Enter/Space are added because a copy control that only works with a mouse is worse
-             than the precedent.
-             ⚠ The tag name is DESCRIBED rather than spelled here on purpose:
-             `every_button_is_tiered_or_nav` scans the raw markup and does not skip comments, so
-             naming the tag in prose trips a gate about markup. Recorded rather than worked
-             around silently. -->
-        <div class="copy-row">
-          <a class="rm" id="btn-invite-copy" role="button" tabindex="0">copy code</a>
+        <!-- v4: the meta row moves ABOVE the code. LEFT names what this is — "Invite for:
+             <note>" when a note was given, else plain "Invite code". RIGHT carries the expiry.
+             ⚠ The meta row, the box and the copy link travel as ONE island (`.code-island`)
+             with clear space above and below, so the code reads as a single object. -->
+        <div class="code-island">
+          <div class="meta-line">
+            <span id="invite-meta-note">Invite code</span>
+            <span id="invite-meta-expiry"></span>
+          </div>
+          <!-- ⚠ `.code-box` wraps and stays selectable. It is NOT the verification code's box,
+               whose nowrap + overflow:hidden pair produced NA-0753's silent clip — an invite
+               code is 133-154 characters, roughly twice as long. -->
+          <div class="code-box minted" id="invite-code" tabindex="0"></div>
+          <!-- One always-visible text link: BOTH the re-copy control and the recovery path when
+               the single-gesture copy could not copy. v4: PLAIN, never underlined; "copied"
+               renders green. An anchor, not a button element — the design system's tier rule has
+               no text-link category, and the tag is DESCRIBED rather than spelled because that
+               gate scans raw markup and does not skip comments. -->
+          <div class="copy-row">
+            <a class="rm plain" id="btn-invite-copy" role="button" tabindex="0">copy code</a>
+          </div>
+          <p class="hint hidden" id="invite-copy-note"></p>
         </div>
-        <p class="hint hidden" id="invite-copy-note"></p>
-        <div class="meta-line"><span id="invite-meta-note"></span><span id="invite-meta-expiry"></span></div>
-        <div class="callout">Share it through a channel you trust &mdash; a text, a call, or in person.
-        The code works only once and expires on its own.</div>
-        <div class="block"><button class="secondary full" id="btn-invite-cancel">Cancel Invite</button></div>
+
+        <!-- ⚠ THE WARNING IS OPERATOR-AUTHORED AND VERBATIM. The leading clause renders bold.
+             The day figure comes from the SAME live invite value as the meta row above — one
+             source, two displays, so they cannot disagree. -->
+        <div class="callout" id="invite-warning"><strong>Only send this code to the person it&rsquo;s intended for&hellip;</strong> over a secure channel that you fully trust such as a text message, a call, or in person. It works only once, then dies. If unused, it expires on its own in <span id="invite-warn-days">3 days</span>.</div>
+        <!-- v4: "Cancel Invite" is REMOVED. The single kill mechanism is Revoke in the list —
+             one word, one place. Mid-mint regret is Review invites → Revoke: one extra click
+             for a rare case, recorded as chosen rather than lost. -->
         <div id="invite-error-post" class="hidden">
           <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
           <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
@@ -463,7 +468,7 @@
           <h2>Your invites</h2>
           <p class="hint" id="invite-slots">0 of 10 slots used &mdash; codes expire on their own</p>
         </div>
-        <button class="secondary" id="btn-invite-back">&larr; New invite</button>
+        <button class="secondary nowrap" id="btn-invite-back">&larr; New invite</button>
       </div>
       <!-- ⚠ VISIBILITY RULE: LIVE rows and FAILED rows only, newest first. Revoked and Expired
            records DO NOT RENDER, ever. True vault deletion of dead records is the queued

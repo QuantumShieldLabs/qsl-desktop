@@ -1485,13 +1485,22 @@ fn invite_modal_copy_is_mockup_verbatim() {
     // you trust" guidance no longer greets the user BEFORE minting. It survives where it is
     // actionable — in the callout beside the live code, asserted below — which is the moment
     // the advice can still change what they do.
+    // ⚠⚠ v4 — THE OPERATOR-AUTHORED WARNING, PINNED CHARACTER-FOR-CHARACTER. It supersedes the
+    // ratified mockup-14 sentence, and the mockup-refresh note rides the records. The leading
+    // clause is BOLD, the ellipsis is the HOUSE character (`&hellip;`, never three dots), and
+    // the apostrophe is the house curly form.
     assert!(
         html_says(
             &html,
-            "Share it through a channel you trust &mdash; a text, a call, or in person. \
-             The code works only once and expires on its own."
+            "<strong>Only send this code to the person it&rsquo;s intended for&hellip;</strong> \
+             over a secure channel that you fully trust such as a text message, a call, or in \
+             person. It works only once, then dies. If unused, it expires on its own in"
         ),
-        "the trust guidance survives at the point of use"
+        "the operator-authored warning, verbatim, with the bold lead and the house ellipsis"
+    );
+    assert!(
+        !html.contains("for..."),
+        "the ellipsis must be the house character, never three dots"
     );
     // v2's single commit, and the label field the mockup always had.
     assert!(
@@ -1528,13 +1537,22 @@ fn invite_modal_copy_is_mockup_verbatim() {
     );
     // Δ5 — the callout. The mockup's first sentence, NOT the brief's invented
     // "Treat the code like a house key while it's live."
+    // ⚠⚠ SUPERSEDED AT v4, and the supersession is stated rather than silently dropped. This
+    // pinned mockup-14's callout sentence ("Share it through a channel you trust — a text, a
+    // call, or in person…"). The operator AUTHORED a replacement across five mockup rounds, and
+    // the v4 bank rules it final: "This supersedes the ratified mockup-14 sentence — the
+    // mockup-refresh note rides the records."
+    //
+    // ⚠ The mockup file itself is NOT edited (it is forbidden this lane), so the tree now holds
+    // a ratified mockup whose callout copy the shipped surface deliberately does not match.
+    // That divergence is recorded in D-0036 rather than left for a future reader to find as
+    // drift. The replacement is pinned character-for-character above.
     assert!(
-        html_says(
+        !html_says(
             &html,
-            "Share it through a channel you trust &mdash; a text, a call, or in person. \
-             The code works only once and expires on its own."
+            "Share it through a channel you trust &mdash; a text, a call, or in person."
         ),
-        "the callout still carries the mockup's sentence verbatim"
+        "the superseded mockup-14 callout must not ship alongside its replacement"
     );
     assert!(
         !html_says(&html, "house key"),
@@ -1657,9 +1675,17 @@ fn the_invite_calls_emit_the_arg_shapes_the_gateway_test_pins() {
             && js.contains("selfLabel: null, relay: relayUrl, ttlSecs: INVITE_TTL_SECS,"),
         "invite_create must emit selfLabel/relay/ttlSecs"
     );
+    // ⚠ RE-AIMED AT v4. The old needle matched `{ inviteId }` — an expression that existed
+    // only in the "Cancel Invite" handler, which v4 removed. The list's call is
+    // `{ inviteId: rev }`: the same KEY, a different identifier. The property worth pinning is
+    // the key the command receives, so the needle matches that and survives a caller moving.
     assert!(
-        js.contains(r#"invoke("invite_revoke", { inviteId })"#),
-        "invite_revoke must emit inviteId"
+        js.contains(r#"invoke("invite_revoke", { inviteId: rev })"#),
+        "invite_revoke must emit the inviteId key"
+    );
+    assert!(
+        js.contains(r#"invoke("invite_clear", { inviteId: clr })"#),
+        "invite_clear must emit the inviteId key"
     );
     assert!(
         js.contains(r#"invoke("invite_list")"#),
@@ -2154,5 +2180,166 @@ fn entering_the_mint_fresh_always_clears_the_recipient_label() {
         back_body.contains("inviteEnterMintFresh();"),
         "⚠ THIS is the path the operator's flight caught: returning from the list MUST enter the \
          mint fresh, or the previous label silently rides the next invite"
+    );
+}
+
+// ===========================================================================
+// NA-0755 v4 — THE POLISH PASS. Ratified across five mockup rounds.
+// ===========================================================================
+
+/// ⚠⚠ ONE SOURCE, TWO DISPLAYS — the property, not just the strings.
+///
+/// The meta row's expiry and the warning's closing figure are two renderings of ONE fact: this
+/// invite's remaining life. A warning reading "3 days" above a code the meta row says expires
+/// in 2 is a lie the user has no way to resolve, and nothing on screen would contradict it.
+///
+/// ⚠ MUST GO RED IF: either display is fed from anywhere but the single computed value — a
+/// literal, a second calculation, or the requested TTL (which the relay clamps).
+///
+/// The seal reads the one writer and asserts BOTH displays are written inside it, from the same
+/// parameter. Its control mutates one display's source and is shown RED.
+#[test]
+fn the_expiry_figure_has_one_source_and_two_displays() {
+    let js = ui_file("main.js");
+    let f = js
+        .find("function inviteWriteExpiry(secondsLeft) {")
+        .expect("the single writer of the expiry figure exists");
+    let body = &js[f..];
+    let end = body.find("\n}\n").expect("it ends");
+    let body = &body[..end];
+
+    assert!(
+        body.contains("const human = secondsLeft > 0 ? humanDuration(secondsLeft) : \"—\";"),
+        "ONE value is computed, once, from the invite's own remaining seconds"
+    );
+    assert!(
+        body.contains(r#"byId("invite-meta-expiry").textContent"#),
+        "display 1 — the meta row — is written here"
+    );
+    assert!(
+        body.contains(r#"byId("invite-warn-days").textContent = human;"#),
+        "display 2 — the warning's figure — is written HERE, from the SAME `human` value"
+    );
+    // And nowhere else writes the warning figure, or the single-source property is a fiction.
+    assert_eq!(
+        js.matches(r#"byId("invite-warn-days")"#).count(),
+        1,
+        "exactly ONE writer of the warning figure — a second would let the two displays diverge"
+    );
+    // The figure is READ BACK from the invite, never printed from the TTL we asked for.
+    assert!(
+        !body.contains("INVITE_TTL_SECS"),
+        "the displayed life must come from the invite, not from the TTL the relay clamps"
+    );
+}
+
+/// v4 — "Cancel Invite" IS GONE, and Revoke in the list is the single kill.
+///
+/// ⚠ MUST GO RED IF: it returns. Two kill controls in two places is the ambiguity this removal
+/// exists to end — one word, one place. Mid-mint regret is Review invites → Revoke: one extra
+/// click for a rare case, and that trade was chosen rather than lost.
+#[test]
+fn the_cancel_invite_control_is_gone_and_revoke_is_the_single_kill() {
+    let html = ui_file("index.html");
+    let js = ui_file("main.js");
+    // ⚠⚠ THE NEEDLES MATCH WHAT SHIPS, NOT THE BARE WORDS — and they were rebuilt after the
+    // first draft caught ITS OWN AUTHOR for the SIXTH time in this lane: the comments that
+    // RECORD the removal name the control, so a bare-word needle fires on the explanation.
+    // A label ships as a TEXT NODE (`>Cancel Invite<`) and a handler ships as a registration;
+    // neither form can be produced by a comment. Same cure as `.verify-code`, the vault arm and
+    // the tier scanner: test the shipped form.
+    assert!(
+        !html.contains(r#"id="btn-invite-cancel""#),
+        "the Cancel control is gone from the markup"
+    );
+    assert!(
+        !html.contains(">Cancel Invite<"),
+        "and so is its rendered label"
+    );
+    assert!(
+        !js.contains(r#"byId("btn-invite-cancel")"#),
+        "and its handler went with it"
+    );
+    // The kill that remains is the list's, and it is still there.
+    assert!(
+        js.contains(r#"invoke("invite_revoke", { inviteId: rev })"#),
+        "Revoke in the list is the single kill mechanism"
+    );
+}
+
+/// v4 — the copy link is PLAIN and its acknowledgement is GREEN.
+///
+/// ⚠ MUST GO RED IF: the underline returns, or "copied" loses its own colour. The link reuses
+/// the shipped `a.rm` text-link style and modifies ONLY the underline — re-minting the whole
+/// look would have been an invented control.
+#[test]
+fn the_copy_link_is_plain_and_its_acknowledgement_is_green() {
+    let css = ui_file("style.css");
+    let js = ui_file("main.js");
+    assert!(
+        css.contains("a.rm.plain { text-decoration: none; }"),
+        "plain: never underlined"
+    );
+    assert!(
+        css.contains("a.rm.plain.copied { color: var(--ok); }"),
+        "the acknowledgement is green"
+    );
+    assert!(
+        js.contains(r#"link.classList.add("copied");"#),
+        "the class is applied on success"
+    );
+    assert!(
+        js.contains(r#"link.classList.remove("copied");"#),
+        "and removed when it reverts"
+    );
+    let html = ui_file("index.html");
+    assert!(
+        html.contains(r#"class="rm plain""#),
+        "the markup carries both classes"
+    );
+}
+
+/// v4 — the structural pins the harness can read: the widened surface and the one-line button.
+///
+/// ⚠ MUST GO RED IF: the width narrows back or the button loses `nowrap`. At the old width the
+/// New-invite label WRAPPED. The width fixes the symptom; `nowrap` fixes the property, so a
+/// future narrowing cannot quietly reintroduce it.
+#[test]
+fn the_surface_widened_and_the_new_invite_button_is_one_line() {
+    let css = ui_file("style.css");
+    let html = ui_file("index.html");
+    assert!(
+        css.contains("max-width: 580px;"),
+        "the ratified width, expressed once"
+    );
+    assert!(
+        css.contains("button.nowrap { white-space: nowrap; }"),
+        "one line, always"
+    );
+    assert!(
+        html.contains(r#"class="secondary nowrap" id="btn-invite-back""#),
+        "the New-invite button carries the tier AND the nowrap property"
+    );
+}
+
+/// v4 — the meta row sits ABOVE the code, and names what the code is.
+///
+/// ⚠ MUST GO RED IF: the row moves below the box again, or stops naming the note. The left
+/// cell answers "what is this?" before the user reads 150 characters of base64.
+#[test]
+fn the_meta_row_sits_above_the_code_and_names_it() {
+    let html = ui_file("index.html");
+    let island = html.find("code-island").expect("the island exists");
+    let meta = html[island..]
+        .find("invite-meta-note")
+        .expect("the meta row is inside it");
+    let box_ = html[island..]
+        .find("invite-code")
+        .expect("the code box is inside it");
+    assert!(meta < box_, "the meta row must render ABOVE the code box");
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"row.label ? "Invite for: " + row.label : "Invite code""#),
+        "the left cell names the note when there is one, else says plainly what it is"
     );
 }

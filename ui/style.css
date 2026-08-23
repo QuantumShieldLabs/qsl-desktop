@@ -623,7 +623,9 @@ a.rm:hover { color: var(--fg); }
   padding: var(--sp-4);
 }
 .modal {
-  width: 100%; max-width: 430px; max-height: 100%; overflow-y: auto;
+  /* v4: the surface WIDENS so the list's rows and the one-line New-invite button fit
+     without wrapping. 580px is the ratified target; it is expressed once, here. */
+  width: 100%; max-width: 580px; max-height: 100%; overflow-y: auto;
   background: var(--bg-raised); border: 1px solid var(--border);
   border-radius: var(--radius); padding: var(--sp-x28);
   box-shadow: var(--modal-shadow);
@@ -707,3 +709,28 @@ a.rm:hover { color: var(--fg); }
   padding: var(--sp-1) var(--sp-x10); font-size: var(--fs-micro); color: var(--fg-secondary);
 }
 .invite-chip.dim { color: var(--fg-muted); }
+
+/* ==========================================================================
+   NA-0755 v4 — THE POLISH PASS. Ratified across five mockup rounds.
+   ========================================================================== */
+
+/* ⚠ THE CODE ISLAND. The meta row, the box and the copy link travel as ONE object with clear
+   space above and below, so the code reads as a single thing rather than three stacked ones. */
+.code-island { margin: var(--sp-5) 0; }
+.code-island .meta-line { margin-top: 0; margin-bottom: var(--sp-2); }
+
+/* v4: the copy link is PLAIN — never underlined — and "copied" renders green.
+   `.rm` supplies the accent colour and size; `.plain` removes only the underline, so the
+   shipped text-link style is reused rather than re-minted. */
+a.rm.plain { text-decoration: none; }
+a.rm.plain.copied { color: var(--ok); }
+
+/* Breathing room between the warning and the Close control. */
+#invite-warning { margin-top: var(--sp-5); margin-bottom: var(--sp-5); }
+
+/* ⚠ ONE LINE, ALWAYS. At the old width "← New invite" wrapped; the width change fixes the
+   symptom and this fixes the property, so a future narrowing cannot reintroduce it. */
+button.nowrap { white-space: nowrap; }
+
+/* Roomier rows at the new width. */
+.invite-row { padding: var(--sp-4); }

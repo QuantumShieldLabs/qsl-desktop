@@ -1932,7 +1932,7 @@ function inviteShowMint() {
 function inviteEnterMintFresh() {
   byId("invite-label").value = "";
   byId("invite-code").textContent = "";
-  byId("invite-meta-note").textContent = "";
+  byId("invite-meta-note").textContent = "Invite code";
   byId("invite-meta-expiry").textContent = "";
   byId("invite-copy-note").classList.add("hidden");
   inviteId = null;
@@ -1987,10 +1987,23 @@ async function openInviteModal() {
 
 // `invite_create` returns the CODE, not the id Cancel needs, so the id is recovered by
 // COMPOSITION from an `invite_list` diff — the same call that carries the REAL expiry.
+// ⚠⚠ v4 — ONE SOURCE, TWO DISPLAYS. The meta row's expiry and the warning's closing figure
+// are the SAME invite's remaining life, computed ONCE here and written to both. They are two
+// renderings of one fact and must never be able to disagree: a warning that says "3 days" over
+// a code the meta row says expires in 2 is a lie the user has no way to resolve.
+//
+// ⚠ The value is READ BACK from the invite, never printed from the TTL we requested — the
+// relay clamps that, and a clamp is a normal outcome.
+function inviteWriteExpiry(secondsLeft) {
+  const human = secondsLeft > 0 ? humanDuration(secondsLeft) : "—";
+  byId("invite-meta-expiry").textContent = secondsLeft > 0 ? "Expires in " + human : "";
+  byId("invite-warn-days").textContent = human;
+}
+
 async function adoptMinted(before) {
   inviteId = null;
   byId("invite-meta-expiry").textContent = "";
-  byId("invite-meta-note").textContent = "";
+  byId("invite-meta-note").textContent = "Invite code";
   try {
     inviteRows = await invoke("invite_list");
   } catch (_) {
@@ -2000,9 +2013,9 @@ async function adoptMinted(before) {
   if (fresh.length !== 1) return;      // ambiguous -> claim nothing
   const row = fresh[0];
   inviteId = row.invite_id;
-  const left = row.expiry - Math.floor(Date.now() / 1000);
-  if (left > 0) byId("invite-meta-expiry").textContent = "Expires in " + humanDuration(left);
-  byId("invite-meta-note").textContent = row.label ? "Note: " + row.label : "Not yet accepted";
+  inviteWriteExpiry(row.expiry - Math.floor(Date.now() / 1000));
+  // LEFT of the meta row names what this is: the note when one was given, else plain.
+  byId("invite-meta-note").textContent = row.label ? "Invite for: " + row.label : "Invite code";
 }
 
 byId("btn-invite-activate").addEventListener("click", async (ev) => {
@@ -2071,8 +2084,12 @@ async function inviteCopyLink() {
   try {
     await navigator.clipboard.writeText(code);
     link.textContent = "copied";
+    link.classList.add("copied");      // v4: green, per the ratified mockups
     if (inviteCopyTimer) clearTimeout(inviteCopyTimer);
-    inviteCopyTimer = setTimeout(() => { link.textContent = "copy code"; }, 2500);
+    inviteCopyTimer = setTimeout(() => {
+      link.textContent = "copy code";
+      link.classList.remove("copied");
+    }, 2500);
   } catch (_) {
     byId("invite-copy-note").textContent = "Copy didn't complete — select the code and copy it.";
     byId("invite-copy-note").classList.remove("hidden");
@@ -2085,21 +2102,9 @@ byId("btn-invite-copy").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); inviteCopyLink(); }
 });
 
-byId("btn-invite-cancel").addEventListener("click", async () => {
-  clearInviteErrors();
-  if (!inviteId) {
-    renderInviteError("invite-error-post", "revoke_invalid", null, "revoke");
-    return;
-  }
-  try {
-    await invoke("invite_revoke", { inviteId });
-    await inviteRefresh();
-    await renderInviteList();
-    inviteShowList();
-  } catch (e) {
-    renderInviteError("invite-error-post", e && e.code, e && e.detail, "revoke");
-  }
-});
+// ⚠ v4: the "Cancel Invite" handler is REMOVED with its button. The single kill mechanism is
+// Revoke in the list — one word, one place. Mid-mint regret is Review invites → Revoke, one
+// extra click for a rare case, and that trade is recorded rather than lost.
 
 // ── the list view — THE REFERENCE MARKUP GOVERNS (v3) ─────────────────────
 //

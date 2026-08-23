@@ -2647,6 +2647,48 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     (measured: its loop has no `<!--` handling), so a comment that NAMED the tag tripped a gate
     about markup. The comment now DESCRIBES the tag instead. *Documenting a construct re-plants
     it* — `.verify-code`, the vault arm, and now this.
+  - ---
+  - ⚠⚠ **v4 — THE POLISH PASS, APPENDED.** Five mockup rounds with the operator ratified every
+    element below. Supersedes the v3 mint-layout and warning clauses; everything else — the
+    list's visibility rule, revoke flip-then-leave, the label-clear fix, the copy-link
+    mechanism — stands unchanged.
+  - **THE MINT LAYOUT.** The meta row moves **ABOVE** the code box, one row: LEFT names what
+    this is — *"Invite for: &lt;note&gt;"* when a note was given, else plain *"Invite code"* —
+    and RIGHT carries the expiry. The meta row, the box and the copy link travel as **one
+    island** with clear space above and below, so the code reads as a single object rather than
+    three stacked ones. The copy link is **plain, never underlined**, and *"copied"* renders
+    green.
+  - ⚠ **"CANCEL INVITE" IS REMOVED, AND THE TRADE IS RECORDED RATHER THAN LOST.** The single
+    kill mechanism is **Revoke in the list** — one word, one place. Two kill controls in two
+    places is the ambiguity the removal ends. Mid-mint regret costs one extra click (Review
+    invites → Revoke) for a rare case, and that is the chosen trade.
+  - ⚠⚠ **THE WARNING IS OPERATOR-AUTHORED AND SHIPS VERBATIM**, with the leading clause bold and
+    the **house ellipsis character** (never three dots): *"Only send this code to the person
+    it's intended for… over a secure channel that you fully trust such as a text message, a
+    call, or in person. It works only once, then dies. If unused, it expires on its own in
+    3 days."*
+  - ⚠⚠ **ONE SOURCE, TWO DISPLAYS — AND IT IS SEALED AS A PROPERTY, NOT AS TWO STRINGS.** The
+    warning's closing figure and the meta row's expiry are two renderings of ONE fact: this
+    invite's remaining life. A warning reading "3 days" above a code the meta row says expires
+    in 2 is a lie the user has no way to resolve, and nothing on screen would contradict it. One
+    writer computes the value once and writes both; a seal asserts exactly ONE writer exists and
+    that the figure is **read back from the invite**, never printed from the TTL we requested —
+    the relay clamps that. The control mutates one display's source to a literal and goes RED.
+  - ⚠ **A RATIFIED MOCKUP NOW DIVERGES FROM THE SHIPPED SURFACE, DELIBERATELY.** The warning
+    supersedes mockup-14's callout sentence. The mockup file is NOT edited (forbidden this
+    lane), so the tree holds a ratified mockup whose callout copy the surface intentionally does
+    not match. **Recorded here so a future reader finds a decision, not drift**, and a negative
+    pin keeps the superseded sentence from shipping alongside its replacement. The
+    mockup-refresh note rides the records.
+  - **THE LIST WIDENS** to the ratified ~580px, rows gain roomier padding, and *"← New invite"*
+    is `white-space: nowrap` — **one line, always**. ⚠ The width fixes the symptom the operator
+    saw; `nowrap` fixes the property, so a future narrowing cannot quietly reintroduce it.
+  - ⛳⛳ **A SEAL CAUGHT ITS OWN AUTHOR FOR THE SIXTH TIME IN THIS LANE, AND THE CURE IS NOW A
+    PATTERN WORTH NAMING.** The "Cancel is gone" pin fired on the very comments that RECORD the
+    removal. Same shape as `.verify-code`, the vault arm, and the button-tier scanner reading a
+    comment. ⇒ **A negative pin must match the SHIPPED FORM — a text node (`>Label<`), an
+    attribute (`class="x"`), a registration — never the bare word**, because prose that explains
+    an absence necessarily contains the thing it says is absent.
   - ⚠ **Claim boundary.** No `qsc`/protocol source byte, no harness engine byte, no mockup byte,
     no `.github/**`, no `Cargo.toml`/`Cargo.lock`; **two measured needs in `qsc` were FILED, never
     patched** (`ENG-0228`, `ENG-0229`), per the `ENG-0218` precedent. No test weakened, skipped or
