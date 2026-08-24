@@ -788,3 +788,24 @@ button.nowrap { white-space: nowrap; }
    ========================================================================== */
 a.rm.plain.link-danger { color: var(--danger-link); }
 a.rm.plain.link-danger:hover { color: var(--danger-text); }
+
+/* ==========================================================================
+   NA-0756 v2 — THE CHOOSER'S ROWS. One class, two lines, full width.
+
+   ⚠⚠ WHY THIS SELECTOR EXISTS AT ALL. v1 shipped the chooser's two controls SIDE BY SIDE at
+   content width, because the reference markup pinned structure and copy and left geometry
+   unstated — the v4 lesson repeating one lane later. The bank's v2 geometry section rules every
+   control full-width and STACKED, and this is the only class that rule needs.
+
+   ⚠ NO WIDTH IS MINTED HERE. The surface width still comes from `.modal` — the v5 shared 500px
+   class, expressed exactly once in this file — and the rows take their own width from the
+   shipped `button.full`, which is why neither a number nor a second `max-width` appears below.
+
+   ⚠ THE TWO LINES REUSE THE SHIPPED ROW IDIOM RATHER THAN RE-DECIDING IT. `.invite-row-head` and
+   `.invite-row-meta` already express "label line, muted line beneath" in the token scale for the
+   invite LIST; these carry the same two token pairs for a CONTROL. Reuse over minting is the
+   house rule, and it means the chooser's rows and the list's rows cannot drift apart by accident.
+   ========================================================================== */
+.choose-row { display: block; text-align: left; padding: var(--sp-4); margin-top: var(--sp-3); }
+.choose-row .choose-row-title { display: block; font-size: var(--fs-body); color: var(--fg); font-weight: var(--fw-mid); }
+.choose-row .choose-row-sub { display: block; font-size: var(--fs-hint); color: var(--fg-muted); margin-top: var(--sp-1); }

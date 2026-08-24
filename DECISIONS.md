@@ -2861,3 +2861,76 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     completing — is the operator's acceptance card, recorded [O]. Counterfactual red runs are
     preserved 444 under `/srv/qbuild/operator/NA-0756/redruns/`, one per seal arm. Nothing is
     merged by the seat; the operator merges.
+  - **v2 — THE CHOOSER: PINNED GEOMETRY, SELF-EXPLAINING ROWS, A WAY OUT (2026-08-24,
+    operator-blessed "B it is."; UI-only).** Governing bank
+    `RBANK_chooser_v2_20260824.md`, sha256 `3f3819ef…3f3f2e3d0`, sha-VERIFIED against its own
+    bytes BEFORE being read, as was the order that carries it
+    (`ORDER_pr37_chooser_v2_20260824.md`, sha256 `d52f8569…7f53ceee3`). Rides the OPEN PR #37
+    as a polish commit — the Lane A v-pass pattern — and costs no calendar time because #37 is
+    held for the `ENG-0239` repair.
+    - ⚠⚠ **THE DEFECT, AND IT IS A DIRECTOR DEFECT ALREADY RECORDED AS ONE.** The shipped v1
+      chooser diverged from the blessed mockup: both controls packed onto ONE line at content
+      width, no Close, and a bare intro. The cause is not carelessness at the keyboard — the
+      Lane B reference markup **pinned structure and copy and said nothing about layout**, and
+      what is not pinned is not shipped. ⛳ **This is the v4 width defect repeating one lane
+      later from the identical cause**, which is why the cure is not "fix the markup" but
+      *"state the geometry in the bank and seal it as layout"*. A seal that proves an element
+      is PRESENT cannot see that it is in the wrong place.
+    - **THE COPY, character-pinned to the bank.** The intro is the operator's own, authored
+      2026-08-24 and trimmed to two sentences by his own order: *"Invitations are how contacts
+      are added. One person creates an invite code and then shares it with the person they want
+      to add."* Each choice is now a TWO-LINE row — *"Invite someone" / "Create a one-time code
+      to send to a person you trust"* and *"I have a code" / "Enter an invite code someone sent
+      you"* — so a row says what it DOES rather than making the reader work out which of two
+      bare labels is theirs. ⚠ The safety sentences the v2 bank trims are **not lost**: they
+      remain SHIPPED in the Lane A create-modal callout, which is what makes the trim honest.
+    - **THE GEOMETRY, WHICH IS THE CLASS THIS PASS EXISTS FOR.** Vertical order title, intro,
+      row 1, row 2, Close; every control spans the modal's content box; all five STACK; there
+      are no side-by-side controls on the surface. Close is the Lane A idiom — a full-width
+      secondary at the foot. ⚠ **No width is minted.** The surface still takes its width from
+      `.modal`, the v5 shared 500px class expressed exactly once in the stylesheet, and the
+      rows take theirs from the shipped `button.full`; the new class declares neither. The
+      two-line rows REUSE the shipped `.invite-row-head` / `.invite-row-meta` token pairs
+      rather than re-deciding them, so the chooser's rows and the invite list's rows cannot
+      drift apart by accident.
+    - ⚠⚠ **THE SEALS ARE MEASURED LAYOUT, NOT ASSERTED CSS — and that is the whole point of the
+      pass.** Grepping the stylesheet proves a rule was *written*; it cannot prove the row
+      *renders* where the rule says, because any later rule may override it. So the geometry
+      seal runs in the live webview and reads BOUNDING BOXES: the chooser's five rows are
+      measured against the content box's own width and against each other's vertical spans, and
+      the surface is red unless every row spans the box AND each starts at or below the previous
+      one's bottom. The v1 build would have failed it, which is the only reason to trust it.
+    - **THE NEGATIVE PIN MATCHES THE SHIPPED FORM, NEVER A WORD.** *"Invite someone"* occurs
+      three times in `index.html` for three legitimate reasons — the rail tip, the mint's
+      heading, and the row's own title — so a word-level pin would be vacuous or wrong. The
+      needle is the exact retired TAG (a tier-only class with the label as the button's own
+      text), measured at **exactly 1 occurrence** on the v1 head and **0** now. ⚠ **The half
+      that can be whole-file IS whole-file**: a slice cannot see a comment above its start, which
+      is precisely how the plant hazard passed once already in this lane (`ENG-0235`). The
+      side-by-side-row half cannot be file-wide — three legitimate surfaces use that row — so it
+      is slice-scoped, and the chooser block's prose is deliberately kept OUTSIDE the slice so
+      the slice is markup only. The retired shape is DESCRIBED in the source and never spelled.
+    - ⚠⚠ **A SEAL'S OWN HEADING MEASURED FALSE, AND IT IS CORRECTED IN THE OPEN RATHER THAN
+      QUIETLY REWRITTEN.** `na0756_the_new_selectors_are_token_only_and_add_no_width` was
+      titled *"THE TWO NEW SELECTORS ARE THE CLOSED SET"* and promised to go red *"if a third
+      selector appears"* — but its body only ever asserted that two NAMED rules exist, that one
+      is token-only, and that the width is stated once. **A third selector would have passed it
+      silently.** The comment was a DESCRIPTION and the assertions were the record, and they
+      disagreed. Found by reading the body against its own heading before relying on it. v2
+      brings the new rule under the same two disciplines it names — token-only, and minting no
+      width — and corrects the heading to what is actually measured.
+    - **EVERY UPDATED PIN, OLD → NEW. No test was weakened or deleted.** The chooser intro
+      sentence (v1 wording → the operator's v2 wording, in both the source seal and the
+      scenario). The two row pins (one `read_text` per ROW → **four**, one per LINE: WebDriver
+      returns the rendered text of the whole subtree, so a single pin on a two-line row would
+      concatenate both lines and could stay green while either drifted — the pin is
+      STRENGTHENED, not relaxed). The selector seal (two named rules → three, plus a
+      no-width assertion on the new one). New pins with no predecessor: Close's copy, Close's
+      behaviour, and the live geometry probe.
+    - ⚠ **Claim boundary, v2.** ZERO `src-tauri/src` bytes, ZERO `Cargo.toml`/`Cargo.lock`, ZERO
+      `.github/**`, ZERO `qsc`/protocol source, and no other modal or state touched. The two
+      rows keep their existing ids and their existing handlers, including the finish-scan
+      trigger on chooser open, which is re-proven rather than assumed. **The PR remains HELD for
+      the `ENG-0239` repair per the standing merge order — this pass changes the surface, not
+      the hold** — and the ruled sequence is unchanged: protocol repair → pin-bump PR →
+      fresh-pair flight → #37. Nothing is merged by the seat; the operator merges.

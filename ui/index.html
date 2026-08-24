@@ -515,14 +515,41 @@
 <div id="redeem-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="redeem-title">
   <div class="modal">
 
-    <!-- ── THE CHOOSER (stopgap entry; the New-chat panel replaces it in Lane C) ── -->
+    <!-- ── THE CHOOSER (stopgap entry; the New-chat panel replaces it in Lane C) ──
+         ⚠⚠ v2 — THE GEOMETRY IS PART OF THE DESIGN, AND v1 PROVED IT BY OMISSION. The Lane B
+         reference markup pinned structure and copy but said nothing about layout, so the build
+         packed both controls onto ONE line at content width, offered no way back out of the
+         surface, and left each choice to a bare two-word label. That is the v4 defect one lane
+         later, from the same cause: what is not pinned is not shipped. The bank's v2 geometry
+         section is the cure, and this block obeys it — every control spans the modal's content
+         box and they STACK. There are no side-by-side controls on this surface.
+
+         ⚠ THE WIDTH IS STILL NOT EXPRESSED HERE. It comes from `.modal`, the v5 shared 500px
+         class stated exactly once in the stylesheet, and this pass mints no second one.
+
+         The two choices are TWO-LINE rows — a title line with a muted line beneath it, the
+         whole row clickable — so a row says what it DOES instead of making the reader infer it
+         from two bare labels. That is the shipped list-row idiom (`.invite-row-head` /
+         `.invite-row-meta`) re-expressed for a control, not a new invention. Close is the Lane A
+         idiom: a full-width secondary at the foot of the surface.
+
+         ⚠ THE RETIRED v1 SHAPE IS DESCRIBED HERE AND DELIBERATELY NEVER SPELLED. Writing the old
+         tag form out — even in order to say it is gone — would put it back into this file and
+         make the seal that forbids it self-falsifying, because a source-text scanner cannot tell
+         a comment from markup (ENG-0235, the plant hazard that already fired once in this lane).
+         The seal matches the SHIPPED FORM, never these words. -->
     <div id="choose-view">
       <div class="modal-head"><h2 id="redeem-title">Add a contact</h2></div>
-      <p class="muted">Invitations are how contacts are added. One person creates an invite code and the other accepts the code.</p>
-      <div class="btnrow">
-        <button id="btn-choose-create" class="secondary">Invite someone</button>
-        <button id="btn-choose-redeem" class="secondary">I have a code</button>
-      </div>
+      <p class="muted">Invitations are how contacts are added. One person creates an invite code and then shares it with the person they want to add.</p>
+      <button id="btn-choose-create" class="secondary full choose-row">
+        <span class="choose-row-title">Invite someone</span>
+        <span class="choose-row-sub">Create a one-time code to send to a person you trust</span>
+      </button>
+      <button id="btn-choose-redeem" class="secondary full choose-row">
+        <span class="choose-row-title">I have a code</span>
+        <span class="choose-row-sub">Enter an invite code someone sent you</span>
+      </button>
+      <div class="block"><button id="btn-choose-close" class="secondary full">Close</button></div>
     </div>
 
     <!-- ── STATE 1: ADD A CONTACT (single view, ONE commit gesture) ──

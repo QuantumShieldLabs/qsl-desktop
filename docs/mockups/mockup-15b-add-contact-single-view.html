@@ -65,6 +65,13 @@ button{border-radius:8px;padding:10px 14px;font-size:13px;border:1px solid var(-
 button.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-fill-text);width:100%}
 button.primary[disabled]{opacity:.45}
 .btnrow{display:flex;gap:12px;margin-top:20px}
+/* v2 — the chooser's two-line rows and its full-width Close. LAYOUT ONLY: the shipped build
+   expresses these with one class over the design tokens, and the sizes drawn here are a
+   drawing convenience exactly as this file's card width is. */
+.row2{display:block;width:100%;text-align:left;padding:16px;margin-top:12px}
+.row2 .r2t{display:block;font-size:13px;color:var(--fg)}
+.row2 .r2s{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+button.wide{width:100%}
 .callout{background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:8px;
   padding:10px 12px;font-size:12px;line-height:1.5;margin-top:4px}
 .callout.warning{background:var(--warn-bg);border-color:var(--warn-border)}
@@ -75,15 +82,24 @@ button.primary[disabled]{opacity:.45}
 </head>
 <body>
 
-<!-- ── THE CHOOSER (Lane B stopgap entry; Lane C replaces it with the New-chat panel) ── -->
+<!-- ── THE CHOOSER v2 (Lane B stopgap entry; Lane C replaces it with the New-chat panel) ──
+     ⚠⚠ v2, AND THE REASON IS A DEFECT THIS FILE HELPED CAUSE. The v1 drawing showed the two
+     choices as bare labels on ONE row, and the build shipped exactly that: two content-width
+     buttons side by side, no way out of the surface, and no explanation of which choice
+     belongs to which user. Structure and copy were pinned; GEOMETRY was not — the same
+     omission that produced the v4 width defect one lane earlier. The operator's v2 bank
+     states the geometry explicitly, and this drawing is corrected to match rather than left
+     as the superseded reference a future lane would read.
+
+     THE RULE: every control spans the surface's content box and they STACK, top to bottom —
+     title, intro, row 1, row 2, Close. No side-by-side controls anywhere on this surface. -->
 <div class="card">
-  <p class="tag">Chooser — stopgap entry</p>
+  <p class="tag">Chooser v2 — stopgap entry</p>
   <h2>Add a contact</h2>
-  <p class="muted">Invitations are how contacts are added. One person creates an invite code and the other accepts the code.</p>
-  <div class="btnrow">
-    <button>Invite someone</button>
-    <button>I have a code</button>
-  </div>
+  <p class="muted">Invitations are how contacts are added. One person creates an invite code and then shares it with the person they want to add.</p>
+  <button class="row2"><span class="r2t">Invite someone</span><span class="r2s">Create a one-time code to send to a person you trust</span></button>
+  <button class="row2"><span class="r2t">I have a code</span><span class="r2s">Enter an invite code someone sent you</span></button>
+  <div class="block"><button class="wide">Close</button></div>
 </div>
 
 <!-- ── STATE 1: ADD A CONTACT — one view, one commit ── -->

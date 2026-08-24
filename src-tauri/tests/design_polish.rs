@@ -2491,10 +2491,32 @@ fn na0756_the_redeem_copy_ships_in_its_blessed_form() {
         .expect("the redeem overlay exists");
     let modal = &html[start..];
 
-    // The operator's own chooser sentence, with the doubled word he typed removed at banking.
+    // ⚠ v2 — THE OPERATOR'S OWN CHOOSER SENTENCE, RE-AUTHORED AND TRIMMED TO TWO BY HIS OWN
+    // ORDER. The v1 pin held the v1 wording; the bank's v2 copy section supersedes it and the
+    // pin MOVES with the blessing rather than being deleted, so the sentence stays pinned
+    // across the change instead of going unpinned for a release.
     assert!(
-        modal.contains("Invitations are how contacts are added. One person creates an invite code and the other accepts the code."),
-        "the chooser's blessed sentence ships verbatim"
+        modal.contains("Invitations are how contacts are added. One person creates an invite code and then shares it with the person they want to add."),
+        "the chooser's blessed v2 sentence ships verbatim"
+    );
+    // ⚠⚠ v2 — EACH ROW IS PINNED PER LINE. A two-line row pinned as one string would stay green
+    // while either line drifted, and the subtitle is the half that carries the explanation the
+    // whole pass exists to add. Four pins where v1 had two: the pin is STRENGTHENED, not moved.
+    for needle in [
+        r#"<span class="choose-row-title">Invite someone</span>"#,
+        r#"<span class="choose-row-sub">Create a one-time code to send to a person you trust</span>"#,
+        r#"<span class="choose-row-title">I have a code</span>"#,
+        r#"<span class="choose-row-sub">Enter an invite code someone sent you</span>"#,
+    ] {
+        assert!(
+            modal.contains(needle),
+            "the blessed v2 row copy ships verbatim: `{needle}`"
+        );
+    }
+    // The way out of the surface, which v1 did not offer at all.
+    assert!(
+        modal.contains(r#"<button id="btn-choose-close" class="secondary full">Close</button>"#),
+        "the chooser's Close ships in the Lane A full-width secondary idiom"
     );
     // State 1: the intro, the name field's caption, and the standing hint.
     assert!(
@@ -2702,12 +2724,20 @@ fn na0756_the_finish_triggers_use_equality_and_add_no_timer() {
     );
 }
 
-/// Z2 — THE TWO NEW SELECTORS ARE THE CLOSED SET, AND NEITHER INVENTS A COLOUR OR A WIDTH.
+/// Z2 — THE LANE'S NEW SELECTORS ARE TOKEN-ONLY AND NONE OF THEM INVENTS A WIDTH.
 ///
-/// ⚠ MUST GO RED IF: a third selector appears, a literal hex enters them, or a new width
-/// value is minted. R387 §S4 fixed the set at exactly two. The width must come from `.modal`,
-/// which expresses 500px EXACTLY ONCE for the whole app — the v5 cure for a surface that
-/// resized as the user moved through one flow.
+/// ⚠ MUST GO RED IF: one of the named rules disappears, a literal hex enters them, or a second
+/// width value is minted. The width must come from `.modal`, which expresses 500px EXACTLY ONCE
+/// for the whole app — the v5 cure for a surface that resized as the user moved through one flow.
+///
+/// ⚠⚠ THE v1 HEADING OF THIS SEAL SAID SOMETHING THE SEAL DID NOT CHECK, AND THAT IS WORTH
+/// RECORDING RATHER THAN QUIETLY DELETING. It read "THE TWO NEW SELECTORS ARE THE CLOSED SET"
+/// and promised to go red "if a third selector appears" — but the body only ever asserted that
+/// two NAMED rules exist, that one of them is token-only, and that the width is stated once. A
+/// third selector would have sailed straight through it. The comment was a DESCRIPTION; the
+/// assertions were the record, and they disagreed. v2 adds the third selector this pass needs,
+/// so the heading is corrected to what is actually measured and the new rule is brought under
+/// the same two disciplines instead of being left outside them.
 #[test]
 fn na0756_the_new_selectors_are_token_only_and_add_no_width() {
     let css = ui_file("style.css");
@@ -2718,6 +2748,28 @@ fn na0756_the_new_selectors_are_token_only_and_add_no_width() {
     assert!(
         css.contains(".modal textarea {"),
         "the modal textarea rule exists"
+    );
+    // ⚠ v2 — the chooser's two-line row. ONE class, and the two lines it owns.
+    for rule in [
+        ".choose-row {",
+        ".choose-row .choose-row-title {",
+        ".choose-row .choose-row-sub {",
+    ] {
+        assert!(css.contains(rule), "the v2 row rule exists: `{rule}`");
+    }
+    // ⚠⚠ AND IT MINTS NO WIDTH. The rows take their width from the shipped `button.full`; a
+    // `width` or `max-width` inside this class is how a surface starts resizing between its own
+    // states again, which is precisely what v5 cured for Lane A.
+    let rstart = css.find(".choose-row {").expect("found");
+    let rend = rstart + css[rstart..].find('}').expect("rule ends");
+    let row_rule = &css[rstart..rend];
+    assert!(
+        !row_rule.contains("width"),
+        "the row class must not mint a width — `button.full` already supplies it"
+    );
+    assert!(
+        !row_rule.contains('#'),
+        "no literal hex may enter the row class — tokens are the authority"
     );
     // Tokens are the colour authority — never the mockup's hex.
     let wstart = css.find(".callout.warning {").expect("found");
@@ -2738,5 +2790,83 @@ fn na0756_the_new_selectors_are_token_only_and_add_no_width() {
         1,
         "the shared width must stay expressed exactly once — a second copy is how the states \
          drift apart again"
+    );
+}
+
+/// v2 — THE CHOOSER STACKS AT FULL WIDTH IN THE SOURCE, AND THE RETIRED v1 FORM IS GONE.
+///
+/// ⚠ MUST GO RED IF: the chooser's controls go back onto one line, a row loses its tier or its
+/// full-width class, Close disappears, or the v1 button form returns.
+///
+/// ⚠⚠ THE NEGATIVE NEEDLE IS THE SHIPPED FORM, NEVER A BARE WORD. "Invite someone" occurs three
+/// times in this file for three legitimate reasons — the rail tip, the mint's heading, and this
+/// row's own title — so a word-level pin would be either vacuous or wrong. The needle is the
+/// exact v1 TAG: a tier-only class with the label as the button's own text. It occurred exactly
+/// ONCE at the v1 head, which is what makes the zero below a measurement rather than an
+/// accident of phrasing.
+///
+/// ⚠⚠ AND THE HALF THAT CAN BE WHOLE-FILE IS WHOLE-FILE. A slice cannot see a comment that sits
+/// ABOVE its start — that is exactly how the plant hazard passed once already in this lane
+/// (ENG-0235), and a scanner cannot tell a comment from markup. The v1 tag form is unique enough
+/// to pin file-wide, so it is. The side-by-side-row half CANNOT be file-wide, because three
+/// legitimate surfaces use that row, so that half is slice-scoped — and the chooser block's
+/// prose is deliberately kept OUTSIDE the slice so the slice is markup only.
+#[test]
+fn na0756_v2_the_chooser_stacks_full_width_and_the_inline_form_is_gone() {
+    let html = ui_file("index.html");
+
+    // WHOLE-FILE negatives — the retired v1 tag form, both rows.
+    for gone in [
+        r#"class="secondary">Invite someone</button>"#,
+        r#"class="secondary">I have a code</button>"#,
+    ] {
+        assert!(
+            !html.contains(gone),
+            "the retired v1 chooser button form must not return: `{gone}`"
+        );
+    }
+
+    // The slice: markup only, from the view's own id to the next state's banner.
+    let start = html
+        .find(r#"<div id="choose-view">"#)
+        .expect("the chooser exists");
+    let rest = &html[start..];
+    let end = rest
+        .find("STATE 1: ADD A CONTACT")
+        .expect("state 1 follows the chooser");
+    let view = &rest[..end];
+
+    assert!(
+        !view.contains("btnrow"),
+        "no side-by-side row may exist on this surface — every control stacks"
+    );
+
+    // Positives, so the absence above is measured against a surface that really has controls
+    // rather than against an empty one.
+    for needle in [
+        r#"<button id="btn-choose-create" class="secondary full choose-row">"#,
+        r#"<button id="btn-choose-redeem" class="secondary full choose-row">"#,
+        r#"<button id="btn-choose-close" class="secondary full">Close</button>"#,
+    ] {
+        assert!(
+            view.contains(needle),
+            "the v2 control ships in its blessed form: `{needle}`"
+        );
+    }
+
+    // Both halves of a row's geometry travel together: the TIER makes it a button the design
+    // system recognises, the FULL class makes it span the content box. Counted, not eyeballed.
+    assert_eq!(
+        view.matches(r#"class="secondary full choose-row""#).count(),
+        2,
+        "exactly two two-line rows, each carrying its tier AND its full-width class"
+    );
+
+    // The Close wiring exists and reuses the shipped dismissal, which is what makes "fires no
+    // invite call" structural rather than remembered — `closeRedeemModal` never invites.
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"byId("btn-choose-close").addEventListener("click", closeRedeemModal);"#),
+        "Close reuses the one shipped dismissal path rather than minting a second one"
     );
 }

@@ -2537,6 +2537,13 @@ byId("btn-choose-redeem").addEventListener("click", () => {
   redeemSyncConnect();
   redeemShow("redeem-form");
 });
+// ⚠ v2 — THE WAY OUT, AND IT REUSES THE ONE SHIPPED DISMISSAL. `closeRedeemModal` is already
+// the path Escape and the scrim take, and it is already called from `show()` so every screen
+// transition clears a pasted code. Wiring Close to a second, bespoke closer would be a second
+// thing to keep in agreement with the one-time boundary; there is nothing here to keep in
+// agreement because there is nothing here. ⚠ It fires NO invite call — the finish scan rides
+// the chooser's OPENER, never its close.
+byId("btn-choose-close").addEventListener("click", closeRedeemModal);
 byId("redeem-code").addEventListener("input", redeemSyncConnect);
 byId("redeem-name").addEventListener("input", redeemSyncConnect);
 byId("btn-redeem-connect").addEventListener("click", redeemConnect);

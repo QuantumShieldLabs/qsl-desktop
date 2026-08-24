@@ -108,17 +108,40 @@
   {
    "op": "read_text",
    "sel": "#choose-view .muted",
-   "literal": "Invitations are how contacts are added. One person creates an invite code and the other accepts the code."
+   "literal": "Invitations are how contacts are added. One person creates an invite code and then shares it with the person they want to add."
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 v2 \u2014 THE ROW COPY IS PINNED PER LINE, NOT PER ROW. WebDriver's element text returns the RENDERED text of the whole subtree, so a single pin on the row would concatenate title and subtitle and could stay green while either line drifted. Two selectors per row is the honest instrument, and it is STRONGER than the v1 pin it replaces: four pins where there were two."
   },
   {
    "op": "read_text",
-   "sel": "#btn-choose-create",
+   "sel": "#btn-choose-create .choose-row-title",
    "literal": "Invite someone"
   },
   {
    "op": "read_text",
-   "sel": "#btn-choose-redeem",
+   "sel": "#btn-choose-create .choose-row-sub",
+   "literal": "Create a one-time code to send to a person you trust"
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-choose-redeem .choose-row-title",
    "literal": "I have a code"
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-choose-redeem .choose-row-sub",
+   "literal": "Enter an invite code someone sent you"
+  },
+  {
+   "op": "note",
+   "text": "And the way out of the surface, which v1 did not offer at all."
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-choose-close",
+   "literal": "Close"
   },
   {
    "op": "note",
@@ -128,6 +151,24 @@
    "op": "exec",
    "script": "var m=document.querySelector('#redeem-overlay .modal'); return JSON.stringify({maxw:getComputedStyle(m).maxWidth});",
    "expect": "{\"maxw\":\"500px\"}"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 v2 \u2014 GEOMETRY IS ASSERTED AS LAYOUT, NOT AS PRESENCE. This is the exact defect class v1 shipped: the copy and the structure were pinned, the LAYOUT was not, and the surface went out with both controls packed onto one line at content width. Presence pins cannot see that. So the five rows of the chooser are measured from their RENDERED bounding boxes \u2014 each spans the content box, and each starts at or below the previous one's bottom, which is what 'stacked, never side-by-side' means when a machine has to check it."
+  },
+  {
+   "op": "exec",
+   "script": "var v=document.getElementById('choose-view');var kids=Array.prototype.slice.call(v.children);var inner=v.getBoundingClientRect().width;var r=kids.map(function(e){var b=e.getBoundingClientRect();return {w:b.width,t:b.top,b:b.bottom};});var full=r.every(function(x){return Math.abs(x.w-inner)<1.5;});var stacked=true;for(var i=1;i<r.length;i++){if(r[i].t<r[i-1].b-0.5)stacked=false;}var c=document.getElementById('btn-choose-close').getBoundingClientRect().width;return JSON.stringify({rows:kids.length,full:full,stacked:stacked,closeFull:Math.abs(c-inner)<1.5});",
+   "expect": "{\"rows\":5,\"full\":true,\"stacked\":true,\"closeFull\":true}"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 THE NEGATIVE HALF, LIVE: no descendant of the chooser is a side-by-side row, and the retired v1 shape cannot be reached from the rendered DOM either. Counted, not eyeballed."
+  },
+  {
+   "op": "exec",
+   "script": "var v=document.getElementById('choose-view');return JSON.stringify({rowsOnOneLine:v.querySelectorAll('.btnrow').length,twoLineRows:v.querySelectorAll('button.choose-row').length,titles:v.querySelectorAll('.choose-row-title').length,subs:v.querySelectorAll('.choose-row-sub').length});",
+   "expect": "{\"rowsOnOneLine\":0,\"twoLineRows\":2,\"titles\":2,\"subs\":2}"
   },
   {
    "op": "click",
@@ -415,6 +456,52 @@
    "sel": "#redeem-failed",
    "prop": "className",
    "expect": "hidden",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 v2 \u2014 CLOSE WORKS, AND IT IS THE ONLY NEW CONTROL THIS PASS WIRES. It dismisses the surface and returns the user to what was underneath. The load-bearing half is the NEGATIVE one: it must fire NO invite call. The chooser's OPENER is what runs the finish scan and stamps the overlay's dataset; `closeRedeemModal` never calls the stamper, so re-reading the stamp after the click is a real test \u2014 a close that reached any invite path would have re-stamped it, and the WHY would no longer name the open that preceded it."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "The surface is gone and the screen underneath is the one the user came from. The overlay is a body-level element and deliberately NOT a SCREENS member, so closing it REVEALS the prior surface rather than navigating to one."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#scr-main",
+   "prop": "className",
+   "expect": "screen",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 AND NOTHING WAS INVITED. The stamp still reads the OPEN that preceded the close, with all three counters where the opener left them."
+  },
+  {
+   "op": "exec",
+   "script": "var e=document.getElementById('redeem-overlay').dataset;return JSON.stringify({why:e.finishWhy,pending:e.finishPending,scanned:e.finishScanned,finished:e.finishFinished});",
+   "expect": "{\"why\":\"surface_open\",\"pending\":\"0\",\"scanned\":\"0\",\"finished\":\"0\"}"
+  },
+  {
+   "op": "note",
+   "text": "And the chooser is the state a NEXT open would land on \u2014 Close leaves the surface reset, exactly as Escape does."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
    "poll": 3
   },
   {
