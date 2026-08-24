@@ -2471,8 +2471,17 @@ fn the_chip_and_its_action_are_laid_out_on_one_row() {
 /// the scenario prove what the user SEES; this proves what SHIPS, and they are different
 /// checks — a renderer that computed the sentence would pass the first and fail this.
 ///
-/// ⚠ THE ENTITY FORM IS PART OF THE PIN, and it is the MEASURED local one. R387 §S5 voided
-/// the brief's `&#8212;`/`&#8230;`/`&#8217;` sentence: those forms occur ZERO times in this
+/// ⚠ THE ENTITY FORM IS PART OF THE PIN, and it is the MEASURED local one. `R387` §S5 voided
+/// the brief's numeric-decimal sentence; Lane A's own block uses the named forms and this
+/// block matches it.
+///
+/// ⚠⚠ THE NEGATIVE PIN BELOW READS THE WHOLE FILE, NOT THE MODAL SLICE, AND THAT WIDENING IS
+/// ITSELF A FINDING. On its first draft the pin sliced from the overlay's id and PASSED while
+/// the file carried the numeric forms nine lines above it, in a comment that spelled them out
+/// in order to say they were absent — the plant hazard NA-0754 recorded three times, firing
+/// on its fourth. A source-text scanner cannot tell a comment from markup (`ENG-0235`), so
+/// the only durable cure is to DESCRIBE a retired construct and never spell it, and the only
+/// honest scope for the pin is the entire shipped file.
 /// tree. Lane A's own block uses `&mdash;`/`&hellip;`/`&rsquo;` and this block matches it.
 #[test]
 fn na0756_the_redeem_copy_ships_in_its_blessed_form() {
@@ -2521,12 +2530,18 @@ fn na0756_the_redeem_copy_ships_in_its_blessed_form() {
         "the operator's blessed failure callout ships VERBATIM — R387 §S2a composed rather \
          than replaced it, so this text is untouched"
     );
-    // ⚠ And the numeric-entity forms the brief named must NOT appear: they exist nowhere in
-    // this tree, and adopting them here would split the file's own convention in two.
-    assert!(
-        !modal.contains("&#8212;") && !modal.contains("&#8230;") && !modal.contains("&#8217;"),
-        "the numeric entity forms are VOID per R387 §S5 — the house forms are named entities"
-    );
+    // ⚠ The numeric entity forms must appear NOWHERE IN THE FILE — not in the markup, and
+    // not in a comment describing them either. The needle is BUILT rather than written as a
+    // literal, so this test file cannot itself become the thing that plants them.
+    for n in ["8212", "8230", "8217"] {
+        let form = format!("&#{n};");
+        assert!(
+            !html.contains(form.as_str()),
+            "the numeric entity forms are VOID per R387 §S5, and they must not be SPELLED even \
+             to say they are absent: a source-text scanner cannot tell a comment from markup \
+             (ENG-0235), which is exactly how this pin was defeated on its first draft"
+        );
+    }
 }
 
 /// Z4 — NO RETRY EXISTS IN THE SECURITY-FAILURE STATE, PINNED AS AN ABSENCE IN THE SOURCE.

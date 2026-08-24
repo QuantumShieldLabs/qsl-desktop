@@ -2798,6 +2798,19 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     **DOM `textContent`** level, immune to the choice, and this block adopts the measured local
     neighbour forms so the file stays internally consistent. A seal pins the numeric forms'
     continued ABSENCE.
+  - ⚠⚠ **AND THE PLANT HAZARD FIRED ON THIS LANE'S OWN CURE — CAUGHT BY THE PRE-MERGE
+    CHECKLIST, NOT BY THE SEAL.** The comment written to explain that the numeric entity forms
+    are absent **SPELLED THEM**, which put them in `ui/index.html` and made its own sentence
+    self-falsifying. The `Z1` seal PASSED anyway, because its slice began at the overlay's id
+    and the polluted comment sat NINE LINES ABOVE it. What caught it was checklist line 5's
+    negative control, which reads the WHOLE file. ⇒ the comment now **DESCRIBES the retired
+    construct without spelling it**, the pin's scope is the ENTIRE shipped file, and its needle
+    is **BUILT** (`format!("&#{n};")`) rather than written as a literal so the test file cannot
+    become the planter in turn. A seventh control plants the form **in a comment** and is RED.
+    This is `ENG-0235`'s **fifth** occurrence and the second in this lane alone — once
+    red-when-green (the 1400-byte window) and once green-when-red (this) — which is why the
+    filing's cure is a POSITIVE pin on the shipped form rather than a negative pin on a word.
+    ⚠ The retired wording is deliberately KEPT in this record, which no seal reads.
   - **Scope, and it held.** `ui/index.html`, `ui/main.js`, `ui/style.css` (three code files, the
     same three the brief predicted), the new scenario `f_l_invite_redeem.json`, its
     `gui_driver.rs` wrapper, six `design_polish.rs` seals, the inventory pin **171 → 178**
