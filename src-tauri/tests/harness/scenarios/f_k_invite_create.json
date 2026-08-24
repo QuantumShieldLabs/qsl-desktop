@@ -86,6 +86,28 @@
    "sel": "#btn-add-contact"
   },
   {
+   "op": "note",
+   "text": "\u26a0 NA-0756 (D-0037, R387 \u00a7S4) \u2014 THE ENTRY NOW LANDS ON THE CHOOSER. Item 1 retargeted BOTH contact-making entries; \"Invite someone\" reaches this mint, \"I have a code\" reaches the redeem flow. The step is added rather than the assertion relaxed \u2014 this scenario still proves the entry reaches the mint, it now proves the path it takes to get there."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-create"
+  },
+  {
    "op": "prop_eq",
    "sel": "#invite-overlay",
    "prop": "className",
@@ -236,6 +258,24 @@
   },
   {
    "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-create"
+  },
+  {
+   "op": "prop_eq",
    "sel": "#invite-overlay",
    "prop": "className",
    "expect": "overlay",
@@ -320,6 +360,24 @@
   {
    "op": "click",
    "sel": "#btn-invite-open"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-create"
   },
   {
    "op": "prop_eq",

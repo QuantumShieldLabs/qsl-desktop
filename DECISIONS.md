@@ -2730,3 +2730,121 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
       isolates exactly the property it names); narrow the width off the class → RED.
     - ⚠ **Claim boundary, v5.** ZERO engine bytes, ZERO `Cargo.toml`/`Cargo.lock`, ZERO `.github/**`,
       ZERO `qsc`/protocol source. UI and its seals only. Nothing merged by the seat; the operator merges.
+
+- **ID:** D-0037
+  - **Status:** Accepted
+  - **Date:** 2026-08-23
+  - **Lane:** desktop **NA-0756 / INVITE LANE B: THE REDEEM FLOW** — the app's second
+    contact-making act. Executing the Director's ruling **`R387`** (all seven asks ruled, four
+    filings admitted, build authorised; banked verbatim under SR-14 as
+    `RULING_NA0756_R387_ALL_SEVEN_ASKS_RULED_BUILD_AUTHORIZED_20260823T191000Z.md`, sha256
+    `6316f988…ee621bb`, 178 lines / 12964 bytes, with the R-space RE-SWEPT before the banking
+    per WF-0087 — `R391` re-classified as binary noise inside bundled blobs under `NA-0603/`,
+    exactly as NA-0744/0745/0754 already classified it, and the single `R387` hit in the
+    operator tree classified as a MENTION: NA-0755's own STOP 010 recording *"NEGCTL `R387` =
+    0"*, the plant hazard's seventh firing). Spine decision **D-1398**. Governing design bank
+    (`RBANK_laneB_redeem_and_window_consolidation_20260823.md`, sha256 `1ad2ec5c…0b69094e8d`,
+    139 lines / 8551 bytes) sha-VERIFIED against its own bytes BEFORE being read. Base
+    `5eb64c2e371906af1533804a542bdc119661d960`, re-derived bare and unpiped at the NAMED github
+    remote with the open-PR set measured **0** against a positive control that returned rows.
+  - ⛳⛳ **THE HEADLINE: THE APP CAN NOW ACCEPT A CONTACT, NOT ONLY OFFER ONE.** A user pastes a
+    code, names the contact, and Connects in ONE gesture; sees an honest "Request sent"; and the
+    app completes the handshake on two blessed triggers — at vault unlock, and when the
+    add-contact surface opens. ZERO `.rs` product bytes: `invite_redeem` / `invite_accept` /
+    `invite_finish` were all registered already (re-measured; the `generate_handler` census is
+    **41** under NA-0755's `commands::`-only instrument and **42** counting the unprefixed
+    `ui_surface_changed` — the brief's expected **40** reproduces exactly at the parent of the
+    commit that added `invite_clear`, so the difference is an INSTRUMENT and a BASE, not a
+    defect).
+  - ⚠⚠ **THE LANE'S REAL DEFECT WAS NOT IN THE BRIEF: THE USER-TYPED NAME COULD BURN THE
+    INVITE.** `channel_label_ok` (qsc `lib.rs:2568-2573`) admits ONLY `[A-Za-z0-9_#-]`, non-empty
+    — **no spaces**. In `invite_redeem_at` the identifier `alias` occurs exactly three times (the
+    parameter at `:1033`, the provision call at `:1107`, the handshake call at `:1122`) and a
+    validation needle across `:1031-1105` returns **rc 1** — there is none. The capability BURNS
+    at `:1081`, twenty-five lines before the gate at `contacts/mod.rs:847`. So typing the most
+    natural thing in a field labelled *"Their name"* — **"Ben Smith"** — destroyed the user's
+    one-time code and returned `other`/`contacts_alias_invalid`. `R387` §S3 amended seal **Z3**
+    from *"non-empty"* to the engine's exact set, and the amended seal's control **types "Ben
+    Smith" and proves Connect DISABLED** — the control performs the operator-class defect
+    exactly. ⚠ The UI gate is DEFENCE, not a repair: the engine gap is filed as **`ENG-0236`**
+    and NOT patched (`qsc` frozen), because any other caller still loses the invite on a space.
+  - ⛳⛳ **14 OF THE 35 REDEEM-REACHABLE ARMS ALREADY HAD RULED COPY, AND FINDING THAT MADE THE
+    LANE CHEAPER.** The re-assembled STOP 002 measured `inviteErrorLine` (`ui/main.js:1808`) — a
+    shipped, ruled (`R380` §2/§5, `R381` §1), pure and total map — against the redeem census:
+    **14 covered, 21 uncovered**, and **three rows stating something FALSE on a redeem**. `R387`
+    §S2b ruled copy for **six** of the twenty-one (`malformed`, `expired`, `expired_at_relay`,
+    `already_used`, `already_redeemed`, `revoked` — the ordinary, expected outcomes), and §S2c
+    added a **`redeem` arm** to the residual's verb switch plus **verb-CONDITIONAL** rewording of
+    the three false rows. Create's ruled copy is untouched, and a seal proves it: a fix applied
+    globally would have silently overwritten Lane A's text.
+  - ⛳ **AND BOTH SECURITY TELLS ALREADY HAD RULED COPY, WRITTEN BY NA-0755 AND MARKED
+    "UNREACHABLE FROM LANE A — PREPARED FOR LANE B".** That collided with the design bank's
+    single S-F5 state. `R387` §S2a **COMPOSED** rather than discarding either: the shape is the
+    bank's (a dedicated state, Copy details / Close, **no Retry ever**, warning accent), the
+    operator's blessed callout ships **verbatim**, and one arm-specific line beneath it carries
+    the FIRST SENTENCE of the shipped copy — so substituted **KEYS** stay distinguishable from
+    altered **FIELDS**. Zero copy invented.
+  - ⚠⚠ **THE BRIEF'S REFERENCE MARKUP NAMED A CLASS THAT DOES NOT EXIST.** S6 opened every state
+    with `class="invite-surface"` and a comment calling it *"the v5 shared width class,
+    reused"*; that string occurs **ZERO** times in either UI file. The shipped class is
+    **`.modal`** (`ui/style.css:625-635`), whose `max-width: 500px` is the only one in the
+    stylesheet. Built verbatim, all four surfaces would have carried a class styling **nothing**
+    — the v4 geometry defect, re-run. `R387` §S4 accepted all nine measured deltas (Δ1..Δ9) and
+    recorded the brief's own error: the markup was written from a model, not from the bytes.
+  - ⚠ **THE BRIEF'S PIN FORMS DO NOT EXIST EITHER.** `&#8212;` / `&#8230;` / `&#8217;` occur
+    **zero** times in `ui/index.html`; the file ships literal UTF-8 everywhere except Lane A's
+    own invite block, which uses `&mdash;` / `&hellip;` / `&rsquo;` — and `ui/main.js` is
+    literal-only (166 em dashes, 0 entities). `R387` §S5 VOIDED that sentence: seals pin at the
+    **DOM `textContent`** level, immune to the choice, and this block adopts the measured local
+    neighbour forms so the file stays internally consistent. A seal pins the numeric forms'
+    continued ABSENCE.
+  - **Scope, and it held.** `ui/index.html`, `ui/main.js`, `ui/style.css` (three code files, the
+    same three the brief predicted), the new scenario `f_l_invite_redeem.json`, its
+    `gui_driver.rs` wrapper, six `design_polish.rs` seals, the inventory pin **171 → 178**
+    (growth only), `docs/mockups/` per the ordered amendment, and this record. **NEW SELECTORS: A
+    CLOSED SET OF TWO** — `.callout.warning` from the **preserved** `--warn-*` tokens (style.css's
+    own note kept them defined when `.warn` was renamed) and a modal-scoped `textarea` rule,
+    which is the app's **first**: `textarea` occurred zero times app-wide, so an unstyled one
+    would have rendered as a raw browser control inside a designed surface. `R387` §S4 refused
+    reuse of `.code-box` itself — a display box is not an input — but ruled that the new rule
+    carry its visual idiom. ZERO `.rs` product bytes, ZERO `Cargo.toml`/`Cargo.lock`, ZERO
+    `.github/**`, ZERO mockup beyond the ordered amendment.
+  - ⚠⚠ **THE ORDERED RETARGET BROKE THREE CONSUMERS, AND RUNNING FOUND ONE MORE THAN READING
+    DID.** Item 1 retargets both contact-making entries onto the chooser. A blast-radius sweep
+    found `design_polish.rs:1906` (a source-text pin on the exact handler line) and
+    `f_k_invite_create.json` (three clicks that then expect the mint). **Running found a
+    fourth**: `every_screen_transition_closes_the_invite_modal` also went RED — not because the
+    property broke, but because its slice was a fixed **1400-byte window** and one documented
+    line pushed `show()`'s closing brace outside it. The seal failed to FIND the body rather than
+    failing to find the call. The window is now the function's ACTUAL end, and the seal was
+    STRENGTHENED to require that `show()` close **both** overlays and that **neither** is a
+    `SCREENS` member. The scenario gained a chooser hop at each of its three entry clicks —
+    **a step added, never an assertion relaxed**.
+  - **What is DRIVEN, and what is not — the claim boundary, stated so silence is not read as
+    coverage.** `f_l_invite_redeem` (84 steps, real webview) drives the chooser and its finish
+    trigger, every copy pin as RENDERED text, the shared-width geometry across states, the
+    admissibility gate including the "Ben Smith" control, and a **live** `Connect` →
+    `invite_redeem` → **`malformed`** round trip — real, and needing no relay, because
+    `malformed` is decided at `invite/mod.rs:435-442` BEFORE any socket opens and is what a
+    truncated paste produces. ⚠ NOT driven here: a successful redeem, the "Request sent" state,
+    every relay-reported arm, and a finish that completes — all need a relay this repo still does
+    not have (**`ENG-0226`**, open). ⚠ And the two security tells are a **SPLIT CLAIM,
+    deliberately**: this scenario drives the STATE'S RENDERING (its copy, its warning accent
+    proven distinct from danger, the ABSENCE of any Retry), while the ENGINE path is driven for
+    the **first time ever** in the protocol-side facade drive, where a tampered byte makes the
+    tell actually fire. Neither half is dressed up as the other.
+  - **Filings, all four ids DERIVED at the edit, none patched (`qsc` frozen):** `ENG-0235` (the
+    comment-blind scanner property the NA-0755 close-out owed), `ENG-0236` (the alias reaches
+    `contacts:847` unvalidated, after the burn), `ENG-0237` (`FacadeError::RelayCaFile`'s doc
+    claims the specific code *"travels in `detail`"* — it is a UNIT variant and the DTO maps
+    `_ => None`, so the CA-file trio collapses to one code with no detail), `ENG-0238` (the
+    `Other` payload `QSC_ERR_RELAY_INBOX_TOKEN_REQUIRED` is SCREAMING_SNAKE and violates the
+    documented `^[a-z][a-z0-9_]*$` shape seal; reachable narrow-but-real, and it fires
+    post-burn). `ENG-0226`/`0227`/`0228`/`0229`/`0230`/`0231`/`0232`/`0233`/`0234` all stay OPEN,
+    untouched, as filed — the brief's item 13 named five of those nine, and an adopted next-id
+    would have COLLIDED with `ENG-0232`.
+  - ⚠ **Claim boundary.** No relay is reachable from the harness and none was made reachable, so
+    the GREEN half — a code actually pasted, a contact actually provisioned, a handshake actually
+    completing — is the operator's acceptance card, recorded [O]. Counterfactual red runs are
+    preserved 444 under `/srv/qbuild/operator/NA-0756/redruns/`, one per seal arm. Nothing is
+    merged by the seat; the operator merges.

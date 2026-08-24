@@ -1596,7 +1596,12 @@ fn the_invite_callout_uses_the_renamed_class_not_the_mockups_warn() {
 fn every_screen_transition_closes_the_invite_modal() {
     let js = ui_file("main.js");
     let start = js.find("function show(id) {").expect("show() exists");
-    let body = &js[start..start + 1400];
+    // ⚠ NA-0756: the slice now runs to the ACTUAL end of `show()` instead of a fixed
+    // 1400-byte window. The old bound was an INSTRUMENT limit, not the property: adding one
+    // documented line to the function pushed its closing brace outside the window and the
+    // seal failed to FIND the body rather than failing to find the call. A pin whose reach
+    // depends on how much comment a function carries measures the wrong thing.
+    let body = &js[start..];
     let end = body.find("\n}\n").expect("show() ends");
     let body = &body[..end];
     assert!(
@@ -1605,7 +1610,15 @@ fn every_screen_transition_closes_the_invite_modal() {
          nothing else can, and the autolock path (`show(\"scr-unlock\")`) is one of the \
          call sites this protects"
     );
-    // And the overlay is genuinely NOT in SCREENS: if it were added there, this
+    // NA-0756 (D-0037): the redeem overlay is held to the SAME rule and the seal now measures
+    // BOTH. A pasted invite code is a one-time capability exactly as a minted one is, and the
+    // second overlay would otherwise inherit the protection by luck rather than by check.
+    assert!(
+        body.contains("closeRedeemModal()"),
+        "show() MUST close the redeem overlay too — a pasted code is one-time capability and \
+         an autolock firing with the redeem surface open would leave it over the unlock screen"
+    );
+    // And the overlays are genuinely NOT in SCREENS: if either were added there, this
     // seal would be measuring a redundancy instead of the real boundary.
     let screens_start = js.find("const SCREENS = [").expect("SCREENS exists");
     let screens = &js[screens_start..screens_start + 200];
@@ -1613,6 +1626,10 @@ fn every_screen_transition_closes_the_invite_modal() {
         !screens.contains("invite-overlay"),
         "the overlay must stay OUT of SCREENS — putting it in would make it a navigation \
          destination and silently defeat the reason show() closes it"
+    );
+    assert!(
+        !screens.contains("redeem-overlay"),
+        "the redeem overlay must stay OUT of SCREENS for the same reason"
     );
 }
 
@@ -1901,11 +1918,16 @@ fn the_invite_code_box_wraps_and_is_selectable() {
 fn the_un_stubbing_is_handler_scoped_and_lane_cs_stub_survives() {
     let js = ui_file("main.js");
     let html = ui_file("index.html");
+    // ⚠ NA-0756 (D-0037, R387 §S4) — RETARGETED, and the pin moves WITH the change rather
+    // than being deleted. Item 1 orders both contact-making entries onto the chooser, so the
+    // welcome button now opens THAT; the property this seal exists for is unchanged — the
+    // button reaches a real flow and not the stub — and the load-bearing half below (exactly
+    // TWO stub revealers survive for Lane C) is untouched.
     assert!(
         js.contains(
-            r#"byId("btn-add-contact").addEventListener("click", () => openInviteModal());"#
+            r#"byId("btn-add-contact").addEventListener("click", () => openRedeemChooser());"#
         ),
-        "the welcome button opens the real flow"
+        "the welcome button opens the real flow — the chooser, since NA-0756"
     );
     // The element and BOTH Lane-C revealers are still here.
     assert!(
@@ -2431,5 +2453,275 @@ fn the_chip_and_its_action_are_laid_out_on_one_row() {
     assert!(
         css[row..(row + 220).min(css.len())].contains("align-items: center;"),
         "the row centres the text block and the cluster against each other"
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// NA-0756 (D-0037, R387) — INVITE LANE B: THE REDEEM FLOW
+//
+// These are SOURCE-side seals. The rendered half is driven in `f_l_invite_redeem` against
+// the real webview; what lives here is what a running app cannot show — the shipped BYTES
+// of blessed copy, the ABSENCE of controls that must never exist, and the places where a
+// future edit could quietly undo a ruling without changing anything visible.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// Z1 — THE BLESSED COPY, PINNED IN ITS SHIPPED SOURCE FORM.
+///
+/// ⚠ MUST GO RED IF: one byte of the operator's authored text changes. The rendered pins in
+/// the scenario prove what the user SEES; this proves what SHIPS, and they are different
+/// checks — a renderer that computed the sentence would pass the first and fail this.
+///
+/// ⚠ THE ENTITY FORM IS PART OF THE PIN, and it is the MEASURED local one. R387 §S5 voided
+/// the brief's `&#8212;`/`&#8230;`/`&#8217;` sentence: those forms occur ZERO times in this
+/// tree. Lane A's own block uses `&mdash;`/`&hellip;`/`&rsquo;` and this block matches it.
+#[test]
+fn na0756_the_redeem_copy_ships_in_its_blessed_form() {
+    let html = ui_file("index.html");
+    let start = html
+        .find(r#"id="redeem-overlay""#)
+        .expect("the redeem overlay exists");
+    let modal = &html[start..];
+
+    // The operator's own chooser sentence, with the doubled word he typed removed at banking.
+    assert!(
+        modal.contains("Invitations are how contacts are added. One person creates an invite code and the other accepts the code."),
+        "the chooser's blessed sentence ships verbatim"
+    );
+    // State 1: the intro, the name field's caption, and the standing hint.
+    assert!(
+        modal.contains("Paste the invite code they sent you, and choose what to call them. You&rsquo;ll connect through their relay."),
+        "state 1's intro ships verbatim, in the house entity form"
+    );
+    assert!(
+        modal.contains("Their name (only you see this)"),
+        "the name caption ships verbatim"
+    );
+    assert!(
+        modal.contains("Stored only on this device."),
+        "the standing hint ships verbatim"
+    );
+    // State 2: the body and the accent callout.
+    assert!(
+        modal.contains(
+            "When they approve you on their device, the connection completes automatically."
+        ),
+        "state 2's body ships verbatim"
+    );
+    assert!(
+        modal.contains("Until you both verify by comparing codes,"),
+        "state 2's callout ships verbatim"
+    );
+    // The security-failure state's title and callout.
+    assert!(
+        modal.contains("<h2>Couldn&rsquo;t make a secure connection</h2>"),
+        "the failure title ships verbatim, apostrophe in the house entity form"
+    );
+    assert!(
+        modal.contains("This code failed its security checks &mdash; that can mean a bug, or that someone tampered with the invite. Nothing was set up, and this code can no longer be used. Reach them another way and ask for a fresh invite."),
+        "the operator's blessed failure callout ships VERBATIM — R387 §S2a composed rather \
+         than replaced it, so this text is untouched"
+    );
+    // ⚠ And the numeric-entity forms the brief named must NOT appear: they exist nowhere in
+    // this tree, and adopting them here would split the file's own convention in two.
+    assert!(
+        !modal.contains("&#8212;") && !modal.contains("&#8230;") && !modal.contains("&#8217;"),
+        "the numeric entity forms are VOID per R387 §S5 — the house forms are named entities"
+    );
+}
+
+/// Z4 — NO RETRY EXISTS IN THE SECURITY-FAILURE STATE, PINNED AS AN ABSENCE IN THE SOURCE.
+///
+/// ⚠ MUST GO RED IF: anyone adds one. This is not caution — it is FACT. The capability burns
+/// at `invite/mod.rs:1081`, the instant the relay answers, and the verification that produces
+/// these two arms runs at `:1101`, AFTER. A retry would return `already_redeemed`, so a Retry
+/// button here would be a control whose only possible outcome is a second, more confusing
+/// error.
+#[test]
+fn na0756_the_security_failure_state_offers_no_retry() {
+    let html = ui_file("index.html");
+    let start = html
+        .find(r#"id="redeem-failed""#)
+        .expect("the state exists");
+    let state = &html[start..];
+    let end = state.find("</div>\n    </div>").unwrap_or(state.len());
+    let state = &state[..end];
+    let lowered = state.to_lowercase();
+    assert!(
+        !lowered.contains("retry") && !lowered.contains("try again"),
+        "NO Retry control may exist in the security-failure state — the code is already burned"
+    );
+    // The two buttons that DO exist are pinned positively, so the absence above cannot be
+    // satisfied by an empty state.
+    assert!(
+        state.contains(r#"id="btn-redeem-copydetails""#)
+            && state.contains(r#"id="btn-redeem-close2""#),
+        "the ruled pair — Copy details / Close — is present, so the Retry absence is measured \
+         against a state that really has controls"
+    );
+}
+
+/// Z3 — THE ADMISSIBILITY GATE MIRRORS THE ENGINE'S OWN SET, EXACTLY.
+///
+/// ⚠ MUST GO RED IF: the JS predicate drifts from `channel_label_ok`
+/// (qsc `lib.rs:2568-2573`: non-empty AND every char in `[A-Za-z0-9_#-]`). A drift in the
+/// PERMISSIVE direction is the dangerous one — it re-opens the burn-before-validation defect
+/// this gate exists to defend against, and it would do so silently, because the failure only
+/// appears after a real invite is destroyed.
+///
+/// ⚠ The engine gap itself is ENG-0236, filed and NOT patched: the front end being careful
+/// does not make the engine safe, and any other caller of `invite_redeem` still loses the
+/// invite on a space.
+#[test]
+fn na0756_the_name_gate_mirrors_the_engine_predicate() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"const REDEEM_NAME_RE = /^[A-Za-z0-9_#-]+$/;"#),
+        "the JS predicate must be the engine's set character-for-character"
+    );
+    // The gate is consulted in BOTH places that can commit: the enable/disable path AND the
+    // handler. A gate that lives only in the first is one keyboard event from being bypassed.
+    assert!(
+        js.contains("byId(\"btn-redeem-connect\").disabled = !(code !== \"\" && nameOk);"),
+        "the button arms only on code non-empty AND an admissible name"
+    );
+    assert!(
+        js.contains(r#"if (code === "" || !redeemNameOk(name)) { redeemSyncConnect(); return; }"#),
+        "and the commit handler refuses independently of the button's state"
+    );
+}
+
+/// Z5 — THE RULED COPY SET IS PRESENT, AND THE REDEEM PATH CANNOT SPEAK THE CREATE VERB.
+///
+/// ⚠ MUST GO RED IF: a redeem failure falls through to "Couldn't create the invite", or to a
+/// detail sentence that says something false on this path. Measured at STOP 002: 21 of the 35
+/// redeem-reachable wire codes had NO copy and rendered a raw engine token, and THREE shipped
+/// rows stated something false on a redeem.
+#[test]
+fn na0756_the_redeem_copy_set_is_ruled_and_verb_true() {
+    let js = ui_file("main.js");
+    // The six arms that had no copy at all (R387 §S2b).
+    for (code, banner) in [
+        ("malformed", "That code isn't readable"),
+        ("expired", "This invite has expired"),
+        ("expired_at_relay", "This invite has expired"),
+        ("already_used", "This code has already been used"),
+        ("already_redeemed", "You've already used this code"),
+        ("revoked", "This invite was cancelled"),
+    ] {
+        assert!(
+            js.contains(&format!("c === \"{code}\"")),
+            "the `{code}` arm must be named"
+        );
+        assert!(
+            js.contains(banner),
+            "the ruled banner for `{code}` must ship verbatim"
+        );
+    }
+    // The residual's verb switch gained a redeem arm (R387 §S2c).
+    assert!(
+        js.contains(r#": verb === "redeem" ? "Couldn't add the contact""#),
+        "the residual must name the REDEEM verb, not fall through to the create string"
+    );
+    // ⚠ And create's ruled copy is UNTOUCHED — the rewording is verb-CONDITIONAL, which is
+    // the whole reason it is safe. If this disappears, the redeem fix has been applied
+    // globally and Lane A's ruled copy has been silently overwritten.
+    assert!(
+        js.contains(r#"banner: "The relay didn't create the invite""#),
+        "create's ruled relay_rejected copy must survive untouched"
+    );
+    assert!(
+        js.contains(r#"detail: "Nothing was added — their relay couldn't be reached, or it refused the request. Check the code is complete, and try again in a moment." };"#),
+        "and the redeem path must have its OWN, verb-true sentence"
+    );
+    // The ENG-0228 both-positions guard is REUSED, not re-derived: the same string is a
+    // `code` for one input and a `detail` for another, and position is all that separates them.
+    assert_eq!(
+        js.matches("INVITE_ENDPOINT_DETAILS.includes(c) || (c === \"other\" && INVITE_ENDPOINT_DETAILS.includes(d))")
+            .count(),
+        2,
+        "both the create and redeem endpoint branches use the SAME both-positions guard"
+    );
+}
+
+/// Z6 — THE FINISH TRIGGERS COMPARE BY EQUALITY, AND NOTHING POLLS.
+///
+/// ⚠ MUST GO RED IF: a `contains`/`includes` creeps into the state comparison, or a timer
+/// appears in this lane. `connect_status.state` is a CLOSED SET OF TWO — "active" |
+/// "inactive" — so equality is available and a substring test would be the 187-day prefix
+/// lesson waiting to happen (`established` versus `established_recv_only`).
+#[test]
+fn na0756_the_finish_triggers_use_equality_and_add_no_timer() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"if (st.state !== "inactive") continue;"#),
+        "the pending predicate must be an EQUALITY test on the extracted value"
+    );
+    assert!(
+        js.contains("if (done === true) marks.finished += 1;"),
+        "the finish outcome must be compared by equality, never by truthiness"
+    );
+    // Both triggers exist, and trigger (b) is on the CHOOSER's opener — R387 §S6. Item 1
+    // retargets both entries there, so a trigger left on the create modal would cover only
+    // half the doors.
+    assert!(
+        js.contains(r#"await inviteFinishScanPending("unlock");"#),
+        "trigger (a) rides the unlock landing"
+    );
+    let start = js
+        .find("async function openRedeemChooser()")
+        .expect("the chooser opener exists");
+    let body = &js[start..];
+    let end = body.find("\n}\n").expect("it ends");
+    assert!(
+        body[..end].contains(r#"await inviteFinishScanPending("surface_open");"#),
+        "trigger (b) rides the CHOOSER's opener, which is where BOTH retargeted entries land"
+    );
+    // ⚠ NO TIMER. The lane adds none and touches none; the app's only standing interval is
+    // the idle autolock. Counted, not eyeballed: three setInterval sites existed at the base
+    // and three must exist now.
+    assert_eq!(
+        js.matches("setInterval(").count(),
+        3,
+        "this lane adds NO timer, no poll and no background loop — the three that exist are \
+         the unlock countdown, the erase countdown and the idle autolock"
+    );
+}
+
+/// Z2 — THE TWO NEW SELECTORS ARE THE CLOSED SET, AND NEITHER INVENTS A COLOUR OR A WIDTH.
+///
+/// ⚠ MUST GO RED IF: a third selector appears, a literal hex enters them, or a new width
+/// value is minted. R387 §S4 fixed the set at exactly two. The width must come from `.modal`,
+/// which expresses 500px EXACTLY ONCE for the whole app — the v5 cure for a surface that
+/// resized as the user moved through one flow.
+#[test]
+fn na0756_the_new_selectors_are_token_only_and_add_no_width() {
+    let css = ui_file("style.css");
+    assert!(
+        css.contains(".callout.warning {"),
+        "the warning modifier exists"
+    );
+    assert!(
+        css.contains(".modal textarea {"),
+        "the modal textarea rule exists"
+    );
+    // Tokens are the colour authority — never the mockup's hex.
+    let wstart = css.find(".callout.warning {").expect("found");
+    let wend = wstart + css[wstart..].find('}').expect("rule ends");
+    let warn_rule = &css[wstart..wend];
+    assert!(
+        warn_rule.contains("var(--warn-bg)") && warn_rule.contains("var(--warn-border)"),
+        "the warning callout uses the SHIPPED --warn-* tokens, which style.css:286 kept \
+         defined for exactly this"
+    );
+    assert!(
+        !warn_rule.contains('#'),
+        "no literal hex may enter it — tokens are the authority"
+    );
+    // ⚠ The surface width is still expressed exactly ONCE in the whole stylesheet.
+    assert_eq!(
+        css.matches("max-width: 500px").count(),
+        1,
+        "the shared width must stay expressed exactly once — a second copy is how the states \
+         drift apart again"
     );
 }
