@@ -488,6 +488,128 @@
   </div>
 </div>
 
+<!-- ══ NA-0756 (D-0037, R387) — INVITE LANE B: THE REDEEM FLOW ═════════════════════
+     The stopgap chooser plus the redeem states. ONE overlay, FOUR sibling views, and the
+     surface width comes from `.modal` — the v5 shared 500px class, expressed exactly once
+     at style.css:631 and REUSED here. R387 S4 accepted Δ1..Δ9: the brief's S6 named
+     `.invite-surface`, a class that does not exist, and building it verbatim would have
+     shipped four widthless surfaces — the v4 geometry defect again.
+
+     ⚠ Entity forms are the MEASURED local neighbour set (&mdash; / &hellip; / &rsquo;),
+     which is what Lane A's own block above already uses. The brief specified the NUMERIC
+     DECIMAL forms of those same three characters instead; they occur nowhere in this tree,
+     and that sentence is VOID per R387 S5.
+
+     ⚠⚠ THAT SENTENCE IS DESCRIBED HERE AND DELIBERATELY NOT SPELLED. Writing the numeric
+     forms out — even in order to say they are absent — PUTS THEM IN THIS FILE and makes the
+     claim self-falsifying; a source-text scanner cannot tell a comment from markup
+     (ENG-0235). This is the plant hazard NA-0754 recorded three times, and it fired here on
+     the first draft of this very block: the seal's slice began below, so the polluted comment
+     sat ABOVE it and passed. The seal now reads the WHOLE file for exactly that reason.
+
+     Copy seals pin at the DOM textContent level, so they are immune to this choice either
+     way.
+
+     ⚠ Like the invite overlay, this is a body-level overlay and deliberately NOT a `SCREENS`
+     member, so `show()` closes it structurally (main.js:98) rather than by remembering. -->
+<div id="redeem-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="redeem-title">
+  <div class="modal">
+
+    <!-- ── THE CHOOSER (stopgap entry; the New-chat panel replaces it in Lane C) ──
+         ⚠⚠ v2 — THE GEOMETRY IS PART OF THE DESIGN, AND v1 PROVED IT BY OMISSION. The Lane B
+         reference markup pinned structure and copy but said nothing about layout, so the build
+         packed both controls onto ONE line at content width, offered no way back out of the
+         surface, and left each choice to a bare two-word label. That is the v4 defect one lane
+         later, from the same cause: what is not pinned is not shipped. The bank's v2 geometry
+         section is the cure, and this block obeys it — every control spans the modal's content
+         box and they STACK. There are no side-by-side controls on this surface.
+
+         ⚠ THE WIDTH IS STILL NOT EXPRESSED HERE. It comes from `.modal`, the v5 shared 500px
+         class stated exactly once in the stylesheet, and this pass mints no second one.
+
+         The two choices are TWO-LINE rows — a title line with a muted line beneath it, the
+         whole row clickable — so a row says what it DOES instead of making the reader infer it
+         from two bare labels. That is the shipped list-row idiom (`.invite-row-head` /
+         `.invite-row-meta`) re-expressed for a control, not a new invention. Close is the Lane A
+         idiom: a full-width secondary at the foot of the surface.
+
+         ⚠ THE RETIRED v1 SHAPE IS DESCRIBED HERE AND DELIBERATELY NEVER SPELLED. Writing the old
+         tag form out — even in order to say it is gone — would put it back into this file and
+         make the seal that forbids it self-falsifying, because a source-text scanner cannot tell
+         a comment from markup (ENG-0235, the plant hazard that already fired once in this lane).
+         The seal matches the SHIPPED FORM, never these words. -->
+    <div id="choose-view">
+      <div class="modal-head"><h2 id="redeem-title">Add a contact</h2></div>
+      <p class="muted">Invitations are how contacts are added. One person creates an invite code and then shares it with the person they want to add.</p>
+      <button id="btn-choose-create" class="secondary full choose-row">
+        <span class="choose-row-title">Invite someone</span>
+        <span class="choose-row-sub">Create a one-time code to send to a person you trust</span>
+      </button>
+      <button id="btn-choose-redeem" class="secondary full choose-row">
+        <span class="choose-row-title">I have a code</span>
+        <span class="choose-row-sub">Enter an invite code someone sent you</span>
+      </button>
+      <div class="block"><button id="btn-choose-close" class="secondary full">Close</button></div>
+    </div>
+
+    <!-- ── STATE 1: ADD A CONTACT (single view, ONE commit gesture) ──
+         The engine provisions the contact INSIDE invite_redeem and the facade has no rename
+         verb, so the name is collected BEFORE Connect, not after. mockup-15's two-step order
+         is superseded; see docs/mockups/mockup-15-add-contact.html's superseded-by note. -->
+    <div id="redeem-form" class="hidden">
+      <div class="modal-head"><h2>Add a contact</h2></div>
+      <p class="muted">Paste the invite code they sent you, and choose what to call them. You&rsquo;ll connect through their relay.</p>
+      <span class="field-label" id="redeem-code-caption">Invite code</span>
+      <textarea id="redeem-code" class="full" autocomplete="off" spellcheck="false" placeholder="QSLI-1-&hellip;" aria-labelledby="redeem-code-caption"></textarea>
+      <span class="field-label" id="redeem-name-caption">Their name (only you see this)</span>
+      <input type="text" id="redeem-name" class="full" autocomplete="off" spellcheck="false" placeholder="Ben" aria-labelledby="redeem-name-caption">
+      <!-- ⚠ TWO HINTS, ONE SLOT. The standing hint is the truth while the field is empty or
+           valid; the name hint replaces it while the typed name is inadmissible to the
+           engine's own predicate. R387 S3 amended Z3 for this: `channel_label_ok` admits only
+           [A-Za-z0-9_#-], the alias is NOT validated until 25 lines AFTER the invite burns
+           (qsc invite/mod.rs :1107 vs the burn at :1081), so a name with a space would
+           destroy the code. The gate is defence; ENG-0236 is the defect's record. -->
+      <p class="hint" id="redeem-name-hint">Stored only on this device.</p>
+      <div class="block"><button id="btn-redeem-connect" class="primary full" disabled>Connect</button></div>
+      <div id="redeem-error" class="hidden">
+        <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+        <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+      </div>
+    </div>
+
+    <!-- ── STATE 2: REQUEST SENT ──
+         "completes automatically" is made TRUE by the two finish triggers (unlock, and the
+         chooser opening), not by decoration. NAME is inserted at render and never pinned. -->
+    <div id="redeem-sent" class="hidden">
+      <div class="modal-head"><h2>Request sent</h2></div>
+      <p class="muted">Your details are on their way to <span id="redeem-sent-name"></span>. When they approve you on their device, the connection completes automatically.</p>
+      <div class="callout">Until you both verify by comparing codes, <span id="redeem-sent-name2"></span> shows as <b>Not verified</b>.</div>
+      <div class="block"><button id="btn-redeem-close" class="secondary full">Close</button></div>
+    </div>
+
+    <!-- ── THE SECURITY-FAILURE STATE (S-F5) ──
+         Fires on commitment_mismatch / signature_invalid only. Warning accent, NEVER red —
+         red stays reserved for vault loss. NO Retry control exists here, and that is FACT
+         rather than caution: the capability burned at qsc invite/mod.rs:1081, BEFORE the
+         verification at :1101, so a retry would return already-redeemed.
+
+         ⚠ R387 S2(a) COMPOSED the two ruled texts rather than discarding either: the
+         operator-blessed callout ships VERBATIM as the constant, and one arm-specific line
+         beneath it carries the FIRST SENTENCE of the shipped R380 §5 copy, so substituted
+         KEYS stay distinguishable from altered FIELDS. -->
+    <div id="redeem-failed" class="hidden">
+      <div class="modal-head"><h2>Couldn&rsquo;t make a secure connection</h2></div>
+      <div class="callout warning">This code failed its security checks &mdash; that can mean a bug, or that someone tampered with the invite. Nothing was set up, and this code can no longer be used. Reach them another way and ask for a fresh invite.</div>
+      <p class="hint" id="redeem-failed-detail"></p>
+      <div class="btnrow">
+        <button id="btn-redeem-copydetails" class="secondary">Copy details</button>
+        <button id="btn-redeem-close2" class="secondary">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 
 <script src="main.js"></script>
 </body>

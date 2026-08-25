@@ -96,6 +96,11 @@ function show(id) {
   // alternative is a habit that must be re-derived at each new call site, and a
   // habit that must be re-derived is not a control.
   closeInviteModal();
+  // NA-0756 (D-0037): the redeem overlay is held to the SAME structural rule for the SAME
+  // reason — a pasted invite code is a one-time capability, and an autolock firing with the
+  // redeem surface open would otherwise leave it rendered over the unlock screen. One line
+  // here covers every transition including ones not yet written.
+  closeRedeemModal();
   for (const s of SCREENS) byId(s).classList.toggle("hidden", s !== id);
   currentScreen = id;
   // Item 15 (R1): the backend disables the state-dependent menu entries
@@ -695,6 +700,12 @@ async function enterMain() {
     reason = null;
   }
   byId("status-line").textContent = statusFooterLine(reason, relayUrl);
+  // ⚠ NA-0756 (D-0037) — FINISH TRIGGER (a), at vault unlock: one bounded scan per contact
+  // that is still establishing. It runs LAST so a finish failure cannot cost the footer, and
+  // it is awaited rather than fired-and-forgotten so the harness can observe its outcome.
+  // The wizard branch does not reach here, which is correct and measured: a vault being
+  // created has no contacts to scan.
+  await inviteFinishScanPending("unlock");
 }
 // NA-0755 (D-0036): UN-STUBBED. This button now opens the real invite flow.
 //
@@ -703,7 +714,11 @@ async function enterMain() {
 // the Contacts pane is Lane C and is still unbuilt, so the honest stub is still
 // the truth on those paths. Only THIS handler stops revealing it — which is why
 // the seal is scoped to this handler and not to the element's existence.
-byId("btn-add-contact").addEventListener("click", () => openInviteModal());
+// NA-0756 (D-0037, R387 §S4): RETARGETED to the chooser. Both contact-making acts now live
+// behind one entry — "Invite someone" reaches the mint, "I have a code" reaches the redeem
+// flow. The chooser is a STOPGAP: Lane C replaces it with the New-chat panel, and the panel
+// IS the chooser plus the contacts list (design bank §1).
+byId("btn-add-contact").addEventListener("click", () => openRedeemChooser());
 byId("btn-rail-contacts").addEventListener("click", () => {
   byId("stub-note").classList.remove("hidden");
 });
@@ -1808,6 +1823,33 @@ const INVITE_ENDPOINT_DETAILS = [
 function inviteErrorLine(code, detail, verb) {
   const c = String(code || "");
   const d = String(detail || "");
+  // ── NA-0756 (D-0037, R387 §S2c) — THE REDEEM PATH'S VERB-CONDITIONAL ROWS. ──
+  // THREE shipped rows state something FALSE on a redeem, so they are reworded HERE and
+  // ONLY here; create's ruled copy below is untouched, which is what "verb-CONDITIONAL"
+  // means. The falsehood is in the DETAIL for two of them and in BOTH halves for the third:
+  //   relay_rejected  its banner names the CREATE verb outright, so the banner moves to the
+  //                   ruled redeem one; nothing is invented, both halves are ruled strings
+  //   not_found       "This app has no record" is backwards — on a redeem it is THEIR relay
+  //                   that has no record; the banner stays true and only the detail moves
+  //   endpoint family the "Settings → Relay" pointer is wrong where the address came from
+  //                   the PASTED CODE, not from local configuration; banner stays true
+  // ⚠ The endpoint test reuses the shipped BOTH-POSITIONS guard verbatim: the same string is
+  // a `code` for one input and a `detail` for another (ENG-0228), and position is the only
+  // thing that separates them.
+  if (verb === "redeem") {
+    if (c === "relay_rejected") {
+      return { banner: "Couldn't add the contact",
+        detail: "Nothing was added — their relay couldn't be reached, or it refused the request. Check the code is complete, and try again in a moment." };
+    }
+    if (c === "not_found") {
+      return { banner: "That invite is already gone",
+        detail: "Their relay has no record of this invite. It may have been revoked or already cleaned up — ask them for a fresh one." };
+    }
+    if (INVITE_ENDPOINT_DETAILS.includes(c) || (c === "other" && INVITE_ENDPOINT_DETAILS.includes(d))) {
+      return { banner: "Relay address isn't usable",
+        detail: "This code's relay address isn't usable, so the code may be damaged or incomplete. Ask them to send it again." };
+    }
+  }
   if (c === "relay_tls_untrusted") {
     return { banner: "Certificate not trusted",
       detail: "This relay presented a certificate your computer doesn't recognise. That's expected if the operator runs their own certificate authority — and it's also what an interception attack looks like. Add their CA certificate under Settings → Relay." };
@@ -1871,8 +1913,50 @@ function inviteErrorLine(code, detail, verb) {
     return { banner: "The vault couldn't be read",
       detail: `The vault couldn't be read. If this keeps happening, check Settings → Vault.${suffix}` };
   }
-  // ── UNREACHABLE FROM LANE A — PREPARED FOR LANE B (R380 §5). No seal: a seal that cannot
-  // fail is not a seal. Both are produced only inside `verify_redeemed_bundle`.
+  // ── NA-0756 (D-0037, R387 §S2b) — SIX ARMS THAT HAD NO COPY AT ALL. ──
+  // Measured at STOP 002: 21 of the 35 redeem-reachable wire codes fell through to the
+  // residual, which rendered a raw engine token under a banner naming the wrong verb. These
+  // six are the ORDINARY, EXPECTED outcomes of pasting a code — `malformed` alone is the
+  // likeliest failure in the whole flow, since it is what a truncated paste produces — and
+  // they are ruled here for EVERY invite verb, because a total map stays total.
+  // ⚠ `malformed` is DUAL-PROVENANCE (local parse at invite/mod.rs:435-442, and the relay's
+  // own ERR_INVITE_BAD_BODY at transport:4195). The facade cannot separate them, so the copy
+  // must be true of both: it names the code, never the party.
+  if (c === "malformed") {
+    return { banner: "That code isn't readable",
+      detail: "Check the whole code was pasted — it starts with QSLI-1-. If it looks complete, ask them to send it again." };
+  }
+  if (c === "expired") {
+    return { banner: "This invite has expired",
+      detail: "Invite codes only last a few days. Ask them for a fresh one." };
+  }
+  // ⚠ DELIBERATELY DISTINCT from `expired`: the relay clamps expiry against ITS clock, so a
+  // local "alive" against a relay "expired" is a NORMAL outcome, and collapsing the two would
+  // blame the user's clock for a relay ceiling (invite/mod.rs:113-116).
+  if (c === "expired_at_relay") {
+    return { banner: "This invite has expired",
+      detail: "Their relay reports this invite expired. Ask them for a fresh one." };
+  }
+  // ⚠ `already_used` is the RELAY's claim; `already_redeemed` is THIS client's own record —
+  // the arm that survives a hostile relay. Two different facts, two different sentences.
+  if (c === "already_used") {
+    return { banner: "This code has already been used",
+      detail: "Their relay reports this invite was already used. If that wasn't you, ask them for a fresh invite through a channel you trust." };
+  }
+  if (c === "already_redeemed") {
+    return { banner: "You've already used this code",
+      detail: "This device already accepted this invite. If the contact hasn't appeared yet, they may not have approved it on their side." };
+  }
+  if (c === "revoked") {
+    return { banner: "This invite was cancelled",
+      detail: "The person who created it revoked this invite. Ask them for a new one." };
+  }
+  // ── PREPARED FOR LANE B BY R380 §5, AND LANE B IS THE LANE THAT REACHES THEM. ──
+  // Both are produced only inside `verify_redeemed_bundle`, so NA-0755 could not seal them —
+  // "a seal that cannot fail is not a seal". NA-0756 drives both from the facade, so they are
+  // sealable at last. The strings below are UNCHANGED from R380 §5; the redeem flow ROUTES
+  // these two codes to the dedicated security-failure STATE rather than this inline box
+  // (R387 §S2a), and a total map stays total, so the arms remain here for every other caller.
   if (c === "commitment_mismatch") {
     return { banner: "This invite's keys don't match",
       detail: "The keys in this invite don't match what it commits to. Someone may be interfering. Ask the person who sent it for a new invite through a different channel." };
@@ -1884,6 +1968,8 @@ function inviteErrorLine(code, detail, verb) {
   const shown = c === "other" && d ? d : c || "unknown";
   return { banner: verb === "revoke" ? "Couldn't revoke the invite"
          : verb === "clear" ? "Couldn't remove the invite"
+         // NA-0756 (R387 §S2c): without this arm a redeem fell through to the CREATE string.
+         : verb === "redeem" ? "Couldn't add the contact"
          : "Couldn't create the invite",
     detail: "The relay or this app reported: " + shown };
 }
@@ -2233,13 +2319,248 @@ byId("btn-invite-back").addEventListener("click", async () => {
   inviteEnterMintFresh();     // ⚠ the v3 fix: this path is the one that leaked the old label
   await inviteRefresh();
 });
-byId("btn-invite-open").addEventListener("click", () => openInviteModal());
+byId("btn-invite-open").addEventListener("click", () => openRedeemChooser());
 byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
 byId("invite-overlay").addEventListener("click", (ev) => {
   if (ev.target === byId("invite-overlay")) closeInviteModal();
 });
 document.addEventListener("keydown", (ev) => {
   if (ev.key === "Escape") closeInviteModal();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// NA-0756 (D-0037, R387) — INVITE LANE B: THE REDEEM FLOW
+// ═══════════════════════════════════════════════════════════════════════════════════════
+//
+// The app's SECOND contact-making act, and the first time anything has driven
+// `invite_redeem` / `invite_accept` / `invite_finish` from a GUI. All three verbs were
+// already registered at NA-0751/0755, so ZERO `.rs` product bytes are touched.
+//
+// ⚠⚠ THE SHAPE IS FORCED BY THE ENGINE, not chosen. Measured at qsc d3fefd12:
+//   · `invite_redeem(code, alias, self_label)` PROVISIONS the contact inside the call and
+//     the facade has NO rename verb  ⇒  the name is collected BEFORE Connect, not after.
+//     mockup-15's two-step "connect, then name them" order is superseded by this fact.
+//   · The capability BURNS at invite/mod.rs:1081, the instant the relay answers, and the
+//     verification that can reject it runs at :1101 — AFTER. ⇒ Connect is irreversible and
+//     there is no honest Retry anywhere in this flow.
+//   · `invite_finish` scans the redeemer's OWN inbox, bounded (8 pulls × 16 frames), and
+//     returns found / not-yet. "Not yet" is silent and normal, never an error.
+
+// The four views of the one overlay. `null` is the closed state.
+const REDEEM_VIEWS = ["choose-view", "redeem-form", "redeem-sent", "redeem-failed"];
+
+// ⚠ THE ENGINE'S OWN PREDICATE, MIRRORED. `channel_label_ok` (qsc lib.rs:2568-2573) admits
+// non-empty AND every char in [A-Za-z0-9_#-] — NO SPACES. The alias is NOT validated anywhere
+// before the burn (its only uses in `invite_redeem_at` are the parameter at :1033 and the two
+// consumers at :1107/:1122), so without this mirror a name like "Ben Smith" would destroy the
+// user's one-time code and then report `other`/`contacts_alias_invalid`.
+// This gate is DEFENCE. The engine gap itself is filed as ENG-0236 — the front end being
+// careful does not make the engine safe, and the filing is the defect's record.
+const REDEEM_NAME_RE = /^[A-Za-z0-9_#-]+$/;
+function redeemNameOk(v) { return REDEEM_NAME_RE.test(v); }
+
+const REDEEM_NAME_HINT_OK = "Stored only on this device.";
+const REDEEM_NAME_HINT_BAD = "Names here can use letters, numbers, and - _ # — no spaces. It stays on your device.";
+
+function redeemShow(view) {
+  for (const v of REDEEM_VIEWS) byId(v).classList.toggle("hidden", v !== view);
+}
+
+// ⚠ STRUCTURAL, not remembered. Called from `show()` (see :98's sibling call) so every screen
+// transition — including the autolock — clears a pasted code rather than leaving it rendered
+// over the unlock screen. The pasted code is a one-time capability and is held to the same
+// rule as the minted one.
+function closeRedeemModal() {
+  const ov = byId("redeem-overlay");
+  if (!ov || ov.classList.contains("hidden")) return;
+  ov.classList.add("hidden");
+  byId("redeem-code").value = "";
+  byId("redeem-name").value = "";
+  byId("redeem-failed-detail").textContent = "";
+  redeemLastDetail = "";
+  redeemClearError();
+  redeemSyncConnect();
+  redeemShow("choose-view");
+}
+
+function redeemClearError() { byId("redeem-error").classList.add("hidden"); }
+
+function redeemRenderError(code, detail) {
+  const line = inviteErrorLine(code, detail, "redeem");
+  const box = byId("redeem-error");
+  setBanner(box.querySelector(".status-banner"), "accent", line.banner);
+  box.querySelector(".hint").textContent = line.detail;
+  box.classList.remove("hidden");
+}
+
+// ⚠ THE SINGLE-COMMIT GATE. Connect arms only when the code is non-empty AND the name is
+// admissible to the engine's own set — R387 §S3 amended Z3 from "non-empty" to this. The hint
+// slot carries the standing sentence while the field is empty or valid, and names the
+// constraint in the user's words while it is not.
+function redeemSyncConnect() {
+  const code = byId("redeem-code").value.trim();
+  const name = byId("redeem-name").value.trim();
+  const nameOk = redeemNameOk(name);
+  byId("btn-redeem-connect").disabled = !(code !== "" && nameOk);
+  byId("redeem-name-hint").textContent =
+    (name !== "" && !nameOk) ? REDEEM_NAME_HINT_BAD : REDEEM_NAME_HINT_OK;
+}
+
+// The two arms of the ruled security-failure state. R387 §S2a COMPOSED the two ruled texts:
+// the operator's blessed callout is the constant in the markup, and this line beneath it
+// carries the FIRST SENTENCE of the shipped R380 §5 copy for the SPECIFIC arm — so
+// substituted KEYS stay distinguishable from altered FIELDS, which is the standing security
+// principle. The remainder of those shipped sentences (interference, ask for a fresh invite)
+// is already carried by the blessed callout, and duplication is noise.
+const REDEEM_TELL_DETAIL = {
+  commitment_mismatch: "The keys in this invite don't match what it commits to.",
+  signature_invalid: "This invite's signature doesn't check out — its contents have been changed since it was made.",
+};
+let redeemLastDetail = "";
+
+function redeemShowSecurityFailure(code) {
+  redeemLastDetail = REDEEM_TELL_DETAIL[code] || "";
+  byId("redeem-failed-detail").textContent = redeemLastDetail;
+  // ⚠ The wire code rides the LOCAL diagnostic only. Nothing here is sent anywhere.
+  byId("redeem-failed").dataset.arm = code;
+  redeemShow("redeem-failed");
+}
+
+async function openRedeemChooser() {
+  redeemClearError();
+  byId("redeem-code").value = "";
+  byId("redeem-name").value = "";
+  redeemSyncConnect();
+  redeemShow("choose-view");
+  byId("redeem-overlay").classList.remove("hidden");
+  // ⚠ TRIGGER (b), and it attaches HERE rather than to the create modal. R387 §S6: item 1
+  // retargets BOTH entries to this chooser, so a trigger left on `openInviteModal` would fire
+  // only on the create branch and the redeem branch would silently lose it.
+  await inviteFinishScanPending("surface_open");
+}
+
+// ── THE FINISH TRIGGERS ────────────────────────────────────────────────────────────────
+// Explicit, BOUNDED checks only. There is NO timer, no poll and no background loop in this
+// lane, and none is touched: the app's only standing interval is the idle autolock at :1685.
+// Once messaging ships a jittered background pull, invite-finish rides that same tick and the
+// staleness gap between these two triggers dissolves (the design bank's decision 8).
+//
+// ⚠ EQUALITY, NEVER `contains`. `connect_status.state` is a CLOSED SET OF TWO — "active" |
+// "inactive" (commands.rs:881-886) — and a pending contact reads "inactive"/"no_session"
+// while a completed one reads "active"/"handshake". A substring test here is the 187-day
+// prefix lesson waiting to happen.
+//
+// ⚠ `relay` IS OUR OWN RELAY, not the peer's. `invite_finish` pulls the REDEEMER's own inbox
+// (`relay_inbox_pull(&relay_ep, &self_inbox, max)`, invite/mod.rs:1426), so the configured
+// address is the right source — and it is the only one available, because `ContactDto`
+// carries no relay endpoint at all.
+async function inviteFinishScanPending(why) {
+  const marks = { why, scanned: 0, finished: 0, pending: 0 };
+  let relayUrl = "";
+  try {
+    const cfg = await invoke("relay_config_get");
+    relayUrl = cfg.relay_url || "";
+  } catch (_) { relayUrl = ""; }
+  if (relayUrl === "") { redeemMark(marks); return marks; }
+
+  let rows = [];
+  try { rows = await invoke("contact_list"); } catch (_) { redeemMark(marks); return marks; }
+
+  for (const row of rows) {
+    let st = null;
+    try { st = await invoke("connect_status", { peer: row.alias }); } catch (_) { continue; }
+    if (st.state !== "inactive") continue;   // EQUALITY on the extracted value
+    marks.pending += 1;
+    try {
+      const done = await invoke("invite_finish", {
+        selfLabel: null, alias: row.alias, relay: relayUrl, max: 1,
+      });
+      marks.scanned += 1;
+      if (done === true) marks.finished += 1;   // EQUALITY, never truthiness
+    } catch (_) {
+      // ⚠ A finish failure must NEVER break the surface it rides on. Unlock still completes
+      // and the chooser still opens; the contact simply stays pending, which is the honest
+      // state. "Not yet" is not an error and does not land here at all — it is Ok(false).
+      marks.scanned += 1;
+    }
+  }
+  redeemMark(marks);
+  return marks;
+}
+
+// The observable half of Z6: the outcome of the last scan, readable BY EQUALITY from the DOM.
+// It is a measurement surface, not copy — nothing here is shown to the user.
+function redeemMark(m) {
+  const el = byId("redeem-overlay");
+  if (!el) return;
+  el.dataset.finishWhy = String(m.why);
+  el.dataset.finishPending = String(m.pending);
+  el.dataset.finishScanned = String(m.scanned);
+  el.dataset.finishFinished = String(m.finished);
+}
+
+// ── THE ONE COMMIT ─────────────────────────────────────────────────────────────────────
+async function redeemConnect() {
+  const btn = byId("btn-redeem-connect");
+  const code = byId("redeem-code").value.trim();
+  const name = byId("redeem-name").value.trim();
+  redeemClearError();
+  // Belt and braces: the button cannot be armed otherwise, but the handler refuses anyway —
+  // a gate that exists only in the enable/disable path is one keyboard event from being bypassed.
+  if (code === "" || !redeemNameOk(name)) { redeemSyncConnect(); return; }
+  btn.disabled = true;
+  try {
+    await invoke("invite_redeem", { code, alias: name, selfLabel: null });
+    byId("redeem-sent-name").textContent = name;
+    byId("redeem-sent-name2").textContent = name;
+    redeemShow("redeem-sent");
+  } catch (e) {
+    const c = (e && e.code) ? String(e.code) : "";
+    if (c === "commitment_mismatch" || c === "signature_invalid") {
+      redeemShowSecurityFailure(c);
+    } else {
+      redeemRenderError(c, (e && e.detail) ? e.detail : "");
+    }
+  } finally {
+    // ⚠ Re-armed only from the CURRENT field state, never unconditionally.
+    redeemSyncConnect();
+  }
+}
+
+// ── WIRING ─────────────────────────────────────────────────────────────────────────────
+byId("btn-choose-create").addEventListener("click", async () => {
+  byId("redeem-overlay").classList.add("hidden");
+  await openInviteModal();
+});
+byId("btn-choose-redeem").addEventListener("click", () => {
+  redeemClearError();
+  redeemSyncConnect();
+  redeemShow("redeem-form");
+});
+// ⚠ v2 — THE WAY OUT, AND IT REUSES THE ONE SHIPPED DISMISSAL. `closeRedeemModal` is already
+// the path Escape and the scrim take, and it is already called from `show()` so every screen
+// transition clears a pasted code. Wiring Close to a second, bespoke closer would be a second
+// thing to keep in agreement with the one-time boundary; there is nothing here to keep in
+// agreement because there is nothing here. ⚠ It fires NO invite call — the finish scan rides
+// the chooser's OPENER, never its close.
+byId("btn-choose-close").addEventListener("click", closeRedeemModal);
+byId("redeem-code").addEventListener("input", redeemSyncConnect);
+byId("redeem-name").addEventListener("input", redeemSyncConnect);
+byId("btn-redeem-connect").addEventListener("click", redeemConnect);
+byId("btn-redeem-close").addEventListener("click", closeRedeemModal);
+byId("btn-redeem-close2").addEventListener("click", closeRedeemModal);
+// ⚠ "Copy details" copies a LOCAL diagnostic and sends nothing. It carries the wire code so a
+// screenshot-free user can report what happened; it never carries the code or the contact name.
+byId("btn-redeem-copydetails").addEventListener("click", async () => {
+  const arm = byId("redeem-failed").dataset.arm || "";
+  const text = "QSL invite could not be verified — " + arm + (redeemLastDetail ? " — " + redeemLastDetail : "");
+  try { await navigator.clipboard.writeText(text); } catch (_) { /* nothing is promised */ }
+});
+byId("redeem-overlay").addEventListener("click", (ev) => {
+  if (ev.target === byId("redeem-overlay")) closeRedeemModal();
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") closeRedeemModal();
 });
 
 // ---- boot -----------------------------------------------------------------

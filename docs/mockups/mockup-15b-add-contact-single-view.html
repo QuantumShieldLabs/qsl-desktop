@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<!--
+  Mockup 15b — add a contact (redeem an invite): THE SINGLE VIEW.
+  The invite code shown is a fabricated, non-redeemable example.
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour
+  comes from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md);
+  this file's palette is NOT binding, and reading a hex out of it into
+  the build is a STOP.
+
+  SUCCESSOR to mockup-15-add-contact.html, which this file supersedes.
+  Adopted into repo truth by NA-0756 (desktop D-0037, spine D-1398),
+  ruled at R387 §S4, from the design bank the operator blessed on
+  2026-08-23 ("Bank what we have and lets get to work.").
+
+  ⚠⚠ WHY ONE VIEW AND NOT TWO. The predecessor drew connect-then-name.
+  `invite_redeem(code, alias, self_label)` provisions the contact INSIDE
+  the call and the facade has no rename verb, so there is no moment
+  between the two for a second step to occupy. And the capability BURNS
+  at `invite/mod.rs:1081`, the instant the relay answers, which is why
+  Connect is irreversible and why no state here offers a Retry.
+
+  ⚠ THE WIDTH DRAWN HERE IS NOT THE SHIPPED WIDTH. The shipped surface
+  is `.modal` — the v5 shared 500px class, expressed exactly once in
+  ui/style.css. This file's card width is a drawing convenience, and the
+  three states share it for the same reason the shipped ones do: a
+  surface that resized between its own states would read as three
+  different panels rather than one.
+
+  ⚠ THE ERROR COPY IS NOT DRAWN HERE. The ordinary-arm failures (a
+  truncated paste, an expired code, a relay that will not answer) render
+  in the inline error box sketched in state 1, from the ruled copy set at
+  R387 §S2b/§S2c. The census is measured first, then ruled, then built —
+  never invented at the keyboard, and never drawn from a palette.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 15b — Add a contact (single view)</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --bg-inset:#1A1A1C;
+  --fg:#E8E8EA; --muted:#9A9AA0; --border:#3A3A3E;
+  --accent-text:#8FBAF0; --accent-border:#2E5A8E; --accent-bg:#1C2A3E;
+  --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF; --ok:#7BC48A;
+  --warn-bg:#2A2418; --warn-border:#6E5A2E; --warn-text:#E8C87A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#141416;color:var(--fg);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;align-items:flex-start;justify-content:center;min-height:100vh;padding:32px;gap:24px;flex-wrap:wrap}
+.card{width:430px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:28px}
+.tag{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 12px}
+h2{margin:0 0 6px;font-size:19px}
+.muted{color:var(--muted);margin:0 0 20px;font-size:13px}
+.field-label{color:var(--muted);font-size:12px;display:block;margin-bottom:6px}
+textarea{width:100%;background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;color:var(--fg);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:12.5px;resize:none;height:72px}
+input[type=text]{width:100%;background:var(--bg-inset);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;color:var(--fg);font-size:13px}
+.hint{color:var(--muted);font-size:12px;margin:6px 0 0}
+.block{margin-top:20px}
+button{border-radius:8px;padding:10px 14px;font-size:13px;border:1px solid var(--border);
+  background:transparent;color:var(--fg);cursor:default}
+button.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-fill-text);width:100%}
+button.primary[disabled]{opacity:.45}
+.btnrow{display:flex;gap:12px;margin-top:20px}
+/* v2 — the chooser's two-line rows and its full-width Close. LAYOUT ONLY: the shipped build
+   expresses these with one class over the design tokens, and the sizes drawn here are a
+   drawing convenience exactly as this file's card width is. */
+.row2{display:block;width:100%;text-align:left;padding:16px;margin-top:12px}
+.row2 .r2t{display:block;font-size:13px;color:var(--fg)}
+.row2 .r2s{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+button.wide{width:100%}
+.callout{background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:8px;
+  padding:10px 12px;font-size:12px;line-height:1.5;margin-top:4px}
+.callout.warning{background:var(--warn-bg);border-color:var(--warn-border)}
+.errbox{margin-top:16px}
+.banner{background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:8px;
+  padding:8px 12px;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- ── THE CHOOSER v2 (Lane B stopgap entry; Lane C replaces it with the New-chat panel) ──
+     ⚠⚠ v2, AND THE REASON IS A DEFECT THIS FILE HELPED CAUSE. The v1 drawing showed the two
+     choices as bare labels on ONE row, and the build shipped exactly that: two content-width
+     buttons side by side, no way out of the surface, and no explanation of which choice
+     belongs to which user. Structure and copy were pinned; GEOMETRY was not — the same
+     omission that produced the v4 width defect one lane earlier. The operator's v2 bank
+     states the geometry explicitly, and this drawing is corrected to match rather than left
+     as the superseded reference a future lane would read.
+
+     THE RULE: every control spans the surface's content box and they STACK, top to bottom —
+     title, intro, row 1, row 2, Close. No side-by-side controls anywhere on this surface. -->
+<div class="card">
+  <p class="tag">Chooser v2 — stopgap entry</p>
+  <h2>Add a contact</h2>
+  <p class="muted">Invitations are how contacts are added. One person creates an invite code and then shares it with the person they want to add.</p>
+  <button class="row2"><span class="r2t">Invite someone</span><span class="r2s">Create a one-time code to send to a person you trust</span></button>
+  <button class="row2"><span class="r2t">I have a code</span><span class="r2s">Enter an invite code someone sent you</span></button>
+  <div class="block"><button class="wide">Close</button></div>
+</div>
+
+<!-- ── STATE 1: ADD A CONTACT — one view, one commit ── -->
+<div class="card">
+  <p class="tag">State 1 — add a contact</p>
+  <h2>Add a contact</h2>
+  <p class="muted">Paste the invite code they sent you, and choose what to call them. You&rsquo;ll connect through their relay.</p>
+  <span class="field-label">Invite code</span>
+  <textarea spellcheck="false">QSLI-1-EXAMPLE-NOT-REDEEMABLE-0000000000000000000000000000000000000000</textarea>
+  <span class="field-label" style="margin-top:16px">Their name (only you see this)</span>
+  <input type="text" placeholder="Ben">
+  <!-- The standing hint. It is REPLACED, in this same slot, while the typed name is
+       inadmissible to the engine's own set: "Names here can use letters, numbers, and
+       - _ # — no spaces. It stays on your device." -->
+  <p class="hint">Stored only on this device.</p>
+  <div class="block"><button class="primary" disabled>Connect</button></div>
+  <!-- The inline error box. Its copy is the RULED set, never drawn here. -->
+  <div class="errbox">
+    <div class="banner">&lt;ruled banner for the measured arm&gt;</div>
+    <p class="hint">&lt;ruled detail for the measured arm&gt;</p>
+  </div>
+</div>
+
+<!-- ── STATE 2: REQUEST SENT ── -->
+<div class="card">
+  <p class="tag">State 2 — request sent</p>
+  <h2>Request sent</h2>
+  <p class="muted">Your details are on their way to Ben. When they approve you on their device, the connection completes automatically.</p>
+  <div class="callout">Until you both verify by comparing codes, Ben shows as <b>Not verified</b>.</div>
+  <div class="block"><button style="width:100%">Close</button></div>
+</div>
+
+<!-- ── THE SECURITY-FAILURE STATE (S-F5) — warning accent, never red, NO Retry ── -->
+<div class="card">
+  <p class="tag">Security failure — S-F5</p>
+  <h2>Couldn&rsquo;t make a secure connection</h2>
+  <div class="callout warning">This code failed its security checks &mdash; that can mean a bug, or that someone tampered with the invite. Nothing was set up, and this code can no longer be used. Reach them another way and ask for a fresh invite.</div>
+  <!-- One arm-specific line beneath the blessed callout, so substituted KEYS stay
+       distinguishable from altered FIELDS (R387 §S2a). -->
+  <p class="hint">The keys in this invite don't match what it commits to.</p>
+  <div class="btnrow">
+    <button>Copy details</button>
+    <button>Close</button>
+  </div>
+</div>
+
+</body>
+</html>

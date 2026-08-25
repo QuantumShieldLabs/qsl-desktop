@@ -292,6 +292,16 @@ button.full { width: 100%; }
   padding: var(--sp-x10) var(--sp-3); font-size: var(--fs-hint);
   color: var(--fg); line-height: 1.5;
 }
+/* NA-0756 (D-0037, R387 §S4) — the SECURITY-FAILURE modifier, and the ONLY colour decision
+   this lane makes. The bank ruled "warning accent, NEVER red": red stays reserved for vault
+   loss, and a failed security check on an invite is not vault loss. The amber pair is the
+   shipped --warn-* family, which the note above deliberately KEPT defined when `.warn` was
+   renamed to `.callout` ("The --warn-* and --amber* tokens STAY defined") — so this modifier
+   introduces NO new colour, exactly as item 3 requires. Tokens are the authority; the
+   mockup's hex is not. */
+.callout.warning {
+  background: var(--warn-bg); border-color: var(--warn-border);
+}
 /* E.6/E.7: errors render inline ONLY when present — no reserved gap, no
    oversized void around the banners */
 .error { color: var(--danger-text); font-size: var(--fs-body); }
@@ -636,6 +646,28 @@ a.rm:hover { color: var(--fg); }
 .modal h2 { font-size: var(--fs-title); font-weight: var(--fw-title); margin: 0 0 var(--sp-1) 0; }
 .modal .muted { margin: 0 0 var(--sp-x20) 0; }
 
+/* NA-0756 (D-0037, R387 §S4) — the app's FIRST `<textarea>`, class-scoped to the modal.
+   ⚠ Measured before minting: `textarea` occurs ZERO times app-wide, so nothing styled it and
+   an unstyled one would have rendered as a raw browser control inside a designed surface.
+   R387 refused reuse of `.code-box` itself — that is a DISPLAY box, and a display box is not
+   an input — but ruled that this carries its visual IDIOM, which is what the four
+   declarations below are: the inset ground, the mono face, the wrap that an invite code
+   needs, and selection re-enabled against `body`'s `user-select: none`.
+   ⚠ An invite code is 133-154 characters. `.verify-code` is `nowrap` + `overflow: hidden` —
+   the pair whose own comment records NA-0753's silent clip — so wrapping here is the whole
+   point, not a preference. */
+.modal textarea {
+  width: 100%; box-sizing: border-box; min-height: 5.5rem; resize: vertical;
+  background: var(--bg-inset); border: 1px solid var(--border);
+  border-radius: var(--radius-small); padding: var(--sp-x14) var(--sp-4);
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-hint); line-height: 1.5;
+  overflow-wrap: anywhere; word-break: break-all;
+  -webkit-user-select: text; user-select: text;
+}
+.modal textarea:focus { outline: none; border-color: var(--accent-border); }
+
 /* The step chip. */
 .tag {
   font-size: var(--fs-micro); color: var(--fg-muted);
@@ -756,3 +788,24 @@ button.nowrap { white-space: nowrap; }
    ========================================================================== */
 a.rm.plain.link-danger { color: var(--danger-link); }
 a.rm.plain.link-danger:hover { color: var(--danger-text); }
+
+/* ==========================================================================
+   NA-0756 v2 — THE CHOOSER'S ROWS. One class, two lines, full width.
+
+   ⚠⚠ WHY THIS SELECTOR EXISTS AT ALL. v1 shipped the chooser's two controls SIDE BY SIDE at
+   content width, because the reference markup pinned structure and copy and left geometry
+   unstated — the v4 lesson repeating one lane later. The bank's v2 geometry section rules every
+   control full-width and STACKED, and this is the only class that rule needs.
+
+   ⚠ NO WIDTH IS MINTED HERE. The surface width still comes from `.modal` — the v5 shared 500px
+   class, expressed exactly once in this file — and the rows take their own width from the
+   shipped `button.full`, which is why neither a number nor a second `max-width` appears below.
+
+   ⚠ THE TWO LINES REUSE THE SHIPPED ROW IDIOM RATHER THAN RE-DECIDING IT. `.invite-row-head` and
+   `.invite-row-meta` already express "label line, muted line beneath" in the token scale for the
+   invite LIST; these carry the same two token pairs for a CONTROL. Reuse over minting is the
+   house rule, and it means the chooser's rows and the list's rows cannot drift apart by accident.
+   ========================================================================== */
+.choose-row { display: block; text-align: left; padding: var(--sp-4); margin-top: var(--sp-3); }
+.choose-row .choose-row-title { display: block; font-size: var(--fs-body); color: var(--fg); font-weight: var(--fw-mid); }
+.choose-row .choose-row-sub { display: block; font-size: var(--fs-hint); color: var(--fg-muted); margin-top: var(--sp-1); }

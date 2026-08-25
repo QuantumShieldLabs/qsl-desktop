@@ -1,0 +1,515 @@
+{
+ "scenario": "na0756_gui_l_invite_redeem",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "note",
+   "text": "NA-0756 (D-0037, R387) \u2014 INVITE LANE B: THE REDEEM FLOW. Fresh profile: onboard first, because invite_redeem needs an unlocked vault AND an identity (require_unlocked_here at facade/mod.rs:794, then identity_resolved_self_label at invite/mod.rs:1042)."
+  },
+  {
+   "op": "clear_type",
+   "sel": "#vault-pass",
+   "text": "na0756-laneb-pass"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0756-laneb-pass"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "LB"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "The redeem overlay starts CLOSED, and it is a real element rather than a selector that happens to match nothing."
+  },
+  {
+   "op": "find_count",
+   "sel": "#redeem-overlay",
+   "expect": 1
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 TRIGGER (b) \u2014 the finish scan fires on the CHOOSER's opener, not on the create modal's (R387 \u00a7S6). Item 1 retargets BOTH entries here, so a trigger left on openInviteModal would have covered only the create branch."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-add-contact"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "Z6 \u2014 the trigger is OBSERVABLE, and every comparison is BY EQUALITY on the extracted value, never `contains`. With no relay configured the scan short-circuits: pending=0, scanned=0, finished=0, and the WHY names which trigger ran."
+  },
+  {
+   "op": "exec",
+   "script": "var e=document.getElementById('redeem-overlay').dataset; return JSON.stringify({why:e.finishWhy, pending:e.finishPending, scanned:e.finishScanned, finished:e.finishFinished});",
+   "expect": "{\"why\":\"surface_open\",\"pending\":\"0\",\"scanned\":\"0\",\"finished\":\"0\"}"
+  },
+  {
+   "op": "note",
+   "text": "Z1 \u2014 THE CHOOSER'S COPY, the operator's own authored sentence, pinned as RENDERED text (R387 \u00a7S5: seals pin at the DOM textContent level, which is immune to the entity-versus-literal choice)."
+  },
+  {
+   "op": "read_text",
+   "sel": "#choose-view .muted",
+   "literal": "Invitations are how contacts are added. One person creates an invite code and then shares it with the person they want to add."
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 v2 \u2014 THE ROW COPY IS PINNED PER LINE, NOT PER ROW. WebDriver's element text returns the RENDERED text of the whole subtree, so a single pin on the row would concatenate title and subtitle and could stay green while either line drifted. Two selectors per row is the honest instrument, and it is STRONGER than the v1 pin it replaces: four pins where there were two."
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-choose-create .choose-row-title",
+   "literal": "Invite someone"
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-choose-create .choose-row-sub",
+   "literal": "Create a one-time code to send to a person you trust"
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-choose-redeem .choose-row-title",
+   "literal": "I have a code"
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-choose-redeem .choose-row-sub",
+   "literal": "Enter an invite code someone sent you"
+  },
+  {
+   "op": "note",
+   "text": "And the way out of the surface, which v1 did not offer at all."
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-choose-close",
+   "literal": "Close"
+  },
+  {
+   "op": "note",
+   "text": "Z2 \u2014 GEOMETRY, not just presence. The v4 lesson was that presence was pinned and geometry was not, and the banked same-row markup shipped stacked. The surface width is read from the RESOLVED style: `.modal` is the v5 shared 500px class and it is expressed exactly once in the stylesheet."
+  },
+  {
+   "op": "exec",
+   "script": "var m=document.querySelector('#redeem-overlay .modal'); return JSON.stringify({maxw:getComputedStyle(m).maxWidth});",
+   "expect": "{\"maxw\":\"500px\"}"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 v2 \u2014 GEOMETRY IS ASSERTED AS LAYOUT, NOT AS PRESENCE. This is the exact defect class v1 shipped: the copy and the structure were pinned, the LAYOUT was not, and the surface went out with both controls packed onto one line at content width. Presence pins cannot see that. So the five rows of the chooser are measured from their RENDERED bounding boxes \u2014 each spans the content box, and each starts at or below the previous one's bottom, which is what 'stacked, never side-by-side' means when a machine has to check it."
+  },
+  {
+   "op": "exec",
+   "script": "var v=document.getElementById('choose-view');var kids=Array.prototype.slice.call(v.children);var inner=v.getBoundingClientRect().width;var r=kids.map(function(e){var b=e.getBoundingClientRect();return {w:b.width,t:b.top,b:b.bottom};});var full=r.every(function(x){return Math.abs(x.w-inner)<1.5;});var stacked=true;for(var i=1;i<r.length;i++){if(r[i].t<r[i-1].b-0.5)stacked=false;}var c=document.getElementById('btn-choose-close').getBoundingClientRect().width;return JSON.stringify({rows:kids.length,full:full,stacked:stacked,closeFull:Math.abs(c-inner)<1.5});",
+   "expect": "{\"rows\":5,\"full\":true,\"stacked\":true,\"closeFull\":true}"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 THE NEGATIVE HALF, LIVE: no descendant of the chooser is a side-by-side row, and the retired v1 shape cannot be reached from the rendered DOM either. Counted, not eyeballed."
+  },
+  {
+   "op": "exec",
+   "script": "var v=document.getElementById('choose-view');return JSON.stringify({rowsOnOneLine:v.querySelectorAll('.btnrow').length,twoLineRows:v.querySelectorAll('button.choose-row').length,titles:v.querySelectorAll('.choose-row-title').length,subs:v.querySelectorAll('.choose-row-sub').length});",
+   "expect": "{\"rowsOnOneLine\":0,\"twoLineRows\":2,\"titles\":2,\"subs\":2}"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-redeem"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-form",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "Z2 (cont.) \u2014 the SAME class on the form state, so the surface cannot resize between states. That per-state width defect is exactly what v5 cured for Lane A."
+  },
+  {
+   "op": "exec",
+   "script": "var m=document.querySelector('#redeem-overlay .modal'); var f=document.getElementById('redeem-form'); return JSON.stringify({maxw:getComputedStyle(m).maxWidth, formVisible:!f.classList.contains('hidden')});",
+   "expect": "{\"maxw\":\"500px\",\"formVisible\":true}"
+  },
+  {
+   "op": "note",
+   "text": "Z1 \u2014 STATE 1's copy, operator-blessed, pinned as rendered."
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-form .muted",
+   "literal": "Paste the invite code they sent you, and choose what to call them. You\u2019ll connect through their relay."
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-code-caption",
+   "literal": "Invite code"
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-name-caption",
+   "literal": "Their name (only you see this)"
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-name-hint",
+   "literal": "Stored only on this device."
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-redeem-connect",
+   "literal": "Connect"
+  },
+  {
+   "op": "note",
+   "text": "Z3 \u2014 THE SINGLE COMMIT. Connect is DISABLED until the code is non-empty AND the name is admissible to the engine's own predicate. R387 \u00a7S3 amended Z3 from 'non-empty' to this."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-redeem-connect",
+   "prop": "disabled",
+   "expect": true,
+   "poll": 3
+  },
+  {
+   "op": "type",
+   "sel": "#redeem-code",
+   "text": "QSLI-1-not-a-real-code"
+  },
+  {
+   "op": "note",
+   "text": "Code alone is not enough \u2014 the name is still empty."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-redeem-connect",
+   "prop": "disabled",
+   "expect": true,
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 Z3's CONTROL PERFORMS THE OPERATOR-CLASS DEFECT EXACTLY (R387 \u00a7S3, the NA-0755 label-clear precedent). `channel_label_ok` (qsc lib.rs:2568-2573) admits ONLY [A-Za-z0-9_#-], and the alias is NOT validated until 25 lines AFTER the invite burns. Typing the most natural thing in a field labelled 'Their name' would have destroyed the user's one-time code. Connect MUST stay disabled."
+  },
+  {
+   "op": "type",
+   "sel": "#redeem-name",
+   "text": "Ben Smith"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-redeem-connect",
+   "prop": "disabled",
+   "expect": true,
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "And the hint NAMES the constraint in the user's words while the name is inadmissible."
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-name-hint",
+   "literal": "Names here can use letters, numbers, and - _ # \u2014 no spaces. It stays on your device."
+  },
+  {
+   "op": "note",
+   "text": "An admissible name arms the commit, and the standing hint returns. This is the positive half: without it the control above could pass on a button that is simply always disabled."
+  },
+  {
+   "op": "clear_type",
+   "sel": "#redeem-name",
+   "text": "Ben"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-redeem-connect",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 3
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-name-hint",
+   "literal": "Stored only on this device."
+  },
+  {
+   "op": "note",
+   "text": "Z3 (cont.) \u2014 NO POST-CONNECT NAMING STEP EXISTS. The negative pin matches mockup-15's OLD SHIPPED FORM, not the bare words: the superseded two-step order had a step-2 'Connected' heading with its own name field. Neither may appear anywhere in the shipped UI."
+  },
+  {
+   "op": "exec",
+   "script": "var h=document.body.innerHTML; return JSON.stringify({connectedHeading:h.indexOf('<h2>Connected</h2>')>=0, step2Tag:h.indexOf('Add contact \\u2014 step 2')>=0});",
+   "expect": "{\"connectedHeading\":false,\"step2Tag\":false}"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 Z5 \u2014 THE WIRING, DRIVEN FOR REAL AND WITH NO RELAY. `malformed` is decided at invite/mod.rs:435-442, BEFORE any socket is opened (the burn is at :1081), so this is a genuine end-to-end drive of Connect -> invite_redeem -> the ruled copy. It is the likeliest real failure in the whole flow, because it is what a truncated paste produces."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-redeem-connect"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-error",
+   "prop": "className",
+   "expect": "",
+   "poll": 10
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-error .status-text",
+   "literal": "That code isn't readable"
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-error .hint",
+   "literal": "Check the whole code was pasted \u2014 it starts with QSLI-1-. If it looks complete, ask them to send it again."
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 And the flow does NOT advance on a failure: the form is still the visible state and nothing was provisioned. An error that silently moved the user to 'Request sent' would be the worst possible lie here."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-form",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-sent",
+   "prop": "className",
+   "expect": "hidden",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 Z4 \u2014 THE SECURITY-FAILURE STATE. CLAIM BOUNDARY, stated honestly: the harness has no relay (ENG-0226), and commitment_mismatch / signature_invalid are produced only inside verify_redeemed_bundle, which needs a relay to answer. So THIS step drives the STATE'S RENDERING, not the engine path. The ENGINE path is driven for the first time ever on the protocol side (Z7(i), the facade drive) \u2014 the two halves together are the whole claim, and neither is dressed up as the other."
+  },
+  {
+   "op": "exec",
+   "script": "redeemShowSecurityFailure('commitment_mismatch'); return 'shown';",
+   "expect": "shown"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-failed",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-failed h2",
+   "literal": "Couldn\u2019t make a secure connection"
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-failed .callout",
+   "literal": "This code failed its security checks \u2014 that can mean a bug, or that someone tampered with the invite. Nothing was set up, and this code can no longer be used. Reach them another way and ask for a fresh invite."
+  },
+  {
+   "op": "note",
+   "text": "R387 \u00a7S2a COMPOSED the two ruled texts rather than discarding either: the operator's blessed callout above ships VERBATIM, and one arm-specific line beneath carries the FIRST SENTENCE of the shipped R380 \u00a75 copy \u2014 so substituted KEYS stay distinguishable from altered FIELDS."
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-failed-detail",
+   "literal": "The keys in this invite don't match what it commits to."
+  },
+  {
+   "op": "exec",
+   "script": "redeemShowSecurityFailure('signature_invalid'); return 'shown';",
+   "expect": "shown"
+  },
+  {
+   "op": "read_text",
+   "sel": "#redeem-failed-detail",
+   "literal": "This invite's signature doesn't check out \u2014 its contents have been changed since it was made."
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 Z4's LOAD-BEARING NEGATIVE: there is NO Retry control in this state, and that is FACT rather than caution \u2014 the capability burned at invite/mod.rs:1081, BEFORE the verification at :1101, so a retry would return already-redeemed. Pinned as an ABSENCE across the whole state, by shipped form."
+  },
+  {
+   "op": "exec",
+   "script": "var st=document.getElementById('redeem-failed'); var btns=[].slice.call(st.querySelectorAll('button')).map(function(b){return b.textContent.trim();}); return JSON.stringify({buttons:btns, retry:btns.some(function(t){return /retry|try again/i.test(t);})});",
+   "expect": "{\"buttons\":[\"Copy details\",\"Close\"],\"retry\":false}"
+  },
+  {
+   "op": "note",
+   "text": "Z4 (cont.) \u2014 the callout renders in the WARNING accent, never red. The token is resolved BY THE SAME ENGINE and compared against the shipped --warn-* pair, never against a literal hex; and it is proven DIFFERENT from the danger token, which is what 'never red' actually means."
+  },
+  {
+   "op": "exec",
+   "script": "var c=document.querySelector('#redeem-failed .callout.warning');\nvar p=document.createElement('span'); document.body.appendChild(p);\np.style.backgroundColor='var(--warn-bg)'; var warn=getComputedStyle(p).backgroundColor;\np.style.backgroundColor='var(--danger-bg)'; var danger=getComputedStyle(p).backgroundColor;\np.remove();\nvar got=getComputedStyle(c).backgroundColor;\nreturn JSON.stringify({isWarn:got===warn, isDanger:got===danger});",
+   "expect": "{\"isWarn\":true,\"isDanger\":false}"
+  },
+  {
+   "op": "note",
+   "text": "Escape closes the surface and the pasted code is CLEARED \u2014 the one-time boundary's local half, held structurally: show() closes this overlay for the same reason it closes the mint's."
+  },
+  {
+   "op": "exec",
+   "script": "document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'})); return 'sent';"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-code",
+   "prop": "value",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-name",
+   "prop": "value",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "And a fresh open lands on the CHOOSER, not on whatever state was last showing \u2014 the same one-owner rule the v3 label-clear fix established for Lane A."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-open"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-failed",
+   "prop": "className",
+   "expect": "hidden",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 v2 \u2014 CLOSE WORKS, AND IT IS THE ONLY NEW CONTROL THIS PASS WIRES. It dismisses the surface and returns the user to what was underneath. The load-bearing half is the NEGATIVE one: it must fire NO invite call. The chooser's OPENER is what runs the finish scan and stamps the overlay's dataset; `closeRedeemModal` never calls the stamper, so re-reading the stamp after the click is a real test \u2014 a close that reached any invite path would have re-stamped it, and the WHY would no longer name the open that preceded it."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "The surface is gone and the screen underneath is the one the user came from. The overlay is a body-level element and deliberately NOT a SCREENS member, so closing it REVEALS the prior surface rather than navigating to one."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#scr-main",
+   "prop": "className",
+   "expect": "screen",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 AND NOTHING WAS INVITED. The stamp still reads the OPEN that preceded the close, with all three counters where the opener left them."
+  },
+  {
+   "op": "exec",
+   "script": "var e=document.getElementById('redeem-overlay').dataset;return JSON.stringify({why:e.finishWhy,pending:e.finishPending,scanned:e.finishScanned,finished:e.finishFinished});",
+   "expect": "{\"why\":\"surface_open\",\"pending\":\"0\",\"scanned\":\"0\",\"finished\":\"0\"}"
+  },
+  {
+   "op": "note",
+   "text": "And the chooser is the state a NEXT open would land on \u2014 Close leaves the surface reset, exactly as Escape does."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 NOT DRIVEN HERE, stated so the coverage claim stays honest: a SUCCESSFUL redeem (state 2 'Request sent'), the relay-reported arms (not_found / revoked / expired_at_relay / already_used), and a finish that actually completes. All need a relay the harness does not have (ENG-0226, open). The green half is the operator's card; the engine half is the protocol-side facade drive."
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}

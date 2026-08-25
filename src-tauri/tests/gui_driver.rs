@@ -234,3 +234,32 @@ fn na0754_gui_j_relay_pane_truth() {
 fn na0755_gui_k_invite_create() {
     run_scenario("f_k_invite_create");
 }
+
+// NA-0756 (D-0037, R387) — INVITE LANE B: THE REDEEM FLOW.
+//
+// ⚠ WHAT THIS SCENARIO CANNOT REACH, stated so its silence is not read as
+// coverage. A SUCCESSFUL redeem, the "Request sent" state, every relay-reported
+// arm (not_found / revoked / expired_at_relay / already_used) and a finish that
+// actually completes all need a relay that answers, and this repo still has no
+// fixture relay (ENG-0226, open).
+//
+// ⚠ AND THE SECURITY TELLS ARE A SPLIT CLAIM, deliberately. The two arms are
+// produced only inside `verify_redeemed_bundle`, which needs a relay, so what
+// this scenario drives is the STATE'S RENDERING — its copy, its warning accent
+// proven distinct from danger, and the ABSENCE of any Retry control. The ENGINE
+// path is driven for the first time ever on the protocol side, in the
+// facade-level two-party drive, where a tampered byte makes the tell actually
+// fire. Neither half is dressed up as the other.
+//
+// ⚠ WHAT IS GENUINELY DRIVEN HERE, offline and for real: the chooser entry and
+// its finish trigger, the copy pins, the shared-width geometry across states,
+// the admissibility gate INCLUDING the "Ben Smith" control that performs the
+// operator-class defect exactly, and a live Connect -> `invite_redeem` ->
+// `malformed` round trip. `malformed` is decided at `invite/mod.rs:435-442`,
+// BEFORE any socket opens, so it needs no relay and is the likeliest real
+// failure in the flow — a truncated paste.
+#[test]
+#[ignore]
+fn na0756_gui_l_invite_redeem() {
+    run_scenario("f_l_invite_redeem");
+}
