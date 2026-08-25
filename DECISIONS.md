@@ -2934,3 +2934,62 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
       the `ENG-0239` repair per the standing merge order — this pass changes the surface, not
       the hold** — and the ruled sequence is unchanged: protocol repair → pin-bump PR →
       fresh-pair flight → #37. Nothing is merged by the seat; the operator merges.
+
+- **ID:** D-0038
+  - **Status:** Accepted
+  - **Date:** 2026-08-24
+  - **Lane:** desktop **NA-0757 / THE ENG-0239 REPAIR — THE PIN BUMP**. The one-line class of
+    NA-0748/NA-0750: `Cargo.toml` + `Cargo.lock` + this record, and nothing else. Executing the
+    Director's rulings **`R388`** (STOP 001 + the commissioned SR-15 cold read; sha256
+    `72563f59…c3fb0`, 159 lines / 11121 bytes) and **`R389`** (STOP 002 build state; sha256
+    `4528eaf3…3539`, 78 lines / 5479 bytes), both sha-VERIFIED against their own bytes BEFORE
+    being read. Spine decision **D-1399**. Base `5eb64c2e371906af1533804a542bdc119661d960`,
+    re-derived bare and unpiped at the NAMED github remote.
+  - ⛳⛳ **WHAT THIS BUYS: THE APP CAN FINISH BECOMING A CONTACT.** The pin moves
+    `d3fefd12` → **`0b9d6967948c2fcf799cb817aeee55d5095835aa`**, the merge commit of
+    qsl-protocol **#1789**, which carries the `ENG-0239` repair. Before it, **every** unlocked
+    `invite finish` on a desktop-born vault died at `handshake_session_store_failed`, so the
+    app's completion triggers could not succeed on this machine at all.
+  - **THE DEFECT THE PIN CARRIES THE CURE FOR.** `qsp_sessions` was created by a bare
+    `fs::create_dir_all` with **no explicit mode**, so its permissions were the **calling
+    process's umask**. The `qsc` **binary** sets one (`main.rs:59`); **`qsl-desktop` never calls
+    `set_umask_077` at all** — zero occurrences in `src-tauri/`, and this app's umask is measured
+    **002**, read off its own browser-layer directory creations (`CacheStorage`, `WebKitCache`,
+    `mediakeys`, `storage`, all `drwxrwxr-x`). A directory born group-writable is then refused
+    for good by `enforce_safe_parents`, and **that refusal is correct** — the birth mode was the
+    defect. ⚠ The desktop is therefore not merely a *victim* of ENG-0239: it is the **producer**
+    of the poisoned directory, which is why a CLI subprocess failed on a desktop-born vault.
+  - **THE MERGE SHA WAS VERIFIED, NOT PASTED.** `refs/heads/main` measured
+    `0b9d6967948c2fcf799cb817aeee55d5095835aa` at the NAMED remote; it **is** the merge commit of
+    #1789 (typed `mergeCommit` field), its parents are `f98af5cc…` (the prior main) and
+    `db7ebac9…` (that PR's head), and its committer date agrees with the typed `mergedAt`
+    (`2026-08-24T22:09:56Z`) to the second.
+  - ⚠ **THE LOCK DIFF IS 16 LINES, NOT THE 4 OF NA-0748/NA-0750, AND THE EXTRA 12 ARE NOT THIS
+    LANE'S.** Six `windows-sys` edges (`dirs-sys`, `errno`, `quinn-udp`, `rustix`, `tempfile`,
+    `winapi-util`) re-point `0.61.2` → `0.59.0`. **Control run at this base:** `cargo update -p qsc`
+    with the pin **UNCHANGED** reports *"Locking 0 packages"* and still produces the identical
+    12-line churn — so it is cargo re-resolving against a moved crates.io index, not the pin.
+    NA-0751 recorded exactly this non-round-trip and it reproduces here. Both `windows-sys`
+    versions exist in the lock before and after (4 package entries each), **no package is added
+    or removed**, and the edges are Windows-only while this CI runs ubuntu. The churn is **kept as
+    the tool emitted it**: the hand-applied lock line is a SPINE convention and does **not**
+    transfer to the desktop (NA-0654).
+  - **MEASUREMENTS — every desktop gate, before and after the pin.**
+    | gate | at `d3fefd12` (baseline) | at `0b9d6967` (this PR) |
+    |---|---|---|
+    | `cargo test` | 18 suites / **159** passed / **0** failed / 12 ignored | 18 suites / **159** / **0** / 12 — identical |
+    | `cargo fmt --all -- --check` | rc **0**, 0 hunks | rc **0**, 0 hunks |
+    | `clippy --all-targets -D warnings` | rc **0**, 0 warnings, 0 errors | rc **0**, 0 warnings, 0 errors |
+    | test inventory (ENG-0075) | rc **0**, enumerated 171 / pin 171 | rc **0**, 171 / 171 |
+    | infra-literal-scan (tree) | — | rc **0**, clean, 85 files / 29096 lines; selftest 13 checks / 0 failed |
+
+    ⚠ The suite is **byte-identical in outcome** across the pin, which is the point: the repair
+    changes how a directory is BORN, and the desktop's own `create_private_dir` already chmods
+    its config dir on every start — so nothing the desktop asserts could move. The gate that
+    would actually witness the repair is the field flight, not this suite.
+  - ⚠ **Claim boundary.** ZERO `ui/` bytes. ZERO `src-tauri/src/**` bytes. ZERO `.github/**`.
+    ZERO test bytes. The pin, the lock, and this record. **No GUI flight is claimed** — the field
+    seal is the operator's re-planned `Z7` (one fresh invite pair on the repaired build, native
+    umask 002, **no chmod and no pre-made dirs**, expecting `qsp_sessions` born `700` by `stat`
+    and both sides completing untouched), flown after this merges. PR **#37** is a separate,
+    held lane and is not touched here. Nothing merged by the seat; the operator merges.
