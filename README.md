@@ -12,7 +12,7 @@ Desktop client (GUI) for the QSL protocol — in development, pre-release.
 - v1 targets Linux only (roadmap decision D-A / locked decision L9); macOS
   is the first post-skeleton platform lane, Windows sits at a later horizon.
 
-## Status: local lifecycle + relay configuration; no messaging
+## Status: local lifecycle, relay configuration, invites; no messaging
 This build contains the local vault/identity/unlock lifecycle —
 onboarding (create vault, identity display), the unlock screen with its
 escalating-delay protection display, idle autolock, and the Vault &
@@ -23,12 +23,23 @@ reports what the relay actually answered. (That commit model is a
 revision of the pane's first version, which committed each field through
 its own button.)
 
-**The app opens a network connection only when you press Test
-connection.** Nothing connects at launch, in the background, or on a
-timer.
+Since PR #36 the app can also **create, review and revoke invites**: one
+button mints a single-use code with a 3-day expiry, shown once, with an
+optional local-only note naming who it is for; a list shows the live
+invites (10 maximum) and their state, including when one has been
+redeemed. Since PR #37 it can also **redeem** one: paste a code, name
+the contact, and the app completes the handshake and records the peer.
+Creating, revoking and redeeming an invite all contact the configured
+relay.
 
-There is still **no messaging** — no sending, no receiving, no
-contacts — and no release.
+**The app connects only when you ask it to** — pressing Test
+connection, or creating, revoking or redeeming an invite. Nothing
+connects at launch, in the background, or on a timer.
+
+There is still **no messaging** — no sending, no receiving — and no
+release. An invite can be created, reviewed, revoked and redeemed;
+redeeming one completes a handshake and records the contact, but there
+is no contact list to browse and nothing can be sent to it yet.
 
 No security, privacy, or availability claims are made for anything in this
 repository beyond factual feature description; the app's status line shows
