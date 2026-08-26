@@ -3111,7 +3111,7 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     struct as `{"autolock_minutes":60}` and settled it. Recorded because the next reader should
     not have to re-derive it.
   - **INSTRUMENTS, WITH THEIR RED ARMS PROVEN AND NAMED** (`src-tauri/tests/gui_driver.rs`
-    `na0763_gui_m_liveness_tick`, scenario `f_m_liveness_tick.json`, 51 steps, all PASS):
+    `na0763_gui_m_liveness_tick`, scenario `f_m_liveness_tick.json`; 51 scenario entries of which 15 are notes ⇒ **39 verdict rows, ALL PASS**, terminal `result=PASS` with a reconciling count of 39):
     **I1 TICK-FIRES** — ≥2 handler runs with `source=tick` in a bounded window (measured: 4
     after 2 polls). ⛳ RED ARM RUN: with the interval disabled, `TIMEOUT after 20 polls,
     last=0`. **I2 LOCK-GATES** — zero tick scans across a bounded locked window, and
