@@ -37,6 +37,12 @@ fn armed_wipe_residue_set_enumerated_by_name() {
         autolock_minutes: 5,
         self_alias: "Prior".to_string(),
         relay_url: "https://relay.example".to_string(),
+        // NA-0763 (`D-0040`): the tempo knob joined the type. Taken at its
+        // DEFAULT here deliberately — the default is OMITTED from the written
+        // file, so this fixture's key set and every expectation below are
+        // unchanged. `..Default::default()` rather than a named value so the
+        // next field added does not break this boundary test either.
+        ..Default::default()
     };
     settings::save(tmp.path(), &s).expect("settings write");
     assert!(paths::settings_file(tmp.path()).exists());

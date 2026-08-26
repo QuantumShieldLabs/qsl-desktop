@@ -2680,14 +2680,29 @@ fn na0756_the_redeem_copy_set_is_ruled_and_verb_true() {
     );
 }
 
-/// Z6 — THE FINISH TRIGGERS COMPARE BY EQUALITY, AND NOTHING POLLS.
+/// Z6 — THE TRIGGERS COMPARE BY EQUALITY, AND THE TIMER CENSUS IS EXACT.
 ///
-/// ⚠ MUST GO RED IF: a `contains`/`includes` creeps into the state comparison, or a timer
-/// appears in this lane. `connect_status.state` is a CLOSED SET OF TWO — "active" |
+/// ⚠ MUST GO RED IF: a `contains`/`includes` creeps into the state comparison, a trigger
+/// stops feeding the one handler, or a timer appears or vanishes without this count being
+/// updated deliberately. `connect_status.state` is a CLOSED SET OF TWO — "active" |
 /// "inactive" — so equality is available and a substring test would be the 187-day prefix
 /// lesson waiting to happen (`established` versus `established_recv_only`).
+///
+/// ⚠⚠ v2, NA-0763 (`D-0040`) — THIS SEAL'S v1 NAME AND HEADING BECAME FALSE, AND THAT IS
+/// CORRECTED HERE RATHER THAN QUIETLY DELETED, following the pattern the neighbouring
+/// selectors seal set when its own v1 heading promised a check it never made.
+/// v1 was called `..._add_no_timer` and asserted "NOTHING POLLS" with `setInterval` pinned at
+/// THREE — an honest self-binding by NA-0756, whose lane genuinely added none. NA-0763 IS the
+/// lane that adds one: the liveness tick, rung 1 of the delivery ladder. So the count moves
+/// 3 -> 4 and the fourth is NAMED. ⚠ Nothing is weakened: the assertion stays an EXACT
+/// equality rather than relaxing to `>=`, so an unaccounted FIFTH timer still fails it — which
+/// is the property the census existed to protect all along.
+///
+/// The two trigger needles also move from `inviteFinishScanPending(<why>)` to the one
+/// handler's `relayScan({ source: <why>, at: ... })`. The triggers themselves are unchanged:
+/// same call sites, same order, same awaited-ness — only the entry point is consolidated.
 #[test]
-fn na0756_the_finish_triggers_use_equality_and_add_no_timer() {
+fn na0756_the_triggers_use_equality_and_the_timer_census_is_exact() {
     let js = ui_file("main.js");
     assert!(
         js.contains(r#"if (st.state !== "inactive") continue;"#),
@@ -2701,8 +2716,8 @@ fn na0756_the_finish_triggers_use_equality_and_add_no_timer() {
     // retargets both entries there, so a trigger left on the create modal would cover only
     // half the doors.
     assert!(
-        js.contains(r#"await inviteFinishScanPending("unlock");"#),
-        "trigger (a) rides the unlock landing"
+        js.contains(r#"await relayScan({ source: "unlock", at: Date.now() });"#),
+        "trigger (a) rides the unlock landing, through the ONE handler"
     );
     let start = js
         .find("async function openRedeemChooser()")
@@ -2710,17 +2725,17 @@ fn na0756_the_finish_triggers_use_equality_and_add_no_timer() {
     let body = &js[start..];
     let end = body.find("\n}\n").expect("it ends");
     assert!(
-        body[..end].contains(r#"await inviteFinishScanPending("surface_open");"#),
+        body[..end].contains(r#"await relayScan({ source: "surface_open", at: Date.now() });"#),
         "trigger (b) rides the CHOOSER's opener, which is where BOTH retargeted entries land"
     );
-    // ⚠ NO TIMER. The lane adds none and touches none; the app's only standing interval is
-    // the idle autolock. Counted, not eyeballed: three setInterval sites existed at the base
-    // and three must exist now.
+    // ⚠ THE TIMER CENSUS, COUNTED AND NOT EYEBALLED. v1 pinned THREE and NA-0756 added none.
+    // NA-0763 adds exactly ONE — the liveness tick — so the exact count is now FOUR. It stays
+    // an EXACT equality on purpose: an unaccounted fifth timer must still fail this arm.
     assert_eq!(
         js.matches("setInterval(").count(),
-        3,
-        "this lane adds NO timer, no poll and no background loop — the three that exist are \
-         the unlock countdown, the erase countdown and the idle autolock"
+        4,
+        "the timer census is EXACT — the four that exist are the unlock countdown, the erase \
+         countdown, the idle autolock and NA-0763's liveness tick"
     );
 }
 

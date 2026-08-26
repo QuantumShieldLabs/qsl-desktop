@@ -254,7 +254,10 @@ mod tests {
     fn no_tick_seam_key_can_reach_the_persisted_file() {
         let combos = [
             AppSettings::default(),
-            AppSettings { tempo: Tempo::Private, ..Default::default() },
+            AppSettings {
+                tempo: Tempo::Private,
+                ..Default::default()
+            },
             AppSettings {
                 tempo: Tempo::PullOnly,
                 self_alias: "Vic".to_string(),
