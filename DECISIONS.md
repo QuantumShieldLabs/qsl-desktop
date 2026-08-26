@@ -3176,6 +3176,17 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     nothing.** Not introduced here and not repaired here — the shipped redeem flow always had
     this shape — but it **bounds `E1`**, so it is stated in the flight card rather than
     discovered on the rig.
+  - ⚠⚠ **THE THRESHOLD STATUS CARRIES COPY THE OPERATOR HAS NOT BLESSED, AND THAT IS FLAGGED
+    RATHER THAN SLIPPED IN.** The brief says *"NO new visible control in this lane; copy lands
+    Lane C-era"* — which scopes the KNOB's three-position control. But `D4` REQUIRES a
+    user-visible status, and a status necessarily has words. The seat chose them; they are a
+    one-line change for the operator: **"Can't reach the relay — still trying. Contacts may not
+    finish connecting until it's back."**
+  - ⚠ **AND THE FIRST DRAFT OF THAT SENTENCE WAS UNTRUE, CAUGHT BEFORE IT SHIPPED.** It read
+    *"…retrying. **Messages will arrive** when it's back."* — but **messaging has not shipped**,
+    so it promised a capability this build does not have. Replaced with a sentence describing what
+    this rung's tick actually does: finish invites. A status line is public truth like any other
+    published claim, and a delivery layer that lies about what it delivers is worse than silent.
   - ⚠ **REPORTED AND NOT ACTED ON.** `ENG-0198` is open and untouched. The `gui-driver` CI step
     is named "the six flows" and now runs **thirteen**; that byte lives in `.github/**`, which
     this lane may not touch.

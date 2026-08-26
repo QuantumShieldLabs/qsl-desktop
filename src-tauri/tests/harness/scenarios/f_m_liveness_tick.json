@@ -188,7 +188,7 @@
   {
    "op": "exec",
    "script": "return byId(\"tick-status\").querySelector(\".status-text\").textContent;",
-   "expect": "Can't reach the relay — retrying. Messages will arrive when it's back."
+   "expect": "Can't reach the relay — still trying. Contacts may not finish connecting until it's back."
   },
   {
    "op": "note",

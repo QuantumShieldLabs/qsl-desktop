@@ -1764,7 +1764,7 @@ const TICK_CHECK_MS = 250;            // the checker's period => beat granularit
 const TICK_BACKOFF_CEIL_MS = 900000;  // R7: 900 s
 const TICK_FAIL_THRESHOLD = 3;        // R7: consecutive scan failures before we speak
 const TICK_UNREACHABLE_COPY =
-  "Can't reach the relay — retrying. Messages will arrive when it's back.";
+  "Can't reach the relay — still trying. Contacts may not finish connecting until it's back.";
 
 let tickTempo = TICK_DEFAULT;
 let tickOverrideMs = null;   // the TEST-ONLY seam; null in every ordinary run
