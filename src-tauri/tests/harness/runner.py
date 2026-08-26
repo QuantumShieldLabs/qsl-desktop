@@ -279,6 +279,39 @@ class Runner:
         self.proc = None
 
     # ---- ops ----
+    def op_poll_exec(self, st):
+        want = st["expect"]
+        mode = st.get("mode", "eq")
+        limit = st.get("poll", POLL_MAX)
+        label = st.get("label", st["script"][:40])
+        polls = 0
+        last = None
+        while polls < limit:
+            rc, out = self.wd("execute", st["script"])
+            if rc == 0:
+                try:
+                    last = json.loads(out)["value"]
+                except (ValueError, KeyError):
+                    last = "<unparseable:%s>" % out.strip()[:40]
+                if mode == "ge":
+                    try:
+                        if float(last) >= float(want):
+                            self.step("poll_exec %s" % label,
+                                      ">= %s" % want,
+                                      "%s after %d poll(s)" % (last, polls + 1), True)
+                            return
+                    except (TypeError, ValueError):
+                        pass
+                elif last == want:
+                    self.step("poll_exec %s" % label, want,
+                              "%s after %d poll(s)" % (last, polls + 1), True)
+                    return
+            time.sleep(1)
+            polls += 1
+        self.step("poll_exec %s" % label,
+                  (">= %s" % want) if mode == "ge" else want,
+                  "TIMEOUT after %d polls, last=%s" % (polls, last), False)
+
     def op_poll_screen(self, screen, want):
         polls = 0
         last = None
@@ -374,6 +407,19 @@ class Runner:
                     ok = json.loads(out)["value"] == st["expect"]
                 self.step("exec %s" % st["script"][:40], st.get("expect", "rc=0"),
                           out.strip()[:80], ok)
+            elif op == "poll_exec":
+                # NA-0763 (D-0040, ruled R8): the ONE new op. `exec` is a ONE-SHOT
+                # compare, which cannot observe a value that becomes true over time
+                # -- a repeating timer above all. The shape is `op_poll_screen`'s
+                # bounded loop and `countdown_commit`'s successive-reading idea,
+                # neither of which was reusable (one is className-only, the other is
+                # hard-wired to #countdown-number behind the destructive guard).
+                #
+                # ⚠ IT IS NOT A SLEEP. It is a BOUNDED poll that FAILS on timeout,
+                # so a tick that never fires produces a red row rather than a run
+                # that quietly took longer. `mode: "ge"` compares numerically for
+                # counters; the default compares the value verbatim.
+                self.op_poll_exec(st)
             elif op == "file_present":
                 p = self.profile / st["path"]
                 polls = 0
