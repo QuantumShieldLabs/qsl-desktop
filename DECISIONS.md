@@ -3187,6 +3187,27 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     so it promised a capability this build does not have. Replaced with a sentence describing what
     this rung's tick actually does: finish invites. A status line is public truth like any other
     published claim, and a delivery layer that lies about what it delivers is worse than silent.
+  - ⚠⚠⚠ **THE MOST IMPORTANT DEFECT THIS LANE FOUND WAS ITS OWN, AND CI FOUND IT AFTER TWO CLEAN
+    LOCAL RUNS.** The first `relayScan` re-read the pending slot **in a loop**. That LOOKS like
+    "one scan in flight, a trigger during a scan sets a rerun bit" and is not: whenever a **beat is
+    shorter than a scan takes**, the timer refills the slot faster than the loop drains it and
+    **the loop never terminates**. `enterMain` awaits that scan, so `enterMain` never settled —
+    the app's own unlock landing hung. **Measured, not inferred:** the harness passed twice locally
+    and failed on CI's slower runner at the same 250 ms seam; split into two steps with their own
+    `.catch()`, it reproduced locally as `enterMain` neither resolving nor rejecting.
+    **THE CURE IS STRUCTURAL:** at most ONE rerun, then the pending slot is cleared — a rerun BIT,
+    which is what the design said all along. One extra pass is also all that is CORRECT, because
+    the rerun re-reads the same state a trigger during it would ask about.
+    ⛳ **PROVEN AT AN ADVERSARIAL TEMPO:** the whole flow now passes at a **30 ms** seam, where a
+    beat is far shorter than any scan and the old code hung deterministically — and at the
+    committed 250 ms. ⚠ **Production tempi (B >= 20 s) would never have shown this**, which is
+    precisely why a test tempo seam exists: it compresses a rare race into a certainty.
+  - ⚠ **AND THE SAME ADVERSARIAL RUN CORRECTED THE `I2` ARM.** At 30 ms it read a locked-window
+    delta of **2** — correctly, because ~2 beats fit between *asking* to lock and the screen
+    actually changing, and the vault is not locked yet during that gap. The arm now samples the
+    counter **after `scr-unlock` is visible**, so it measures the LOCKED window it claims to
+    measure, at any tempo. ⇒ *an arm that passes only at the tempo you happened to choose is not
+    measuring what its name says.*
   - ⚠ **REPORTED AND NOT ACTED ON.** `ENG-0198` is open and untouched. The `gui-driver` CI step
     is named "the six flows" and now runs **thirteen**; that byte lives in `.github/**`, which
     this lane may not touch.

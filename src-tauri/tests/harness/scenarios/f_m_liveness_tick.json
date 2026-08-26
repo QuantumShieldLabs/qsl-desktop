@@ -77,17 +77,38 @@
    "text": "Configure a relay through the app's own IPC. relay_config_set normalizes and saves; it requires no probe, so no network is touched. The address is deliberately UNREACHABLE -- nothing in this scenario needs it to answer, and a reachable one would make the run depend on a relay."
   },
   {
+   "op": "note",
+   "text": "⚠ THE TWO IPC CALLS ARE SPLIT AND EACH CAPTURES ITS OWN REJECTION. The first version chained them with no .catch(), so a rejection anywhere left one boolean reading false forever and the row could only say 'last=false' -- which is exactly what it said when this failed on CI while passing locally. An instrument that cannot name its own failure is not an instrument."
+  },
+  {
    "op": "exec",
-   "script": "window.__na0763 = { ready:false }; invoke(\"relay_config_set\", { url: \"https://relay.invalid.example\" })   .then(function(){ return enterMain(); })   .then(function(){ window.__na0763.ready = true; }); return \"kicked\";",
+   "script": "window.__na0763 = { setDone:false, mainDone:false, err:null }; invoke(\"relay_config_set\", { url: \"https://relay.invalid.example\" })   .then(function(){ window.__na0763.setDone = true; })   .catch(function(e){ window.__na0763.err = \"relay_config_set: \" + String((e && e.message) || e); }); return \"kicked\";",
    "expect": "kicked"
   },
   {
    "op": "poll_exec",
-   "script": "return String(window.__na0763.ready);",
+   "script": "return window.__na0763.err ? (\"ERR \" + window.__na0763.err) : String(window.__na0763.setDone);",
    "expect": "true",
    "mode": "eq",
-   "poll": 15,
-   "label": "relay_configured"
+   "poll": 25,
+   "label": "relay_config_set_resolved"
+  },
+  {
+   "op": "note",
+   "text": "Now the surface re-read that publishes the relay into the tick's gate. Kept as a REAL call to `enterMain` rather than assigning the flag directly: assigning it would bypass the very wiring under test (R10's gate is fed by enterMain and refreshServerState, not by the scenario)."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0763.err = null; enterMain()   .then(function(){ window.__na0763.mainDone = true; })   .catch(function(e){ window.__na0763.err = \"enterMain: \" + String((e && e.message) || e); }); return \"kicked\";",
+   "expect": "kicked"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return window.__na0763.err ? (\"ERR \" + window.__na0763.err) : String(window.__na0763.mainDone);",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 25,
+   "label": "enterMain_resolved"
   },
   {
    "op": "exec",
@@ -210,7 +231,7 @@
   },
   {
    "op": "exec",
-   "script": "window.__na0763.atLock = tickCount; window.__na0763.lockedAt = Date.now(); window.__na0763.locked = false; invoke(\"lock_now\").then(function(){ return showUnlockScreen(\"main\"); })   .then(function(){ window.__na0763.locked = true; }); return \"kicked\";",
+   "script": "window.__na0763.locked = false; invoke(\"lock_now\").then(function(){ return showUnlockScreen(\"main\"); })   .then(function(){ window.__na0763.locked = true; })   .catch(function(e){ window.__na0763.err = \"lock: \" + String((e && e.message) || e); }); return \"kicked\";",
    "expect": "kicked"
   },
   {
@@ -224,6 +245,15 @@
   {
    "op": "poll_visible",
    "screen": "scr-unlock"
+  },
+  {
+   "op": "note",
+   "text": "⚠ THE LOCKED WINDOW STARTS **HERE**, not when the lock was REQUESTED. Measured the hard way: at an adversarial 30 ms seam this arm read a delta of 2, because ~2 beats fit between asking to lock and the screen actually changing -- and those ticks are CORRECT, the vault was not locked yet. Sampling after `scr-unlock` is visible makes the arm measure what it claims to measure, at any tempo."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0763.atLock = tickCount; window.__na0763.lockedAt = Date.now(); return String(tickGateOpen());",
+   "expect": "false"
   },
   {
    "op": "exec",

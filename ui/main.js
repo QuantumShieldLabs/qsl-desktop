@@ -2660,6 +2660,14 @@ let relayScanPending = null;
 let relayScanRerunCount = 0;
 let relayScanBusyRejects = 0;
 
+async function relayScanOnce(ev) {
+  let marks = { why: ev.source, at: ev.at, scanned: 0, finished: 0, pending: 0,
+                attempted: 0, failed: 0 };
+  for (const cls of SCAN_CLASSES) marks = await cls(marks);
+  recordScanOutcome(ev, marks);
+  return marks;
+}
+
 async function relayScan(ev) {
   if (relayScanBusy) {
     relayScanPending = ev;          // never stacks: one rerun, last request wins
@@ -2670,17 +2678,25 @@ async function relayScan(ev) {
   relayScanBusy = true;
   let marks = null;
   try {
-    let cur = ev;
-    for (;;) {
-      marks = { why: cur.source, at: cur.at, scanned: 0, finished: 0, pending: 0,
-                attempted: 0, failed: 0 };
-      for (const cls of SCAN_CLASSES) marks = await cls(marks);
-      recordScanOutcome(cur, marks);
-      const next = relayScanPending;
-      relayScanPending = null;
-      if (!next) break;
+    marks = await relayScanOnce(ev);
+    // ⚠⚠ AT MOST ONE RERUN, AND THE BOUND IS THE WHOLE POINT — this is a rerun
+    // BIT, not a queue. A first draft re-read the pending slot in a loop, which
+    // LOOKED like the same thing and was not: whenever a beat is shorter than a
+    // scan takes, the timer refills the slot faster than the loop drains it and
+    // the loop NEVER TERMINATES. That is not hypothetical — it hung the harness
+    // under the test seam's 250 ms beat, first on CI and then reproducibly here.
+    // Production tempi (B >= 20 s) would never have shown it, which is precisely
+    // why the seam exists. One extra pass is also all that is CORRECT: the rerun
+    // re-reads current state, so it already covers every trigger that arrived
+    // while the first pass ran.
+    const next = relayScanPending;
+    relayScanPending = null;
+    if (next) {
       relayScanRerunCount += 1;
-      cur = next;
+      marks = await relayScanOnce(next);
+      // Triggers arriving during the rerun are DROPPED, deliberately: the rerun
+      // has just re-read the same state they would ask about.
+      relayScanPending = null;
     }
   } finally {
     relayScanBusy = false;
