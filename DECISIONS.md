@@ -3154,10 +3154,31 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     prediction was right about the shape and wrong about the order. ⚠ The correction names
     **sections rather than line numbers**: a coordinate is exactly what went stale, and the
     whole-file timer census is the instrument that keeps the count honest instead.
-  - ⚠ **REPORTED AND NOT ACTED ON.** `ENG-0198` is open and untouched. The brief's "bounded 8
-    pulls × 16 frames" does not match the GUI's own argument, which is `max: 1`. The
-    `gui-driver` CI step is named "the six flows" and now runs **thirteen**; that byte lives in
-    `.github/**`, which this lane may not touch.
+  - ⚠⚠ **A FINDING FROM THIS LANE'S OWN STOP 001, RETRACTED — THE BRIEF WAS RIGHT AND THE SEAT
+    WAS WRONG.** STOP 001 reported that the brief's *"bounded 8 pulls × 16 frames"* did not match
+    the GUI's own argument of `max: 1`, and declined to chase the figure into `qsc`. Chased at
+    build, it resolves completely and in the brief's favour: `finish_scan_select_invite_resp`
+    computes `let total = max.clamp(FINISH_SCAN_TOTAL_MIN, FINISH_SCAN_TOTAL_MAX)` with
+    **MIN = 16**, so the GUI's `max: 1` is **clamped UP to exactly 16**, and the scan stops at
+    **`FINISH_SCAN_PULLS_MAX` = 8** pulls (`invite/mod.rs:1153-1156`, `:1217`). ⇒ **8 × 16 is
+    exact.** The error was comparing a call-site ARGUMENT against a bound computed AFTER
+    clamping — and the place the seat declined to look is precisely where the answer was.
+  - ⚠⚠ **AND A GAP THE FLIGHT CARD MUST CARRY, FOUND WHILE DERIVING IT: THE INVITE CHAIN'S
+    MIDDLE STEP HAS NO GUI TRIGGER AT ALL.** The four verbs' own doc comments name their sides:
+    `invite_create` is *Alice*; `invite_redeem` is *"Bob: redeem an invite and hand shake into
+    the slot"*; **`invite_accept` is *"Alice: collect the handshake from her own invite slot and
+    answer it"***; `invite_finish` is *"Bob: collect the wrapped B1 from his own inbox … and let
+    the existing initiator logic finish the handshake"*. This lane's tick automates
+    **`invite_finish` — Bob's side only**. `invite_accept` is **registered** as a tauri command
+    and **invoked from `ui/` exactly zero times** (its single occurrence there is a COMMENT); it
+    is reachable only from the `qsc` CLI (`main.rs:370`). ⇒ **on a two-desktop flight, Alice's
+    accept must be driven from the CLI, or the chain stalls there and Bob's tick spins finding
+    nothing.** Not introduced here and not repaired here — the shipped redeem flow always had
+    this shape — but it **bounds `E1`**, so it is stated in the flight card rather than
+    discovered on the rig.
+  - ⚠ **REPORTED AND NOT ACTED ON.** `ENG-0198` is open and untouched. The `gui-driver` CI step
+    is named "the six flows" and now runs **thirteen**; that byte lives in `.github/**`, which
+    this lane may not touch.
   - ⚠ **Claim boundary.** ZERO qsl-protocol product bytes. ZERO relay or server changes. No pin
     bump. No `.github/**`. No test weakened, skipped or deleted — arms were ADDED and one seal
     re-aimed with its count still exact. **Harness green is NOT a field claim**: acceptance is
