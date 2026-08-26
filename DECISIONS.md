@@ -3208,6 +3208,16 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     counter **after `scr-unlock` is visible**, so it measures the LOCKED window it claims to
     measure, at any tempo. ⇒ *an arm that passes only at the tempo you happened to choose is not
     measuring what its name says.*
+  - ⚠⚠ **AND THE SCENARIO NOW FAILS FAST IF ITS SEAM IS ABSENT, because the seat wasted two
+    diagnoses on that exact confusion.** Invoked directly through `runner.py` rather than through
+    `gui_driver.rs` — which is what sets `QSLD_TICK_MS` — the app runs at the shipped INSTANT
+    tempo, a 15-25 s beat, so `I1`'s bounded window sees about **one** tick and the run fails
+    `I1_tick_fires TIMEOUT, last=1`. That reads exactly like a product defect and is not: it means
+    the scenario was run without its seam. **Twice** this produced a false diagnosis here — once
+    read as a red arm's result and once as a baseline flake. A step now asserts
+    `tickOverrideMs !== null` immediately after launch, so the run dies in seconds naming its own
+    cause. ⇒ *an instrument invoked wrongly reports a RESULT, not an error — so make the
+    precondition an assertion.*
   - ⚠ **REPORTED AND NOT ACTED ON.** `ENG-0198` is open and untouched. The `gui-driver` CI step
     is named "the six flows" and now runs **thirteen**; that byte lives in `.github/**`, which
     this lane may not touch.

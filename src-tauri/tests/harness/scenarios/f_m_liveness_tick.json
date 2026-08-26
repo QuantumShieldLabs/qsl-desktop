@@ -11,6 +11,15 @@
   },
   {
    "op": "note",
+   "text": "⚠⚠ FAIL FAST IF THE TEMPO SEAM IS ABSENT. This scenario is meaningless without `QSLD_TICK_MS`: at the shipped INSTANT tempo a beat is 15-25 s, so I1's bounded window sees ~1 tick and the run fails with a confusing `I1_tick_fires TIMEOUT, last=1` that looks like a product defect. It is not -- it means the scenario was invoked WITHOUT its seam (running `runner.py` directly rather than through `gui_driver.rs`, which sets it). Measured the hard way, twice. Assert it up front so the failure names its own cause."
+  },
+  {
+   "op": "exec",
+   "script": "return String(tickOverrideMs !== null && tickOverrideMs > 0);",
+   "expect": "true"
+  },
+  {
+   "op": "note",
    "text": "A vault, so the run reaches an unlocked surface. The tick is gated on exactly the two post-unlock screens, the same gate the idle autolock uses."
   },
   {
