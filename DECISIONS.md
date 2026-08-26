@@ -2993,3 +2993,236 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     umask 002, **no chmod and no pre-made dirs**, expecting `qsp_sessions` born `700` by `stat`
     and both sides completing untouched), flown after this merges. PR **#37** is a separate,
     held lane and is not touched here. Nothing merged by the seat; the operator merges.
+
+- **ID:** D-0039
+  - **Status:** NOT USED — a deliberate, recorded gap.
+  - **Date:** 2026-08-26
+  - ⚠ **THIS ID WAS CLAIMED BY A MERGED PR TITLE AND NEVER DECLARED.** qsl-desktop **#39**
+    ("NA-0758: the desktop docs tell the truth — a runnable app, and what actually opens a
+    connection (D-0039)") merged 2026-08-25T05:10:58Z carrying `(D-0039)` in its title, but its
+    file set was `CONTRIBUTING.md`, `README.md` and `SECURITY.md` only — it never touched this
+    file, and `D-0039` occurs **zero** times anywhere in this repository's tree.
+  - **WHY IT IS LEFT EMPTY RATHER THAN REUSED**, ruled by the Director at `R5` on NA-0763's
+    STOP 001. A merged PR title is permanent public record. If a later lane declared `D-0039`,
+    a reader following #39's own title would land on that lane's decision — a false trail, and
+    the same class of harm as the stale ledger entry the liveness runway's lane one was born
+    from. The **`D-0013`** gap above is the precedent: this space already tolerates a recorded
+    gap, and a gap that says why is cheaper than a citation that lies.
+
+- **ID:** D-0040
+  - **Status:** Accepted
+  - **Date:** 2026-08-26
+  - **Lane:** desktop **NA-0763 / THE LIVENESS RUNWAY, LANE TWO: THE TICK**. Executing the
+    Director's formalization brief `BRIEF_liveness_lane2_tick_20260826.md` (sha256
+    `deb42b73…ef85ed`, 177 lines / 11067 bytes) and his build authorization
+    `RULING_NA0763_001_build_20260826.md` (sha256 `e8ff3534…d71a`, 79 lines / 5284 bytes),
+    both banked 444 and **sha-VERIFIED against their own bytes, all 64 digits with a negative
+    control on the comparator, BEFORE being read**. Ruled from `STOP_NA0763_001_20260826T035406Z.md`
+    (sha256 `6112dce6…422e`). Spine decision **D-1404**. Design of record:
+    `DESIGN_delivery_ladder_metronome_v2_20260825.md` (sha256 `aba8e2a5…8c59`), sections 1-2.
+    Base `b25d5fdb79c544cbaba862f2a803a62ae906231f`, re-derived bare and unpiped at the NAMED
+    github remote at STOP 001 and again at build.
+  - ⛳⛳ **WHAT THIS BUYS: THE APP CHECKS THE RELAY ON ITS OWN.** While UNLOCKED and with a relay
+    configured, a jittered background beat feeds the SAME handler the unlock and surface-open
+    triggers already use, so an approval or an invite-finish lands on the other machine with
+    **zero human nudges**. Rung 1 of the delivery ladder: zero relay changes, no push, no
+    socket, no messaging classes.
+  - **THE NUMBERS, OPERATOR-BLESSED** (2026-08-26, verbatim: *"I recommend Instant to."*),
+    ruled at `R10`. `INSTANT` **B = 20 s, J = 5 s**; `PRIVATE` **B = 300 s, J = 90 s**;
+    `PULL-ONLY` = the private tempo (design 1.4's own words — at rung 1 everything is pull, so
+    the third position is meaningful from day one and changes nothing until a socket rung
+    exists). **DEFAULT = INSTANT**, held in code and OMITTED from `settings.json`. Jitter is
+    uniform over [-J, +J] and **redrawn EVERY beat**: a fixed poll rhythm is a traffic
+    signature, the same reasoning that refused the auto-established message.
+  - ⛳ **WHY B WAS A FREE CHOICE, MEASURED RATHER THAN ASSUMED.** The design's section 1.2
+    floors the steady-state tick at the deployed lease *while never-ack pull paths exist*, and
+    retires that floor once the repair makes every pull ack-or-quarantine. The repair is
+    **present in the pin this app rides**: `403432ce` (NA-0742's producer acks) is an ancestor
+    of `0b9d6967` — `git merge-base --is-ancestor` rc=0, with the negative control (current
+    protocol main is **not** an ancestor of the older pin) rc=1. ⇒ the floor is retired and B
+    is a load-and-shape choice, exactly as 1.2's own sentence provides.
+  - ⛳ **AND THE STEADY STATE IS FREE, WHICH IS WHY INSTANT CAN BE TIGHT WITHOUT BEING RUDE.**
+    The scan's only relay-facing call is `invite_finish`, and it runs **only** for contacts
+    reading `state === "inactive"`. A user whose contacts are all established issues **zero**
+    network requests per tick. Cost is `3600/B × P` pulls per hour with P pending — 180/hour
+    per pending contact at INSTANT — and pending states are transient, resolving within a beat
+    or two. `relay_config_get`, `contact_list` and `connect_status` are all LOCAL.
+  - **THE SHAPE, AND WHY IT IS THE AUTOLOCK'S.** A short checker firing on a due-time, not one
+    standing interval of length B. Two load-bearing reasons: a fixed-period interval **cannot
+    re-jitter per beat**, and jitter is a design requirement rather than polish; and it makes
+    *locked = no ticks* **structural** instead of a cleanup obligation — there is no timer to
+    clear, the gate simply refuses and the schedule resets, so a lock path written later cannot
+    forget it. The gate is the autolock's own: `currentScreen` ∈ {`scr-main`, `scr-settings`},
+    assigned in exactly one place (`show`, `ui/main.js:105`), of seven screens.
+  - ⚠⚠ **RUNG 1 INSTALLS THE FINISH-SCAN CLASS ONLY, AND THE BOUND IS MEASURED, NOT ASSUMED**
+    (ruled `R1`, on two independent grounds). **(i)** The design of record's day-one class list
+    names finish-scan **and handshake-poll**; this app has **no handshake surface to call** —
+    it registers **44** tauri commands and none is a handshake verb, and `handshake` occurs in
+    desktop product source exactly **twice, both in comments** about a `connect_status` state
+    string. Adding one is a new command plus a new facade surface, which is a scope expansion
+    the brief forbade without a stop. **(ii)** `ENG-0198` is **open and not started**:
+    `handshake poll` returns **rc 0 while completing nothing**, so a tick over it would spin
+    forever and the fail-loud reporting below would **never fire**, P4 being nominally
+    satisfied and actually defeated. `SCAN_CLASSES` is a LIST so the second class is an
+    addition, never a re-architecture. ⚠ **Rung 1's tick does not carry handshake rotation**,
+    and the deviation from the design's day-one list is recorded here in the open rather than
+    absorbed silently. The design of record is **not edited**.
+  - **THE ONE HANDLER** (P2 / ladder 1.1). Single entry, event `{source, at}`; sources
+    `unlock | surface_open | tick`; idempotent; **one scan in flight** — a trigger arriving
+    mid-scan sets the pending slot and **never stacks**, last request wins, exactly one rerun
+    follows. Both shipped triggers are re-routed through it with their behaviour unchanged.
+  - ⚠⚠ **WHY THAT GUARD IS IN JS AND NOT RUST, MEASURED BEFORE IT WAS DESIGNED.** `CoreGateway`
+    **is** a process-wide single-flight gate — but it serialises **individual calls**, and
+    callers **queue on its mutex rather than fail**. A scan is a multi-call SEQUENCE, so two
+    overlapping scans interleave their calls through that gate perfectly happily. `core_busy`
+    is the same granularity and would read true during any unrelated call — a settings save,
+    say. The scan is a unit only in the UI, so the guard lives there.
+  - **BACKOFF-AND-REPORT** (ladder 1.3, ruled `R7`). Consecutive-**scan** failure counter;
+    interval `min(B × 2^k, 900 s)` with the same per-beat jitter — one code path, so the jitter
+    cannot be lost on the failure branch; **threshold 3** consecutive failures before anything
+    is shown; recovery clears counter and status. ⚠ A scan that never reached the relay
+    (nothing pending, or no relay) moves the counter in **neither** direction: an idle app must
+    not report an outage it never observed. ⚠ The shipped `catch` **swallowed every failure**
+    by design ("a finish failure must never break the surface it rides on"); it now **records**
+    the failure as well, which is what makes a counter possible at all.
+  - **THE REPORT SURFACE** (ruled `R2`). It rides `setStatusLine`, the R-12/F1 **quiet line** —
+    whose own comment reserves it for *"standing state that is simply true"*, which is exactly
+    what an unreachable relay is — and **never** `statusFooterLine`. That footer is NA-0752's
+    ruled **TWO-SOURCE truth line**, and a third source would re-open a settled ruling. Cost:
+    **one** new `<p class="status-line-quiet">` on `scr-main`, which had no quiet-line slot
+    (both existing ones are on `scr-settings`). **NO CSS IS MINTED** — `.status-line-quiet` and
+    `.hidden` both already exist. ⚠ Hidden by the **class**, never the `hidden` attribute:
+    `.status-line-quiet` sets `display:flex`, which would win over the attribute.
+  - **THE STORED KNOB** (ladder 1.4). Three positions stored from day one; only the tempo
+    halves honoured at rung 1; no migration later. The DEFAULT is **omitted** from the file via
+    `skip_serializing_if`, so an existing profile keeps its prior key set **exactly** and
+    `settings_key_allowlist`'s default-case assertion stays **byte-unchanged**; one arm is
+    ADDED on the `relay_url` precedent. Nothing in this lane **writes** the knob —
+    `settings_set` keeps its two-field arity, and the visible control lands Lane C-era.
+  - ⚠⚠ **THE TEST SEAM CANNOT REACH THE PERSISTED FILE, AND THAT IS STRUCTURAL RATHER THAN
+    DISCIPLINARY** (ruled `R4`, its constraint binding). The seam rides **`AppInfoDto`** — a
+    `Serialize`-ONLY type that is never deserialized and has no `save` path — so
+    `settings::save` cannot round-trip a test tempo because the value is not of a shape it can
+    ever hold. `settings_get`, `settings_set` and `relay_config_set` are **byte-identical to
+    base**. ⚠ **The first design was measured broken before it shipped:** it put the seam on
+    `AppSettings` behind `#[serde(skip)]` and read it through a `load_effective` helper —
+    but `skip` omits the field from **serialization**, and Tauri's IPC serializes with the same
+    impl, so the value could never have reached the UI at all. A probe printed the serialized
+    struct as `{"autolock_minutes":60}` and settled it. Recorded because the next reader should
+    not have to re-derive it.
+  - **INSTRUMENTS, WITH THEIR RED ARMS PROVEN AND NAMED** (`src-tauri/tests/gui_driver.rs`
+    `na0763_gui_m_liveness_tick`, scenario `f_m_liveness_tick.json`; 51 scenario entries of which 15 are notes ⇒ **39 verdict rows, ALL PASS**, terminal `result=PASS` with a reconciling count of 39):
+    **I1 TICK-FIRES** — ≥2 handler runs with `source=tick` in a bounded window (measured: 4
+    after 2 polls). ⛳ RED ARM RUN: with the interval disabled, `TIMEOUT after 20 polls,
+    last=0`. **I2 LOCK-GATES** — zero tick scans across a bounded locked window, and
+    `tickNextDueAt` is `null` afterwards, so the schedule RESET rather than paused. ⛳ RED ARM
+    RUN: with the gate flipped open, the post-lock check read `true`. **I3 SINGLE-FLIGHT** —
+    exactly one refusal and exactly one rerun, with the pending slot empty afterwards.
+    **I4 TRIGGERS-PRESERVED** — the shared marker slot still reads `unlock` after many ticks.
+    ⛳ RED ARM RUN: with the separation removed it read `tick`. **I5 BACKOFF-REPORT** — the
+    threshold raises the exact copy at 3 and recovery hides it.
+  - ⚠ **I5's BOUND IS STATED, NOT GLOSSED** (ruled `R8`). The **relay-fault PATH** into backoff
+    is not drivable here: a fresh profile has no pending contact, so no relay call is ever
+    attempted and no failure can accrue, and this repo still has no fixture relay (`ENG-0226`,
+    open). What is driven is the half this lane owns — threshold, surface, recovery — through
+    the handler's own outcome recorder. The unreachable-relay path is **FIELD-VERIFIED** on the
+    acceptance flight. ⚠ **The jitter DISTRIBUTION is likewise not harness-proven**: the seam is
+    deliberately un-jittered so the instrument is deterministic. What is proven is that the tick
+    FIRES, that it is GATED by lock and by relay-configured, that it never stacks, and that it
+    never writes the shared slot.
+  - ⚠⚠ **A CLAIM FROM THIS LANE'S OWN STOP 001, CORRECTED BY MEASUREMENT.** STOP 001 argued the
+    two committed `"why":"surface_open"` assertions in `f_l_invite_redeem.json` would go red
+    "the moment a tick exists", because the scan's no-relay short-circuit still marks. Measured
+    with the marker separation **removed**, `na0756_gui_l_invite_redeem` **still passes** — that
+    scenario configures no relay, so `R10`'s gate stops the tick from ever running there. ⇒ both
+    protections are real, and **which one is load-bearing depends on the scenario**: the gate is
+    what holds in `f_l`, the separation is what holds in any scenario that configures a relay
+    (proven by I4's red arm here). The Director's ordering at `R6` — separation primary, gate
+    secondary — is right for the general case, and the refinement is recorded rather than
+    quietly absorbed.
+  - **THE Z6 SEAL IS RE-AIMED, NOT WEAKENED.** Its v1 name and heading — `..._add_no_timer`,
+    "NOTHING POLLS", `setInterval` pinned at **three** — were NA-0756's honest self-binding, and
+    NA-0763 is precisely the lane that makes them false. Following the pattern the neighbouring
+    selectors seal set when its own v1 heading promised a check it never made, the heading and
+    name are **corrected to what is measured** and the count moves **3 → 4 with the fourth
+    named**. ⚠ It stays an **EXACT equality** rather than relaxing to `>=`, so an unaccounted
+    **fifth** timer still fails it — which is the property the census existed to protect.
+  - ⚠ **TWO STALE COMMENTS INSIDE THIS LANE'S OWN FILE, CORRECTED** (authorized at `R11`). The
+    FINISH TRIGGERS header said the app's only standing interval was "the idle autolock at
+    :1685" — a coordinate that had drifted past its own section — and predicted the tick would
+    arrive "once **messaging** ships". The ladder sequences rung 1 **before** messaging, so the
+    prediction was right about the shape and wrong about the order. ⚠ The correction names
+    **sections rather than line numbers**: a coordinate is exactly what went stale, and the
+    whole-file timer census is the instrument that keeps the count honest instead.
+  - ⚠⚠ **A FINDING FROM THIS LANE'S OWN STOP 001, RETRACTED — THE BRIEF WAS RIGHT AND THE SEAT
+    WAS WRONG.** STOP 001 reported that the brief's *"bounded 8 pulls × 16 frames"* did not match
+    the GUI's own argument of `max: 1`, and declined to chase the figure into `qsc`. Chased at
+    build, it resolves completely and in the brief's favour: `finish_scan_select_invite_resp`
+    computes `let total = max.clamp(FINISH_SCAN_TOTAL_MIN, FINISH_SCAN_TOTAL_MAX)` with
+    **MIN = 16**, so the GUI's `max: 1` is **clamped UP to exactly 16**, and the scan stops at
+    **`FINISH_SCAN_PULLS_MAX` = 8** pulls (`invite/mod.rs:1153-1156`, `:1217`). ⇒ **8 × 16 is
+    exact.** The error was comparing a call-site ARGUMENT against a bound computed AFTER
+    clamping — and the place the seat declined to look is precisely where the answer was.
+  - ⚠⚠ **AND A GAP THE FLIGHT CARD MUST CARRY, FOUND WHILE DERIVING IT: THE INVITE CHAIN'S
+    MIDDLE STEP HAS NO GUI TRIGGER AT ALL.** The four verbs' own doc comments name their sides:
+    `invite_create` is *Alice*; `invite_redeem` is *"Bob: redeem an invite and hand shake into
+    the slot"*; **`invite_accept` is *"Alice: collect the handshake from her own invite slot and
+    answer it"***; `invite_finish` is *"Bob: collect the wrapped B1 from his own inbox … and let
+    the existing initiator logic finish the handshake"*. This lane's tick automates
+    **`invite_finish` — Bob's side only**. `invite_accept` is **registered** as a tauri command
+    and **invoked from `ui/` exactly zero times** (its single occurrence there is a COMMENT); it
+    is reachable only from the `qsc` CLI (`main.rs:370`). ⇒ **on a two-desktop flight, Alice's
+    accept must be driven from the CLI, or the chain stalls there and Bob's tick spins finding
+    nothing.** Not introduced here and not repaired here — the shipped redeem flow always had
+    this shape — but it **bounds `E1`**, so it is stated in the flight card rather than
+    discovered on the rig.
+  - ⚠⚠ **THE THRESHOLD STATUS CARRIES COPY THE OPERATOR HAS NOT BLESSED, AND THAT IS FLAGGED
+    RATHER THAN SLIPPED IN.** The brief says *"NO new visible control in this lane; copy lands
+    Lane C-era"* — which scopes the KNOB's three-position control. But `D4` REQUIRES a
+    user-visible status, and a status necessarily has words. The seat chose them; they are a
+    one-line change for the operator: **"Can't reach the relay — still trying. Contacts may not
+    finish connecting until it's back."**
+  - ⚠ **AND THE FIRST DRAFT OF THAT SENTENCE WAS UNTRUE, CAUGHT BEFORE IT SHIPPED.** It read
+    *"…retrying. **Messages will arrive** when it's back."* — but **messaging has not shipped**,
+    so it promised a capability this build does not have. Replaced with a sentence describing what
+    this rung's tick actually does: finish invites. A status line is public truth like any other
+    published claim, and a delivery layer that lies about what it delivers is worse than silent.
+  - ⚠⚠⚠ **THE MOST IMPORTANT DEFECT THIS LANE FOUND WAS ITS OWN, AND CI FOUND IT AFTER TWO CLEAN
+    LOCAL RUNS.** The first `relayScan` re-read the pending slot **in a loop**. That LOOKS like
+    "one scan in flight, a trigger during a scan sets a rerun bit" and is not: whenever a **beat is
+    shorter than a scan takes**, the timer refills the slot faster than the loop drains it and
+    **the loop never terminates**. `enterMain` awaits that scan, so `enterMain` never settled —
+    the app's own unlock landing hung. **Measured, not inferred:** the harness passed twice locally
+    and failed on CI's slower runner at the same 250 ms seam; split into two steps with their own
+    `.catch()`, it reproduced locally as `enterMain` neither resolving nor rejecting.
+    **THE CURE IS STRUCTURAL:** at most ONE rerun, then the pending slot is cleared — a rerun BIT,
+    which is what the design said all along. One extra pass is also all that is CORRECT, because
+    the rerun re-reads the same state a trigger during it would ask about.
+    ⛳ **PROVEN AT AN ADVERSARIAL TEMPO:** the whole flow now passes at a **30 ms** seam, where a
+    beat is far shorter than any scan and the old code hung deterministically — and at the
+    committed 250 ms. ⚠ **Production tempi (B >= 20 s) would never have shown this**, which is
+    precisely why a test tempo seam exists: it compresses a rare race into a certainty.
+  - ⚠ **AND THE SAME ADVERSARIAL RUN CORRECTED THE `I2` ARM.** At 30 ms it read a locked-window
+    delta of **2** — correctly, because ~2 beats fit between *asking* to lock and the screen
+    actually changing, and the vault is not locked yet during that gap. The arm now samples the
+    counter **after `scr-unlock` is visible**, so it measures the LOCKED window it claims to
+    measure, at any tempo. ⇒ *an arm that passes only at the tempo you happened to choose is not
+    measuring what its name says.*
+  - ⚠⚠ **AND THE SCENARIO NOW FAILS FAST IF ITS SEAM IS ABSENT, because the seat wasted two
+    diagnoses on that exact confusion.** Invoked directly through `runner.py` rather than through
+    `gui_driver.rs` — which is what sets `QSLD_TICK_MS` — the app runs at the shipped INSTANT
+    tempo, a 15-25 s beat, so `I1`'s bounded window sees about **one** tick and the run fails
+    `I1_tick_fires TIMEOUT, last=1`. That reads exactly like a product defect and is not: it means
+    the scenario was run without its seam. **Twice** this produced a false diagnosis here — once
+    read as a red arm's result and once as a baseline flake. A step now asserts
+    `tickOverrideMs !== null` immediately after launch, so the run dies in seconds naming its own
+    cause. ⇒ *an instrument invoked wrongly reports a RESULT, not an error — so make the
+    precondition an assertion.*
+  - ⚠ **REPORTED AND NOT ACTED ON.** `ENG-0198` is open and untouched. The `gui-driver` CI step
+    is named "the six flows" and now runs **thirteen**; that byte lives in `.github/**`, which
+    this lane may not touch.
+  - ⚠ **Claim boundary.** ZERO qsl-protocol product bytes. ZERO relay or server changes. No pin
+    bump. No `.github/**`. No test weakened, skipped or deleted — arms were ADDED and one seal
+    re-aimed with its count still exact. **Harness green is NOT a field claim**: acceptance is
+    the operator's two-machine flight at the blessed tempo, and the flight card is carried at
+    STOP 2. Nothing merged by the seat; the operator merges.

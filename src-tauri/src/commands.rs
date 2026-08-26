@@ -138,6 +138,17 @@ pub struct AppInfoDto {
     pub display_name: &'static str,
     pub version: &'static str,
     pub slice: &'static str,
+    /// NA-0763 (`D-0040`, ruling `R4`) — THE TEST-ONLY TEMPO SEAM, and the
+    /// reason it lives HERE rather than on `AppSettings`.
+    ///
+    /// `AppInfoDto` is `Serialize`-ONLY: it is never deserialized and has no
+    /// `save` path, so `settings::save` cannot round-trip a test tempo because
+    /// the value is not of a shape it can ever hold. That answers R4's binding
+    /// constraint STRUCTURALLY rather than by a caller's discipline.
+    ///
+    /// `None` in every ordinary run — the harness sets `QSLD_TICK_MS` per
+    /// launch the same way `runner.py` already sets `QSLD_DATA_DIR`.
+    pub tick_override_ms: Option<u64>,
 }
 
 fn identity_dto(rec: &qsc::identity::IdentityPublicRecord) -> IdentityDto {
@@ -449,6 +460,7 @@ pub fn app_info() -> AppInfoDto {
         display_name: APP_DISPLAY_NAME,
         version: env!("CARGO_PKG_VERSION"),
         slice: "B (relay connectivity: point the app at a relay and test the connection)",
+        tick_override_ms: settings::tick_override_from_env(),
     }
 }
 

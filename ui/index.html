@@ -160,6 +160,17 @@
       <p id="stub-note" class="hint stub-gap hidden">Adding contacts arrives in a future update.</p>
     </main>
   </div>
+  <!-- NA-0763 (`D-0040`, ruling R2) — THE TICK'S THRESHOLD STATUS.
+       It rides the R-12/F1 QUIET LINE and deliberately NOT `statusFooterLine`:
+       that footer below is NA-0752's ruled TWO-SOURCE truth line, and a third
+       source would re-open a settled ruling. NO CSS IS MINTED — both
+       `.status-line-quiet` (style.css:563) and `.hidden` (style.css:111)
+       already exist. ⚠ Hidden by the `.hidden` CLASS, never the `hidden`
+       attribute: `.status-line-quiet` sets `display:flex`, which would win
+       over the attribute. `setStatusLine` rewrites `className` wholesale, so
+       the hidden state is re-applied in the same helper that sets the text —
+       one place, not a habit re-derived at each call site. -->
+  <p id="tick-status" class="status-line-quiet hidden"><i class="icon"></i><span class="status-text"></span></p>
   <footer id="status-line" class="status-line">No relay configured.</footer>
 </section>
 

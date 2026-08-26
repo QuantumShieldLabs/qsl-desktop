@@ -8,6 +8,36 @@ use std::path::Path;
 
 pub const AUTOLOCK_DEFAULT_MINUTES: u32 = 60;
 
+/// The delivery-ladder tempo knob (spine `D-1404`, desktop `D-0040`; the
+/// ladder's section 6 / 1.4). Three positions are STORED from day one so no
+/// migration is needed later, while rung 1 honours only the tempo halves.
+///
+/// ⚠ `PullOnly` is NOT dead weight and is NOT a synonym by accident: at rung 1
+/// everything is pull, so the ladder defines its rung-1 semantics as exactly
+/// the private tempo (design 1.4, verbatim: "pull-only = the private tempo").
+/// It becomes distinguishable only when a socket rung exists.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Tempo {
+    /// Tight beat. The blessed DEFAULT (operator, 2026-08-26).
+    #[default]
+    Instant,
+    /// Long beat: presence is revealed at a coarser grain.
+    Private,
+    /// Rung 1: the private tempo.
+    PullOnly,
+}
+
+impl Tempo {
+    /// `skip_serializing_if` for the tempo field: the DEFAULT position is
+    /// OMITTED from the file, so a profile that never chose a tempo keeps the
+    /// prior key set EXACTLY and `settings_key_allowlist`'s default-case
+    /// assertion stays byte-unchanged. Same shape as `self_alias`/`relay_url`.
+    fn is_default(&self) -> bool {
+        matches!(self, Tempo::Instant)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct AppSettings {
@@ -34,6 +64,16 @@ pub struct AppSettings {
     /// downgrades are not a supported path.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub relay_url: String,
+    /// The delivery tempo (`D-0040`). NON-SECRET: a rhythm selector, not a
+    /// credential. OMITTED while it holds the default so an existing profile
+    /// keeps its prior key set exactly — the `self_alias`/`relay_url` pattern.
+    /// The `deny_unknown_fields` downgrade property is inherited KNOWINGLY and
+    /// unchanged (D609 R6): a file carrying `tempo` falls back to the default
+    /// on a reader that predates it, and downgrades are not a supported path.
+    /// ⚠ NOTHING IN THIS LANE WRITES THIS FIELD: `settings_set` keeps its
+    /// two-field arity and the visible control lands Lane C-era.
+    #[serde(default, skip_serializing_if = "Tempo::is_default")]
+    pub tempo: Tempo,
 }
 
 impl Default for AppSettings {
@@ -42,6 +82,7 @@ impl Default for AppSettings {
             autolock_minutes: AUTOLOCK_DEFAULT_MINUTES,
             self_alias: String::new(),
             relay_url: String::new(),
+            tempo: Tempo::default(),
         }
     }
 }
@@ -61,6 +102,42 @@ pub fn save(data_dir: &Path, s: &AppSettings) -> Result<(), String> {
     fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
     fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// The env name of the test-only tempo seam. Deliberately the `QSLD_` family
+/// the harness already injects per launch (`runner.py` sets `QSLD_DATA_DIR`
+/// the same way), and the same shape as `paths.rs`'s `$QSLD_DATA_DIR`
+/// override — a precedent, not an invention.
+pub const TICK_OVERRIDE_ENV: &str = "QSLD_TICK_MS";
+
+/// Parse the seam value. A PURE function of its argument so it is testable
+/// without mutating the process environment — `std::env::set_var` is unsound
+/// across the test harness's threads, so the impure half stays one line long
+/// and the logic that can be wrong is tested directly.
+///
+/// Refuses zero and refuses anything unparseable: a malformed seam must leave
+/// the shipped tempo standing rather than produce a 0 ms busy-loop.
+pub fn parse_tick_override(raw: Option<&str>) -> Option<u64> {
+    match raw?.trim().parse::<u64>() {
+        Ok(ms) if ms > 0 => Some(ms),
+        _ => None,
+    }
+}
+
+/// Read the seam from the environment. ⚠⚠ WHERE THIS VALUE LIVES IS THE WHOLE
+/// POINT OF RULING `R4`, and it is answered STRUCTURALLY: the seam is carried
+/// on `AppInfoDto` — a `Serialize`-ONLY type that is never deserialized and has
+/// no `save` path — and it is deliberately NOT a field of `AppSettings`, the
+/// persisted type. So `settings::save` cannot round-trip a test tempo because
+/// the value is not of a shape it can ever hold, rather than because a caller
+/// remembered to avoid it.
+///
+/// ⚠ The first design routed this through a `load_effective` on the settings
+/// read path with `#[serde(skip)]`. That was MEASURED broken before it shipped:
+/// `skip` omits the field from serialization, and Tauri's IPC serializes with
+/// the same impl, so the value could never have reached the UI at all.
+pub fn tick_override_from_env() -> Option<u64> {
+    parse_tick_override(std::env::var(TICK_OVERRIDE_ENV).ok().as_deref())
 }
 
 #[cfg(test)]
@@ -124,6 +201,23 @@ mod tests {
         let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
         assert_eq!(keys, vec!["autolock_minutes", "relay_url"]);
 
+        // NA-0763 (`D-0040`): the tempo knob, added to the allowlist DELIBERATELY
+        // and NON-SECRET by construction (a rhythm selector, not a credential).
+        // ⚠ The DEFAULT position is OMITTED (`skip_serializing_if`), which is why
+        // the default-case assertion at the top of this test is untouched: a
+        // profile that never chose a tempo keeps exactly the prior key set.
+        let with_tempo = AppSettings {
+            tempo: Tempo::Private,
+            ..Default::default()
+        };
+        let v = serde_json::to_value(&with_tempo).unwrap();
+        let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec!["autolock_minutes", "tempo"]);
+
+        // And the blessed default really is the omitted one, stated as its own
+        // assertion so a future default flip cannot pass this test silently.
+        assert_eq!(AppSettings::default().tempo, Tempo::Instant);
+
         let both = AppSettings {
             self_alias: "Vic".to_string(),
             relay_url: "https://relay.example".to_string(),
@@ -145,5 +239,71 @@ mod tests {
         let s = load(dir.path());
         assert_eq!(s.autolock_minutes, 20);
         assert_eq!(s.self_alias, "");
+    }
+
+    /// ⚠⚠ RULING `R4`'s BINDING CONSTRAINT: no test-tempo value may ever reach
+    /// the persisted file. Guarded here as a PROPERTY over every field
+    /// combination the type admits, rather than over one hand-picked struct.
+    ///
+    /// ⚠ RED ARM, MEASURED (not asserted): while an earlier revision carried a
+    /// `tick_override_ms` field on `AppSettings`, dropping its `#[serde(skip)]`
+    /// turned BOTH this family and `settings_key_allowlist` red, the file
+    /// reading `{"autolock_minutes":60,"tick_override_ms":137}`. Re-add any
+    /// seam-shaped field and these arms fail again.
+    #[test]
+    fn no_tick_seam_key_can_reach_the_persisted_file() {
+        let combos = [
+            AppSettings::default(),
+            AppSettings {
+                tempo: Tempo::Private,
+                ..Default::default()
+            },
+            AppSettings {
+                tempo: Tempo::PullOnly,
+                self_alias: "Vic".to_string(),
+                relay_url: "https://relay.example".to_string(),
+                ..Default::default()
+            },
+        ];
+        for s in combos.iter() {
+            let dir = tempfile::tempdir().unwrap();
+            save(dir.path(), s).unwrap();
+            let raw = std::fs::read_to_string(settings_file(dir.path())).unwrap();
+            assert!(
+                !raw.contains("tick"),
+                "a tick-seam token reached the settings file: {raw}"
+            );
+            assert_eq!(&load(dir.path()), s, "round-trip must be lossless");
+        }
+    }
+
+    /// The seam parser is total and refuses everything that would be worse than
+    /// leaving the shipped tempo standing — a 0 ms beat most of all.
+    #[test]
+    fn the_seam_parser_refuses_zero_and_junk() {
+        assert_eq!(parse_tick_override(None), None);
+        assert_eq!(parse_tick_override(Some("")), None);
+        assert_eq!(parse_tick_override(Some("0")), None);
+        assert_eq!(parse_tick_override(Some("-5")), None);
+        assert_eq!(parse_tick_override(Some("abc")), None);
+        assert_eq!(parse_tick_override(Some("400")), Some(400));
+        assert_eq!(parse_tick_override(Some("  400  ")), Some(400));
+    }
+
+    /// A file written by a tempo-bearing profile round-trips, and a file that
+    /// predates the key loads with the blessed default.
+    #[test]
+    fn tempo_roundtrips_and_absent_defaults_instant() {
+        let dir = tempfile::tempdir().unwrap();
+        let s = AppSettings {
+            tempo: Tempo::PullOnly,
+            ..Default::default()
+        };
+        save(dir.path(), &s).unwrap();
+        assert_eq!(load(dir.path()).tempo, Tempo::PullOnly);
+
+        let path = settings_file(dir.path());
+        std::fs::write(&path, br#"{ "autolock_minutes": 20 }"#).unwrap();
+        assert_eq!(load(dir.path()).tempo, Tempo::Instant);
     }
 }

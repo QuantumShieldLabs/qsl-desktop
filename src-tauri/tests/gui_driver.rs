@@ -47,6 +47,18 @@ fn field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
 }
 
 fn run_scenario(scenario: &str) {
+    run_scenario_with_env(scenario, &[]);
+}
+
+/// NA-0763 (`D-0040`, ruling `R4`): the same runner, plus a per-scenario child
+/// environment. `runner.py` builds the app's env from its own, so a variable set
+/// here reaches the application process — the mechanism it already uses to hand
+/// the app `QSLD_DATA_DIR`, not a new one invented for this lane.
+///
+/// ⚠ `QSLD_CONTINUE_ON_FAIL` stays removed below regardless of what is passed
+/// here: the perturbation facility remains structurally unreachable through this
+/// wrapper (R171 3.4), and this parameter cannot be used to reintroduce it.
+fn run_scenario_with_env(scenario: &str, extra_env: &[(&str, &str)]) {
     let root = repo_root();
     let runner = root.join("src-tauri/tests/harness/runner.py");
     let scenario_file = root.join(format!("src-tauri/tests/harness/scenarios/{scenario}.json"));
@@ -56,11 +68,15 @@ fn run_scenario(scenario: &str) {
         "scenario missing: {}",
         scenario_file.display()
     );
-    let out = Command::new("python3")
-        .arg(&runner)
+    let mut cmd = Command::new("python3");
+    cmd.arg(&runner)
         .arg(&scenario_file)
         .current_dir(&root)
-        .env_remove("QSLD_CONTINUE_ON_FAIL") // R171 3.4: not reachable from here
+        .env_remove("QSLD_CONTINUE_ON_FAIL"); // R171 3.4: not reachable from here
+    for (k, v) in extra_env {
+        cmd.env(k, v);
+    }
+    let out = cmd
         .output()
         .expect("failed to spawn the harness runner (python3 required)");
     let stdout = String::from_utf8_lossy(&out.stdout);
@@ -262,4 +278,32 @@ fn na0755_gui_k_invite_create() {
 #[ignore]
 fn na0756_gui_l_invite_redeem() {
     run_scenario("f_l_invite_redeem");
+}
+
+// NA-0763 (`D-0040`; spine `D-1404`) — THE LIVENESS TICK, rung 1 of the delivery
+// ladder. Drives I1-I5 of the ruling's instrument set.
+//
+// ⚠ THE TEMPO SEAM, AND WHY IT IS SAFE. `QSLD_TICK_MS` shortens the beat so the
+// tick is observable in BOUNDED time — the alternative being a test that waits
+// out a 20 s production beat, or worse, sleeps. It rides `app_info`, a
+// `Serialize`-only DTO with no save path, so no code path can round-trip a test
+// tempo into `settings.json`; `settings.rs`'s own arms prove the persisted type
+// cannot carry such a key at all.
+//
+// ⚠ WHAT THIS SCENARIO CANNOT REACH, stated so its silence is not read as
+// coverage. The RELAY-FAULT path into backoff-and-report needs a pending contact
+// and a relay that answers — a fresh profile has neither, and this repo still has
+// no fixture relay (`ENG-0226`, open). So I5's THRESHOLD, SURFACE and RECOVERY
+// are driven through the handler's own outcome recorder, while the
+// unreachable-relay PATH to that state is FIELD-VERIFIED on the acceptance
+// flight. The two halves are not dressed up as one another.
+//
+// ⚠ AND THE JITTER DISTRIBUTION IS NOT PROVEN HERE EITHER: the seam is
+// deliberately un-jittered so the instrument is deterministic. What is proven is
+// that the tick FIRES, that it is GATED by lock and by relay-configured, that it
+// never stacks, and that it never writes the shared marker slot.
+#[test]
+#[ignore]
+fn na0763_gui_m_liveness_tick() {
+    run_scenario_with_env("f_m_liveness_tick", &[("QSLD_TICK_MS", "250")]);
 }

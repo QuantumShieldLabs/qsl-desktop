@@ -229,6 +229,10 @@ function adoptSettings(cfg) {
   currentSettings.autolock_minutes = cfg.autolock_minutes;
   currentSettings.self_alias = cfg.self_alias || "";
   autolockMinutes = cfg.autolock_minutes;
+  // NA-0763 (`D-0040`): the stored tempo. ⚠ `settings_set` does NOT carry it
+  // (see `saveSettings` above, still two fields) — nothing in this lane writes
+  // the knob, so an absent key is the blessed default rather than a loss.
+  tickTempo = TICK_TEMPO[cfg.tempo] ? cfg.tempo : TICK_DEFAULT;
 }
 
 // ---- failed-attempts capture (binding D596 rule, unchanged) --------------
@@ -700,12 +704,20 @@ async function enterMain() {
     reason = null;
   }
   byId("status-line").textContent = statusFooterLine(reason, relayUrl);
+  // NA-0763: the tick's gate needs to know whether a relay exists at all, and
+  // this function has just read it. R10: no relay configured => no ticks, which
+  // is both correct product behaviour (there is nothing to pull) and politeness
+  // to a small box.
+  tickRelayConfigured = relayUrl !== "";
   // ⚠ NA-0756 (D-0037) — FINISH TRIGGER (a), at vault unlock: one bounded scan per contact
   // that is still establishing. It runs LAST so a finish failure cannot cost the footer, and
   // it is awaited rather than fired-and-forgotten so the harness can observe its outcome.
   // The wizard branch does not reach here, which is correct and measured: a vault being
   // created has no contacts to scan.
-  await inviteFinishScanPending("unlock");
+  // ⚠ NA-0763: re-routed through the ONE handler. The behaviour of this trigger is
+  // unchanged — `relayScan` runs the same finish-scan class and still marks the redeem
+  // slot for user-caused sources.
+  await relayScan({ source: "unlock", at: Date.now() });
 }
 // NA-0755 (D-0036): UN-STUBBED. This button now opens the real invite flow.
 //
@@ -1550,6 +1562,10 @@ async function refreshServerState() {
     const cfg = await invoke("relay_config_get");
     savedRelayUrl = cfg.relay_url || "";
   } catch (_) { savedRelayUrl = ""; }
+  // NA-0763: the OTHER way the relay can appear or vanish (the Server pane's
+  // commit path). Keeping the gate truthful here means a user who configures a
+  // relay gets a live app without re-locking.
+  tickRelayConfigured = savedRelayUrl !== "";
   try {
     const s = await invoke("relay_token_show");
     tokenConfigured = !!s.configured;
@@ -1715,6 +1731,117 @@ setInterval(async () => {
     setUnlockFeedback("locked-notice", "Locked after inactivity.");
   }
 }, 5000);
+
+// ---- NA-0763 (`D-0040`; spine `D-1404`): THE LIVENESS TICK -----------------
+// Rung 1 of the delivery ladder. While UNLOCKED and with a relay configured, a
+// JITTERED background beat feeds the same one handler the unlock and
+// surface-open triggers use, so an approval or an invite-finish lands on the
+// other machine with zero human nudges.
+//
+// ⚠⚠ THE SHAPE IS THE AUTOLOCK'S ABOVE, DELIBERATELY — a short checker that
+// fires when a due-time passes, rather than one standing interval OF LENGTH B.
+// Two load-bearing reasons:
+//   1. A fixed-period interval CANNOT re-jitter per beat. Jitter
+//      is a DESIGN requirement and not polish: a fixed poll rhythm is a traffic
+//      signature, the same reasoning that refused the auto-established message.
+//   2. It makes "locked = no ticks" STRUCTURAL instead of a cleanup obligation.
+//      There is no timer to clear on lock — the gate simply refuses and the
+//      schedule resets — so a lock path written years from now cannot forget it.
+//      The vault gates everything; probe results gate nothing.
+//
+// ⚠ THE NUMBERS ARE OPERATOR-BLESSED (2026-08-26, verbatim: "I recommend
+// Instant to."), ruled at R10. They are not this file's to change.
+const TICK_TEMPO = {
+  instant:   { b:  20000, j:  5000 },
+  private:   { b: 300000, j: 90000 },
+  // Ladder 1.4, verbatim: "pull-only = the private tempo". At rung 1 everything
+  // IS pull, so this is a real stored position that changes nothing until a
+  // socket rung exists — plumbed now precisely so no migration is needed later.
+  pull_only: { b: 300000, j: 90000 },
+};
+const TICK_DEFAULT = "instant";       // the blessed default, held in code
+const TICK_CHECK_MS = 250;            // the checker's period => beat granularity
+const TICK_BACKOFF_CEIL_MS = 900000;  // R7: 900 s
+const TICK_FAIL_THRESHOLD = 3;        // R7: consecutive scan failures before we speak
+const TICK_UNREACHABLE_COPY =
+  "Can't reach the relay — still trying. Contacts may not finish connecting until it's back.";
+
+let tickTempo = TICK_DEFAULT;
+let tickOverrideMs = null;   // the TEST-ONLY seam; null in every ordinary run
+let tickRelayConfigured = false;
+let tickNextDueAt = null;
+let tickCount = 0;
+let tickFails = 0;
+
+// The beat: B doubled per consecutive failure to a ceiling, then jittered.
+// At `tickFails === 0` this is exactly B ± J, so backoff and the ordinary beat
+// are ONE code path and the jitter cannot be lost on the failure branch (R7:
+// "with the same per-beat jitter").
+function tickIntervalMs() {
+  // ⚠ The seam is deliberately UN-jittered so an instrument is deterministic.
+  // That is an honest bound and it is stated in the records: the harness proves
+  // the tick FIRES and is GATED; the jitter DISTRIBUTION is not harness-proven.
+  if (tickOverrideMs !== null) return tickOverrideMs;
+  const t = TICK_TEMPO[tickTempo] || TICK_TEMPO[TICK_DEFAULT];
+  const grown = Math.min(t.b * Math.pow(2, tickFails), TICK_BACKOFF_CEIL_MS);
+  const jitter = (Math.random() * 2 - 1) * t.j;   // uniform [-J, +J], redrawn EVERY beat
+  return Math.max(1000, Math.round(grown + jitter));
+}
+
+// R10: unlocked AND a relay configured. `currentScreen` is assigned in exactly
+// one place (`show`, :105) and the unlocked set is exactly these two of seven
+// screens — the same gate the autolock uses, not a second opinion about it.
+function tickGateOpen() {
+  const unlocked = currentScreen === "scr-main" || currentScreen === "scr-settings";
+  return unlocked && tickRelayConfigured;
+}
+
+// R2: the threshold status rides the R-12/F1 QUIET LINE and never
+// `statusFooterLine` — that footer is NA-0752's ruled TWO-SOURCE truth line and
+// a third source would re-open a settled ruling. `accent`, not `danger`: an
+// unreachable relay needs attention, but the danger tier stays reserved.
+// ⚠ `setStatusLine` rewrites `className` wholesale, so the hidden state is
+// re-applied HERE, in the same helper — one place, never a habit re-derived at
+// each call site.
+function renderTickStatus() {
+  const el = byId("tick-status");
+  if (!el) return;
+  if (tickFails >= TICK_FAIL_THRESHOLD) {
+    setStatusLine(el, "accent", TICK_UNREACHABLE_COPY);
+    el.classList.remove("hidden");
+  } else {
+    setStatusLine(el, "neutral", "");
+    el.classList.add("hidden");
+  }
+}
+
+// The tick's OWN observable counter (R6). Never touches `#redeem-overlay`.
+function tickMark() {
+  const el = byId("tick-status");
+  if (!el) return;
+  el.dataset.tickCount = String(tickCount);
+  el.dataset.tickFails = String(tickFails);
+  el.dataset.tickGate = tickGateOpen() ? "open" : "closed";
+  el.dataset.scanBusyRejects = String(relayScanBusyRejects);
+  el.dataset.scanRerun = String(relayScanRerunCount);
+}
+
+setInterval(async () => {
+  if (!tickGateOpen()) {
+    // Locked, or no relay: no beat, and the schedule RESETS so an unlock does
+    // not inherit a due-time computed in a previous session.
+    tickNextDueAt = null;
+    return;
+  }
+  const now = Date.now();
+  if (tickNextDueAt === null) {
+    tickNextDueAt = now + tickIntervalMs();   // arm on the first eligible pass
+    return;
+  }
+  if (now < tickNextDueAt) return;
+  tickNextDueAt = now + tickIntervalMs();
+  await relayScan({ source: "tick", at: now });
+}, TICK_CHECK_MS);
 
 // ---- item 15: native menu events (R1: backend gates the entries) ---------
 if (window.__TAURI__.event && window.__TAURI__.event.listen) {
@@ -2436,14 +2563,33 @@ async function openRedeemChooser() {
   // ⚠ TRIGGER (b), and it attaches HERE rather than to the create modal. R387 §S6: item 1
   // retargets BOTH entries to this chooser, so a trigger left on `openInviteModal` would fire
   // only on the create branch and the redeem branch would silently lose it.
-  await inviteFinishScanPending("surface_open");
+  await relayScan({ source: "surface_open", at: Date.now() });
 }
 
-// ── THE FINISH TRIGGERS ────────────────────────────────────────────────────────────────
-// Explicit, BOUNDED checks only. There is NO timer, no poll and no background loop in this
-// lane, and none is touched: the app's only standing interval is the idle autolock at :1685.
-// Once messaging ships a jittered background pull, invite-finish rides that same tick and the
-// staleness gap between these two triggers dissolves (the design bank's decision 8).
+// ── THE TRIGGERS, AND THE ONE HANDLER THEY ALL FEED ───────────────────────────────────
+// ⚠ NA-0763 (`D-0040`, spine `D-1404`) REWROTE THIS HEADER, and the two corrections are
+// named rather than silently applied (ruling R11 / STOP 001 finding F3):
+//   (i)  it said "the app's only standing interval is the idle autolock at :1685" — that
+//        coordinate had already drifted past the autolock's own section, and there are now
+//        TWO standing intervals: the idle autolock and this lane's tick. ⚠ This correction
+//        deliberately names SECTIONS rather than line numbers: a coordinate is exactly what
+//        went stale, and the whole-file timer census in `design_polish` is the instrument
+//        that keeps the count honest instead;
+//   (ii) it said "Once MESSAGING ships a jittered background pull, invite-finish rides that
+//        same tick" — the delivery ladder sequences rung 1 BEFORE messaging, so the tick
+//        arrived first and invite-finish rides it NOW. The prediction was right about the
+//        shape and wrong about the order.
+//
+// P2, THE BANKED CONSTRAINT: every trigger — unlock, surface-open, the tick — feeds ONE
+// handler that performs the SAME scan. Rungs are transport plugs; nothing above knows which
+// rung is installed.
+//
+// ⚠ RUNG 1 INSTALLS THE FINISH-SCAN CLASS ONLY, and the bound is honest rather than
+// accidental (ruled R1 on two measured grounds): there is NO handshake surface on this app
+// to call — the desktop registers 44 commands and none is a handshake verb — and `ENG-0198`
+// is open, where `handshake poll` returns rc 0 while completing nothing, which would defeat
+// the fail-loud reporting below by never producing a failure to count. `SCAN_CLASSES` is a
+// LIST so the second class is an addition, never a re-architecture.
 //
 // ⚠ EQUALITY, NEVER `contains`. `connect_status.state` is a CLOSED SET OF TWO — "active" |
 // "inactive" (commands.rs:881-886) — and a pending contact reads "inactive"/"no_session"
@@ -2454,23 +2600,26 @@ async function openRedeemChooser() {
 // (`relay_inbox_pull(&relay_ep, &self_inbox, max)`, invite/mod.rs:1426), so the configured
 // address is the right source — and it is the only one available, because `ContactDto`
 // carries no relay endpoint at all.
-async function inviteFinishScanPending(why) {
-  const marks = { why, scanned: 0, finished: 0, pending: 0 };
+
+// The finish-scan CLASS. Returns its own marks; it does not decide how they are surfaced —
+// that is the handler's job, because the answer differs by SOURCE (see `relayScan`).
+async function finishScanClass(marks) {
   let relayUrl = "";
   try {
     const cfg = await invoke("relay_config_get");
     relayUrl = cfg.relay_url || "";
   } catch (_) { relayUrl = ""; }
-  if (relayUrl === "") { redeemMark(marks); return marks; }
+  if (relayUrl === "") return marks;
 
   let rows = [];
-  try { rows = await invoke("contact_list"); } catch (_) { redeemMark(marks); return marks; }
+  try { rows = await invoke("contact_list"); } catch (_) { return marks; }
 
   for (const row of rows) {
     let st = null;
     try { st = await invoke("connect_status", { peer: row.alias }); } catch (_) { continue; }
     if (st.state !== "inactive") continue;   // EQUALITY on the extracted value
     marks.pending += 1;
+    marks.attempted += 1;
     try {
       const done = await invoke("invite_finish", {
         selfLabel: null, alias: row.alias, relay: relayUrl, max: 1,
@@ -2481,11 +2630,103 @@ async function inviteFinishScanPending(why) {
       // ⚠ A finish failure must NEVER break the surface it rides on. Unlock still completes
       // and the chooser still opens; the contact simply stays pending, which is the honest
       // state. "Not yet" is not an error and does not land here at all — it is Ok(false).
+      // ⚠ NA-0763 (ruled R7): it is now RECORDED as well as swallowed. Swallowing it was
+      // right for the surface and wrong for the user — a relay that has been unreachable for
+      // three consecutive scans must be SAID, and a counter is the only way to know.
       marks.scanned += 1;
+      marks.failed += 1;
     }
   }
-  redeemMark(marks);
   return marks;
+}
+
+// Rung 1's class list. The handshake-poll class joins it when a GUI handshake surface exists
+// and `ENG-0198` can report its own no-op; until then the omission is stated, not hidden.
+const SCAN_CLASSES = [finishScanClass];
+
+// ── THE ONE HANDLER (P2 / ladder 1.1) ─────────────────────────────────────────────────
+// Single entry, event {source, at}; sources: unlock | surface_open | tick. Idempotent.
+// ⚠ ONE SCAN IN FLIGHT: a trigger arriving mid-scan sets the pending slot and NEVER stacks —
+// the last request wins and exactly one rerun follows.
+//
+// ⚠⚠ WHY THIS GUARD LIVES HERE AND NOT IN RUST, measured rather than assumed: `CoreGateway`
+// IS a process-wide single-flight gate, but it serialises INDIVIDUAL CALLS and callers QUEUE
+// on its mutex rather than fail. A scan is a multi-call SEQUENCE, so two overlapping scans
+// would interleave their calls through that gate perfectly happily. `core_busy` is the same
+// granularity and would read true during any unrelated call — a settings save, say — so it
+// is the wrong instrument twice over. The scan is a unit only here.
+let relayScanBusy = false;
+let relayScanPending = null;
+let relayScanRerunCount = 0;
+let relayScanBusyRejects = 0;
+
+async function relayScanOnce(ev) {
+  let marks = { why: ev.source, at: ev.at, scanned: 0, finished: 0, pending: 0,
+                attempted: 0, failed: 0 };
+  for (const cls of SCAN_CLASSES) marks = await cls(marks);
+  recordScanOutcome(ev, marks);
+  return marks;
+}
+
+async function relayScan(ev) {
+  if (relayScanBusy) {
+    relayScanPending = ev;          // never stacks: one rerun, last request wins
+    relayScanBusyRejects += 1;
+    tickMark();
+    return null;
+  }
+  relayScanBusy = true;
+  let marks = null;
+  try {
+    marks = await relayScanOnce(ev);
+    // ⚠⚠ AT MOST ONE RERUN, AND THE BOUND IS THE WHOLE POINT — this is a rerun
+    // BIT, not a queue. A first draft re-read the pending slot in a loop, which
+    // LOOKED like the same thing and was not: whenever a beat is shorter than a
+    // scan takes, the timer refills the slot faster than the loop drains it and
+    // the loop NEVER TERMINATES. That is not hypothetical — it hung the harness
+    // under the test seam's 250 ms beat, first on CI and then reproducibly here.
+    // Production tempi (B >= 20 s) would never have shown it, which is precisely
+    // why the seam exists. One extra pass is also all that is CORRECT: the rerun
+    // re-reads current state, so it already covers every trigger that arrived
+    // while the first pass ran.
+    const next = relayScanPending;
+    relayScanPending = null;
+    if (next) {
+      relayScanRerunCount += 1;
+      marks = await relayScanOnce(next);
+      // Triggers arriving during the rerun are DROPPED, deliberately: the rerun
+      // has just re-read the same state they would ask about.
+      relayScanPending = null;
+    }
+  } finally {
+    relayScanBusy = false;
+  }
+  return marks;
+}
+
+// ⚠⚠ R6, REQUIRED, NOT OPTIONAL — THE MARKER SEPARATION.
+// `redeemMark` is a SINGLE-SLOT, LAST-WRITE-WINS surface, and TWO committed assertions pin
+// it by exact string INCLUDING `"why":"surface_open"`
+// (tests/harness/scenarios/f_l_invite_redeem.json:101 and :493). A tick writing that slot
+// would turn both red — and the no-relay short-circuit would not save them, because the old
+// code marked even when it short-circuited. So the slot keeps LAST-USER-TRIGGER semantics
+// permanently, and the tick keeps its OWN counter on `#tick-status`.
+function recordScanOutcome(ev, marks) {
+  if (ev.source === "tick") {
+    tickCount += 1;
+  } else {
+    redeemMark(marks);              // user-caused triggers only — unchanged behaviour
+  }
+  // A scan that reached the relay and had EVERY attempt fail is a failure; one that reached
+  // it and had any attempt succeed is a recovery; one that never reached it at all (nothing
+  // pending, or no relay) is NEITHER and must not move the counter — otherwise an idle app
+  // would report an outage it never observed.
+  if (marks.attempted > 0) {
+    if (marks.failed === marks.attempted) tickFails += 1;
+    else tickFails = 0;
+  }
+  renderTickStatus();
+  tickMark();
 }
 
 // The observable half of Z6: the outcome of the last scan, readable BY EQUALITY from the DOM.
@@ -2569,5 +2810,13 @@ document.addEventListener("keydown", (ev) => {
     const cfg = await invoke("settings_get");
     adoptSettings(cfg);
   } catch (_) { /* defaults stand */ }
+  // NA-0763 (ruling R4): the TEST-ONLY tempo seam. It rides `app_info` — a
+  // Serialize-only DTO with no save path — precisely so that no code path can
+  // round-trip a test tempo into `settings.json`. `null` in every ordinary run.
+  try {
+    const info = await invoke("app_info");
+    tickOverrideMs =
+      typeof info.tick_override_ms === "number" ? info.tick_override_ms : null;
+  } catch (_) { /* no seam: the blessed tempo stands */ }
   await route();
 })();
