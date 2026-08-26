@@ -1,6 +1,10 @@
 //! NA-0701 — THE GUI INPUT DRIVER (D636 as amended; spine D-1341, desktop D-0026).
 //!
-//! M = 6 `#[ignore]`-marked tests, one per flow. Ignored-by-default is the honest
+//! M = FOURTEEN `#[ignore]`-marked tests, one per flow (a..n).
+//! ⚠ NA-0764: this figure read SIX until this lane counted it. The header was written
+//! when there were six flows and was never re-derived as flows were added, so it had
+//! drifted by eight — the same stale-count class this tree files elsewhere. Corrected
+//! here rather than left for a reader to trust. Ignored-by-default is the honest
 //! local shape: the rows are VISIBLE as "ignored" in every plain `cargo test`,
 //! never fake-green. Their real execution is
 //! `cargo test --test gui_driver -- --ignored --test-threads=1` (SERIALIZED —
