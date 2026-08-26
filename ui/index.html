@@ -134,7 +134,7 @@
   <div class="main-layout">
     <nav class="rail">
       <button class="rail-btn tip active" data-tip="Chats" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.5-.7L3 21l1.7-5.1a8.4 8.4 0 1 1 16.3-4.4z"/></svg></button>
-      <button class="rail-btn tip" id="btn-rail-contacts" data-tip="Contacts — coming later" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
+      <button class="rail-btn tip" id="btn-rail-contacts" data-tip="Contacts" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
       <div class="rail-spacer"></div>
       <button class="rail-btn tip" id="btn-settings" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </nav>
@@ -152,12 +152,37 @@
       </div>
       <p class="empty-note">No conversations yet.</p>
     </section>
+    <!-- NA-0764 (`D-1405`) — THE CONTACTS PANE. A PEER of the Chats list, not a replacement:
+         the rail switches between them. Layout per MOCKUP_laneC_v5_blessed (sha cc7691db…62f8),
+         which is LAYOUT authority only — every colour below comes from a shipped token and no
+         new token is minted.
+         ⚠ Rows are MINIMAL by ruling R3: name + dot + at most one small word. Everything else
+         the mockup shows lives in the DETAIL pane, where there is room for it. -->
+    <section class="list-pane hidden" id="pane-contacts">
+      <div class="list-header">
+        <div class="list-head-row">
+          <h2>Contacts</h2>
+          <!-- The bare "+" of the mockup. It opens the EXISTING chooser — the same flow the
+               welcome button uses — so this lane adds an entry point, not a second flow. -->
+          <button class="rail-btn tip" id="btn-contacts-add" data-tip="Add a contact" aria-label="Add a contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        </div>
+      </div>
+      <!-- I6': 0 / 1 / n. Hidden entirely at zero rather than rendering "0 invites". -->
+      <p id="contacts-hint" class="contacts-hint hidden"></p>
+      <div id="contacts-rows"></div>
+      <p id="contacts-empty" class="empty-note hidden">No contacts yet. Use + to invite someone or enter a code.</p>
+    </section>
     <main class="content-pane welcome">
       <svg class="welcome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><rect x="9" y="10" width="6" height="5" rx="1"/><path d="M10 10V8a2 2 0 0 1 4 0v2"/></svg>
       <p class="welcome-title">Welcome to QuantumShield Chat</p>
       <p class="welcome-sub">Add a contact to start your first conversation.</p>
       <button id="btn-add-contact" class="primary">Add your first contact</button>
       <p id="stub-note" class="hint stub-gap hidden">Adding contacts arrives in a future update.</p>
+    </main>
+    <!-- NA-0764 — THE CONTACT DETAIL. State-dependent per ruling R3/R4; the renderer fills it.
+         ⚠ EMPTY-SELECTION copy is a blessed string ("Select a contact."), not a placeholder. -->
+    <main class="content-pane hidden" id="pane-contact-detail">
+      <div id="contact-detail-body"></div>
     </main>
   </div>
   <!-- NA-0763 (`D-0040`, ruling R2) — THE TICK'S THRESHOLD STATUS.
@@ -178,7 +203,7 @@
   <div class="settings-layout">
     <nav class="rail">
       <button class="rail-btn tip" id="btn-rail-chats" data-tip="Chats" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.5-.7L3 21l1.7-5.1a8.4 8.4 0 1 1 16.3-4.4z"/></svg></button>
-      <button class="rail-btn tip" id="btn-rail-contacts-s" data-tip="Contacts — coming later" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
+      <button class="rail-btn tip" id="btn-rail-contacts-s" data-tip="Contacts" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
       <div class="rail-spacer"></div>
       <button class="rail-btn tip active" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </nav>

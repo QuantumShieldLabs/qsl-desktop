@@ -116,7 +116,7 @@
   },
   {
    "op": "note",
-   "text": "Z1 NEGATIVE PIN, HANDLER-scoped (R380 \u00a74): btn-add-contact no longer reveals #stub-note. The element and its TWO Lane-C revealers survive \u2014 the global 'the stub message is GONE' claim measured FALSE and was struck."
+   "text": "Z1 NEGATIVE PIN, HANDLER-scoped (R380 \u00a74): btn-add-contact no longer reveals #stub-note. The element survives. \u26a0 NA-0764: its TWO Lane-C revealers are now RETIRED (2 -> 0) because Lane C built the pane they were waiting for -- the element and its copy are untouched, and design_polish.rs carries the re-aimed count."
   },
   {
    "op": "prop_eq",

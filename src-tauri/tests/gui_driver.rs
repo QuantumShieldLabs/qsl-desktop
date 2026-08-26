@@ -307,3 +307,24 @@ fn na0756_gui_l_invite_redeem() {
 fn na0763_gui_m_liveness_tick() {
     run_scenario_with_env("f_m_liveness_tick", &[("QSLD_TICK_MS", "250")]);
 }
+
+// NA-0764 (`D-1405`; spine `D-1405`) — THE CONTACTS SURFACE.
+//
+// ⚠ WHAT THIS FLOW PROVES AND WHAT IT CANNOT. It drives every DECISION the front
+// end makes about contacts — the six-state mapping, the badge, the hint, the
+// footer's precedence, and which invites the auto-connect class will and will not
+// accept — by planting the inputs and reading what the renderer CHOSE. It does
+// NOT complete a handshake: this repo still has no fixture relay (`ENG-0226`,
+// open), so `invoke` is stubbed for the auto-connect arms and the RECORDED CALLS
+// are the instrument.
+//
+// The relay-facing half is measured where a real relay exists — qsl-protocol's
+// `na0764_m3_empty_slot_accept`, against the REAL `qsl-server` in-process, which
+// is what establishes that an empty-slot accept mutates nothing and takes no
+// lease. End to end, the loop is proven only by the operator's two-machine
+// flight. The three halves are not dressed up as one another.
+#[test]
+#[ignore]
+fn na0764_gui_n_contacts_autoconnect() {
+    run_scenario("f_n_contacts_autoconnect");
+}

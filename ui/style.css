@@ -809,3 +809,54 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
 .choose-row { display: block; text-align: left; padding: var(--sp-4); margin-top: var(--sp-3); }
 .choose-row .choose-row-title { display: block; font-size: var(--fs-body); color: var(--fg); font-weight: var(--fw-mid); }
 .choose-row .choose-row-sub { display: block; font-size: var(--fs-hint); color: var(--fg-muted); margin-top: var(--sp-1); }
+
+/* ==========================================================================
+   NA-0764 (`D-1405`) — THE CONTACTS PANE AND ITS DETAIL.
+   Layout follows MOCKUP_laneC_v5_blessed (sha cc7691db…62f8), which is LAYOUT
+   authority only. ⚠ ZERO NEW COLOUR TOKENS: every colour below is a shipped
+   token, and the mockup's 18 were measured to be a subset of this file's own
+   set before a line was written. Spacing and type use the shipped scales for
+   the same reason — a raw px here is how a design system starts drifting.
+   ========================================================================== */
+
+/* The outstanding-invite hint. A quiet line, not a banner: it states standing
+   truth ("2 invites outstanding.") rather than reporting an outcome. */
+.contacts-hint { font-size: var(--fs-hint); color: var(--fg-muted); margin: 0 0 var(--sp-3); padding: 0 var(--sp-4); }
+
+/* A row is MINIMAL by ruling R3: dot, name, and at most one small word. */
+.contact-row { display: flex; align-items: center; gap: var(--sp-3); border-radius: var(--radius-small); padding: var(--sp-3) var(--sp-4); margin: 0 var(--sp-2) var(--sp-1); cursor: default; }
+.contact-row.is-selected { background: var(--rail-active-bg); }
+/* The NEW arrival wears an accent edge — the one row shape that earns emphasis,
+   because it is the row carrying an unverified identity. */
+.contact-row.is-new { border-left: 3px solid var(--accent-fill); background: var(--accent-bg); }
+
+.contact-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.contact-dot.is-connected { background: var(--ok); }
+.contact-dot.is-connecting { background: var(--accent-text); }
+.contact-dot.is-warn { background: var(--danger-text); }
+.contact-dot.is-blocked { background: var(--fg-muted); }
+
+.contact-name { font-size: var(--fs-body); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact-word { font-size: var(--fs-micro); color: var(--fg-muted); margin-left: auto; flex: none; }
+.contact-word.is-accent { color: var(--accent-text); }
+.contact-word.is-warn { color: var(--danger-text); }
+
+/* ── THE DETAIL ─────────────────────────────────────────────────────────── */
+.contact-detail-name { font-size: var(--fs-title); font-weight: var(--fw-title); color: var(--fg); }
+.contact-detail-state { font-size: var(--fs-body); margin: var(--sp-2) 0 var(--sp-3); }
+.contact-detail-state.is-connected { color: var(--ok); }
+.contact-detail-state.is-connecting { color: var(--accent-text); }
+.contact-detail-state.is-new { color: var(--accent-text); }
+.contact-detail-state.is-warn { color: var(--danger-text); }
+.contact-detail-state.is-blocked { color: var(--fg-muted); }
+.contact-detail-note { font-size: var(--fs-hint); color: var(--fg-muted); max-width: 52ch; margin: 0 0 var(--sp-3); }
+.contact-detail-kv { font-size: var(--fs-hint); color: var(--fg-secondary); margin: var(--sp-1) 0; }
+.contact-detail-kv b { color: var(--fg); font-weight: var(--fw-mid); }
+/* The identity code. Monospace and letter-spaced because it exists to be READ
+   ALOUD and compared digit by digit — the ratified 30-digit voice form. */
+.contact-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-mono); letter-spacing: 0.4px; color: var(--fg); margin: var(--sp-2) 0 var(--sp-1); }
+.contact-detail-divider { border-top: 1px solid var(--border); margin: var(--sp-4) 0; }
+/* NA-0764 (R5) — the footer's TROUBLE tier. Accent, never danger: an unreachable
+   relay needs attention, but the danger tier stays reserved for the erasure
+   ceremony. Carried forward from NA-0763's ruling rather than reversed. */
+.status-line.is-trouble { color: var(--accent-text); }

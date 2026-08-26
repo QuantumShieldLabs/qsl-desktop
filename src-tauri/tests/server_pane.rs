@@ -552,10 +552,23 @@ fn claim_discipline_five_surfaces_swept() {
         "README status section still says makes no network connections at all"
     );
 
-    // surviving TRUE clauses KEPT (the two compound surfaces)
+    // surviving clauses KEPT (the two compound surfaces)
+    //
+    // ⚠⚠ NA-0764 (`D-1405`) — THIS CLAUSE IS NO LONGER "STILL TRUE", AND THE
+    // JUSTIFICATION IS CORRECTED RATHER THAN THE ASSERTION. Lane C ships the
+    // Contacts pane, so "Adding contacts arrives in a future update" became
+    // FALSE the moment it landed. It is nevertheless retained, because Lane C
+    // RETIRED THE PATHS that reveal it (2 revealers -> 0, sealed in
+    // design_polish.rs) and the element is now unreachable dead copy: a false
+    // sentence nothing can render is not a user-visible lie, and deleting a
+    // message was not this lane's act. The pin stays so the element cannot
+    // silently come BACK into use carrying a stale claim — which is exactly
+    // what would happen if a future lane re-wired a revealer without reading
+    // the copy.
     assert!(
         html.contains("Adding contacts arrives in a future update"),
-        "stub-note lost the still-true contacts clause"
+        "stub-note lost the contacts clause — it is retained deliberately as \
+         unreachable copy, not as a live claim"
     );
     assert!(
         js.contains("no security-assurance claims"),

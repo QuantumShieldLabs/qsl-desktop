@@ -3226,3 +3226,116 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     re-aimed with its count still exact. **Harness green is NOT a field claim**: acceptance is
     the operator's two-machine flight at the blessed tempo, and the flight card is carried at
     STOP 2. Nothing merged by the seat; the operator merges.
+
+- **ID:** D-0041
+  - **Status:** Accepted
+  - **Date:** 2026-08-26
+  - **Lane:** desktop **NA-0764 / LANE C: CONTACTS, AUTO-CONNECT, AND THE NOTICE FOOTER**.
+    Executing the Director's formalization brief `BRIEF_laneC_contacts_gate_footer_20260826.md`
+    (sha256 `aeec2fd5…27eb`), his build ruling `RULING_NA0764_build_20260826.md`
+    (`ce7b7ffe…0bb0`) and the choreography order `ORDER_NA0764_P1_20260826.md`
+    (`20a08d86…5f18`), against blessed layout authority
+    `MOCKUP_laneC_v5_blessed_20260826.html` (`cc7691db…62f8`) and the SR-15 cold read
+    `FINDINGS_SR15_NA0764_coldread_laneC_20260826T170306Z.md` (`b269d5a8…b6c2`). All banked
+    444 and sha-VERIFIED against their own bytes BEFORE being read, all 64 digits with a
+    negative control on the comparator. ⚠ The findings digest was relayed ABBREVIATED
+    (`b269d5a8...b6c2`), so **12 of 64 digits were comparable**; both ends matched with
+    negative controls and the middle 52 are stated UNCOMPARED rather than glossed. Ruled from
+    `STOP_NA0764_002` (`5412e50c…8232`) and `STOP_NA0764_003` (`70ca6cf3…5420`). Spine decision
+    **D-1405**. Base `e48dfed019e3210164a236985edf81cad4175540`, re-derived bare and unpiped at
+    the NAMED github remote.
+  - ⛳⛳ **WHAT THIS BUYS: THE INVITE COMPLETES ITSELF, AND THE HUMAN MOMENT MOVES TO
+    VERIFICATION.** While an invite is outstanding, the same background beat that already runs
+    also watches that invite's drop-box; a redemption completes itself and the new contact
+    appears wearing a verify-first badge. The operator's own ruling: *"Isn't this situation what
+    the verification process is used for? ... why not have the app randomly poll for redeemed
+    invites... they only last 3 days anyway."*
+  - ⚠⚠ **THE LANE'S PREMISE PHASE KILLED ITS OWN HEADLINE FEATURE, AND THAT IS WHY THE DESIGN
+    CHANGED.** The brief ordered an APPROVAL GATE. Measured before any edit: **there is no
+    backend state meaning "someone redeemed your invite and awaits your approval."** The
+    creator-side machine has exactly three transitions — `Creating→Active` (create), `*→Revoked`
+    (revoke), `Active→Redeemed` **in `invite_accept_at`, i.e. Alice's own accept** — and the
+    invite slot is pulled at exactly ONE site in the crate, inside that same function.
+    `relay_inbox_pull` is `pub(super)`, not in the facade, not a command; the relay exposes no
+    non-consuming read. ⇒ **you cannot check without accepting.** Four paths were enumerated;
+    the operator ruled auto-connect, on the ground that a consent button was **consent theater**
+    — a decision with zero information, since the identity is sealed until the accept.
+  - ⚠⚠ **AND THE SEDUCTIVE WRONG ANSWER IS NAMED SO IT IS NOT TAKEN LATER.**
+    `contact_request_accept` / `_ignore` / `_block` are registered and read exactly like an
+    approval gate. They are **NOT this flow**: their store has ONE writer in the whole crate,
+    `contact_request_upsert` at `transport/mod.rs:1236`, inside the **`Err(code)` arm of a
+    message UNPACK FAILURE** from an unknown sender. `invite/mod.rs` never creates one
+    (0 occurrences; positive control: 3 in `transport/mod.rs`). The family has zero UI call
+    sites and remains dead surface.
+  - **THE STATE MAPPING, AND THE ARM THAT MATTERS MOST.** Six states render: Connected /
+    Connecting… / new-verify / check-identity / needs-attention / Blocked, in ruled precedence
+    (blocked ≻ CHANGED ≻ badge ≻ Active). ⚠⚠ **`missing_seed` MAPS TO "Connecting…", AND THE
+    COLD READ'S CLASSIFICATION WAS REVERSED BY MEASUREMENT.** The desktop **never sets
+    `QSC_QSP_SEED`** (positive control: the four it does set are named), so
+    `qsp_status_tuple`'s no-session branch always takes the `else` arm ⇒ **`no_session` is
+    unreachable in this app and every not-yet-connected contact answers `missing_seed`.**
+    Filing it as a structural fault — which the cold read's C-16 did — would ship *"This
+    connection has a storage problem"* on the commonest state in the app AND leave
+    "Connecting…" with **no reachable member at all**. The shipped footer had already ruled
+    this once (`D-0033`): *"A healthy fresh profile answers `missing_seed`, so a footer
+    rendering it as a problem would call every new install broken."*
+  - ⛳ **A [B]-SEVERITY COLD-READ FINDING DISCHARGED BY MEASUREMENT, TWICE OVER.** C-16 warned
+    that a locked vault would render every row "Connecting…" while the footer said "Locked".
+    It cannot happen: `contact_list` calls `require_unlocked_here()` FIRST, so a locked vault
+    yields `Err` and **zero rows**; and `scr-main` is never on screen while locked, because
+    every lock path navigates to `scr-unlock` — the shipped code says so itself at
+    `main.js:659-661`. **The surviving obligation is honoured**: a `contact_list` failure
+    renders NO rows and NOT the empty-state copy, because "you have no contacts" is a
+    different claim from "I could not read them".
+  - **THE FOOTER (F1/R5), WITH REASON-FIRST PRECEDENCE.** One line. The tick's warning text
+    migrates into the footer's closed reason set — byte-identical, so this moves a string
+    rather than minting one — and the outage arm sits **LAST, above `Ready` and below every
+    real problem**. Placed at the top, where "trouble replaces normal" naturally suggests, it
+    would MASK the storage line, the locked line and the please-report tripwire; an outage and
+    a storage fault are **correlated**, both following a bad restart or a moved vault. Recovery
+    is a simple return to normal — **no "Reconnected" blurb**, refused for this lane. Trouble
+    renders in **accent, never danger**: NA-0763's reservation of the danger tier is carried
+    forward, not reversed.
+  - ⚠⚠ **`#tick-status` IS NOT DELETED, AND DELETING IT IS FORBIDDEN (cold read C-10).** Only
+    its VISIBLE role retires. `tickMark()` still dereferences it every beat for the tick's five
+    `data-*` counters, so removing the element would be a TypeError inside the scan's hot path
+    — an E3 break caused by the very edit E3 was cleared for.
+  - **`R6`/`D-D` — TWO FIELDS, AND A GUARD.** `display_name` sits **beside** the alias key,
+    never re-keying it: `alias` keys `ContactsStore.peers`, `identity_read_pin(peer)` AND
+    `qsp_session_for_channel(channel)`, so a re-key rename would reach identity pins and live
+    sessions. `device_count` is a **projection**, not the device array, which carries
+    identifiers and key material. The UI **renders `display_name` and passes `alias`,
+    always** — sealed structurally at zero invoke-argument occurrences, with its own can-fail
+    proof.
+  - ⚠ **A GAP IN THE RULED DESIGN, MEASURED AND MADE OBSERVABLE RATHER THAN SILENT.** `R1`
+    says `alias := the invite's own label`, but the mint's own caption reads *"Who is this
+    invite for? (optional — stays on this device)"* — so a **blessed GUI flow produces invites
+    with no label**, and therefore no alias to provision under. Those are skipped and **tallied
+    in `marks.unlabelled`**, so the gap is visible instead of being a blessed flow that quietly
+    never completes. Its disposition is the operator's and is carried to the stop.
+  - **INSTRUMENTS, RED ARMS RUN.** `na0764_contacts_surface` (6 structural seals: the alias
+    invariant with its counter's own can-fail proof, the badge's no-persistence bound, the
+    fault-list classification, the precedence order, the footer arm's position);
+    `f_n_contacts_autoconnect` (the six states, the badge clear, the hint at 0/1/n, the
+    footer's **corrected** red arm per C-08 — an unknown reason WHILE the tick is in trouble,
+    because the obvious arm passes under the defect — and the auto-connect class's recorded
+    calls). ⚠ **The re-aimed `f_m` rows carry their own can-fail proof** (C-28): the quiet line
+    is asserted SILENT before the footer is asserted to speak, so the re-aim is proven a
+    migration and not an addition.
+  - ⚠ **A SEAL WENT RED ON THE FIRST EDIT, AND THAT WAS THE SEAL WORKING.**
+    `the_un_stubbing_is_handler_scoped_and_lane_cs_stub_survives` said in its own doc *"The
+    Contacts pane is Lane C and is still unbuilt."* Lane C built it, so the revealer count
+    moves **2 → 0**. Per the Z6 precedent the seal is **RE-AIMED, never weakened**: the count
+    stays an EXACT equality, the property that replaces it (both rail buttons reach the pane)
+    is pinned, and the stub element and its copy are untouched — retiring a path is not
+    deleting a message. ⚠ That message is now FALSE but **unreachable**, and `server_pane.rs`'s
+    justification for keeping it is corrected accordingly.
+  - **Claim boundary.** Zero transport, crypto or relay bytes. Zero `.github/**`. No new colour
+    tokens — the mockup's 18 were measured a subset of the shipped 57 before a line was
+    written. No test weakened, skipped or deleted. **HARNESS GREEN IS NOT A FIELD CLAIM**: this
+    repo still has no fixture relay (`ENG-0226`, open), so no scenario completes a handshake;
+    the relay-facing half is measured in qsl-protocol against the real `qsl-server`
+    in-process, and the loop end to end only by the operator's two-machine flight.
+  - **References:** spine `D-1405`; `D-0040` (the tick this rides); `D-0033` (the footer's
+    two-source ruling, amended in the open by this lane); `D-0037`/`D-0036` (the invite flows);
+    `ENG-0226` (no fixture relay).
