@@ -1959,12 +1959,14 @@ fn the_stub_survives_and_lane_c_retired_its_last_revealer() {
     // real surface. Pinned here so the retirement above cannot be satisfied by
     // simply deleting the handlers.
     assert!(
-        js.contains(r#"byId("btn-rail-contacts").addEventListener("click", () => showContactsPane());"#),
+        js.contains(
+            r#"byId("btn-rail-contacts").addEventListener("click", () => showContactsPane());"#
+        ),
         "the main rail's Contacts button opens the pane"
     );
     assert!(
         js.contains(r#"byId("btn-rail-contacts-s").addEventListener("click", async () => {"#),
-            "the settings rail's Contacts button returns to main and opens the pane"
+        "the settings rail's Contacts button returns to main and opens the pane"
     );
     // And the stub's own copy is untouched — retiring a path is not deleting a message.
     assert!(

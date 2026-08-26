@@ -175,7 +175,12 @@ fn missing_seed_is_not_classified_as_a_fault() {
          fault either"
     );
     // The four that ARE faults, named — so the list cannot be emptied to pass.
-    for r in ["session_invalid", "unsafe_parent", "missing_home", "channel_invalid"] {
+    for r in [
+        "session_invalid",
+        "unsafe_parent",
+        "missing_home",
+        "channel_invalid",
+    ] {
         assert!(list.contains(r), "`{r}` must be classified as a fault");
     }
 }
