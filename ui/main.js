@@ -2907,6 +2907,25 @@ function renderContactDetail() {
     body.appendChild(n);
   }
 
+  // ⚠ R3: DEVICES on the connected detail -- and "Connected since" is DROPPED.
+  // `seen_at` reads as LAST SEEN, not "connected since"; rendering it under that
+  // label would show today's date for a contact made a year ago, and rendering it
+  // truthfully would be a per-contact presence disclosure at a precision nobody
+  // blessed (cold read C-20). The honest answer was to drop the line, not to
+  // dress up the wrong field.
+  //
+  // ⚠ The count is a PROJECTION the facade computes; the device ARRAY never
+  // crosses this boundary, because it carries device ids and key material.
+  if (ui === "connected" && typeof row.device_count === "number") {
+    const dev = document.createElement("div");
+    dev.className = "contact-detail-kv";
+    dev.textContent = "Devices: ";
+    const n = document.createElement("b");
+    n.textContent = String(row.device_count);
+    dev.appendChild(n);
+    body.appendChild(dev);
+  }
+
   // The identity code, wherever there is one to compare.
   if (row.fingerprint && voiceGroups(row.fingerprint.voice)) {
     const cap = document.createElement("div");

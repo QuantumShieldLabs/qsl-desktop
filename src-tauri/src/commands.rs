@@ -917,6 +917,19 @@ pub struct ContactDto {
     pub pinned: bool,
     pub blocked: bool,
     pub state: String,
+    /// NA-0764 (`D-0041`; spine `D-1405`, ruling `R6`) — what YOU call this contact, or `None`
+    /// to show the alias.
+    ///
+    /// ⚠ RENDER-ONLY. `alias` remains the identity every verb takes; this string is never a
+    /// key, never a route token and never an argument. The front end seals that structurally:
+    /// `display_name` appears in ZERO invoke-argument positions, with its own can-fail proof.
+    pub display_name: Option<String>,
+    /// How many devices this contact has. **A PROJECTION**, not the device array.
+    ///
+    /// ⚠ THE COUNT AND NEVER THE ARRAY (`R6`). `ContactDeviceRecord` carries `device_id`,
+    /// `fp`, `sig_fp`, `kem_pk` and `route_token` — identifiers and key material — and a
+    /// screen needs a number.
+    pub device_count: usize,
 }
 
 impl From<&qsc::facade::ContactSummary> for ContactDto {
@@ -927,6 +940,8 @@ impl From<&qsc::facade::ContactSummary> for ContactDto {
             pinned: c.pinned,
             blocked: c.blocked,
             state: contact_state_wire(c.state).to_string(),
+            display_name: c.display_name.clone(),
+            device_count: c.device_count,
         }
     }
 }
