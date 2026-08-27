@@ -7,7 +7,7 @@
   },
   {
    "op": "note",
-   "text": "NA-0755 v2 \u2014 the SINGLE-VIEW mint. Fresh profile: onboard first, because invite_create needs an unlocked vault and an identity."
+   "text": "NA-0755 v2 — the SINGLE-VIEW mint. Fresh profile: onboard first, because invite_create needs an unlocked vault and an identity."
   },
   {
    "op": "clear_type",
@@ -79,7 +79,7 @@
   },
   {
    "op": "note",
-   "text": "ENTRY 1 \u2014 the welcome button. It opens STRAIGHT to the mint: there is no explainer step in v2."
+   "text": "ENTRY 1 — the welcome button. It opens STRAIGHT to the mint: there is no explainer step in v2."
   },
   {
    "op": "click",
@@ -87,7 +87,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 NA-0756 (D-0037, R387 \u00a7S4) \u2014 THE ENTRY NOW LANDS ON THE CHOOSER. Item 1 retargeted BOTH contact-making entries; \"Invite someone\" reaches this mint, \"I have a code\" reaches the redeem flow. The step is added rather than the assertion relaxed \u2014 this scenario still proves the entry reaches the mint, it now proves the path it takes to get there."
+   "text": "⚠ NA-0756 (D-0037, R387 §S4) — THE ENTRY NOW LANDS ON THE CHOOSER. Item 1 retargeted BOTH contact-making entries; \"Invite someone\" reaches this mint, \"I have a code\" reaches the redeem flow. The step is added rather than the assertion relaxed — this scenario still proves the entry reaches the mint, it now proves the path it takes to get there."
   },
   {
    "op": "prop_eq",
@@ -116,7 +116,7 @@
   },
   {
    "op": "note",
-   "text": "Z1 NEGATIVE PIN, HANDLER-scoped (R380 \u00a74): btn-add-contact no longer reveals #stub-note. The element survives. \u26a0 NA-0764: its TWO Lane-C revealers are now RETIRED (2 -> 0) because Lane C built the pane they were waiting for -- the element and its copy are untouched, and design_polish.rs carries the re-aimed count."
+   "text": "Z1 NEGATIVE PIN, HANDLER-scoped (R380 §4): btn-add-contact no longer reveals #stub-note. The element survives. ⚠ NA-0764: its TWO Lane-C revealers are now RETIRED (2 -> 0) because Lane C built the pane they were waiting for -- the element and its copy are untouched, and design_polish.rs carries the re-aimed count."
   },
   {
    "op": "prop_eq",
@@ -140,9 +140,13 @@
    "literal": "Invite someone"
   },
   {
+   "op": "note",
+   "text": "⚠ NA-0766 (`D-0043`) — THE CAPTION IS PINNED TWICE, IN TWO DIFFERENT FORMS, AND THAT IS DELIBERATE. The SOURCE carries four NON-BREAKING spaces (`&nbsp;`), because four ordinary spaces collapse to one in HTML and the blessed layout draws a gap; that byte-form is pinned in `design_polish.rs`. WebDriver's rendered-text extraction NORMALISES U+00A0 to U+0020, so what the USER'S SCREEN yields here is four ORDINARY spaces. Both pins are correct and neither is redundant: the source pin catches the gap being written the collapsing way, and this pin catches it not reaching the screen. ⚠ My first expectation here asserted the non-breaking form and this step caught it — measured, then corrected against the instrument rather than guessed a second time."
+  },
+  {
    "op": "read_text",
    "sel": "#invite-label-caption",
-   "literal": "Who is this invite for? (optional \u2014 stays on this device)"
+   "literal": "Who is this invite for?    (stored only on this device)"
   },
   {
    "op": "read_text",
@@ -151,7 +155,7 @@
   },
   {
    "op": "note",
-   "text": "R382 \u00a73 \u2014 with no relay configured the SINGLE COMMIT is DISABLED, not left to fail. An enabled button whose only outcome is an error is the control-that-cannot-succeed shape."
+   "text": "R382 §3 — with no relay configured the SINGLE COMMIT is DISABLED, not left to fail. An enabled button whose only outcome is an error is the control-that-cannot-succeed shape."
   },
   {
    "op": "prop_eq",
@@ -163,24 +167,48 @@
   {
    "op": "read_text",
    "sel": "#invite-no-relay",
-   "literal": "Set a relay address in Settings \u2192 Relay before creating an invite."
+   "literal": "Set a relay address in Settings → Relay before creating an invite."
   },
   {
    "op": "note",
-   "text": "The slot counter is visible in BOTH states, so the cap can never ambush."
+   "text": "NA-0766 (`D-0043`) — ITEM 5. The slot-counter pill is GONE from the modal head; the count is no longer displayed anywhere (the operator's variant-B ruling, taken knowingly). Pinned as an ABSENCE."
   },
   {
-   "op": "read_text",
+   "op": "find_count",
    "sel": "#invite-count",
-   "literal": "0"
+   "expect": 0
   },
   {
    "op": "note",
-   "text": "The list view is one click away, and it is empty on a fresh profile."
+   "text": "NA-0766 (`D-0043`) — ITEM 1 and ITEM 7. The list is reached from the CONTACTS PANE's link, not from inside the modal: navigation lives in one place now. Close first, then use the link."
   },
   {
    "op": "click",
-   "sel": "#btn-invite-review"
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "⚠ THE PANE MUST BE ON SCREEN FIRST, AND THAT IS THE POINT OF ITEM 1 RATHER THAN AN INCONVENIENCE: the link lives in the CONTACTS PANE, not inside a modal, so reaching it means being in Contacts. This entry came through the welcome panel, which lands on Chats — so the rail switch is part of the route and is driven, not assumed. (`read_tc` above would have passed on a hidden node; the visibility of the link is measured in `f_n`, where the pane is already up.)"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "read_tc",
+   "sel": "#btn-contacts-review",
+   "literal": "review invites"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-review"
   },
   {
    "op": "prop_eq",
@@ -190,27 +218,40 @@
    "poll": 5
   },
   {
-   "op": "note",
-   "text": "v3 empty state: the list answers 'what is open', and nothing open is a legitimate answer \u2014 not an error."
-  },
-  {
    "op": "read_text",
    "sel": "#invite-list-empty .muted",
    "literal": "No open invites."
   },
   {
    "op": "read_text",
-   "sel": "#invite-list-empty .hint",
-   "literal": "Codes you\u2019ve sent expire on their own within 3 days."
-  },
-  {
-   "op": "read_text",
    "sel": "#invite-slots",
-   "literal": "0 of 10 slots used \u2014 codes expire on their own"
+   "literal": "0 of 10 slots used — codes expire on their own"
   },
   {
    "op": "click",
-   "sel": "#btn-invite-back"
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-create"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
   },
   {
    "op": "prop_eq",
@@ -221,7 +262,7 @@
   },
   {
    "op": "note",
-   "text": "Escape closes, and the code box is cleared \u2014 the one-time boundary's local half."
+   "text": "Escape closes, and the code box is cleared — the one-time boundary's local half."
   },
   {
    "op": "exec",
@@ -235,9 +276,13 @@
    "poll": 5
   },
   {
+   "op": "note",
+   "text": "⚠ NA-0766 (`D-0043`) — ITEM 7 RE-AIM, AND THE PIN IS STRONGER THAN THE ONE IT REPLACES. This step was born to prove the ONE-TIME BOUNDARY's local half: a code must not survive a close. It read the box for the empty string. Item 6 makes the slot present from the moment the window opens and item 7 gives it its own sentence, so 'empty' is now a SENTENCE rather than nothing — and asserting the sentence proves BOTH that the code is gone AND that the reset went through the one shared path, where the old pin proved only the first."
+  },
+  {
    "op": "read_tc",
    "sel": "#invite-code",
-   "literal": ""
+   "literal": "Your invite code will appear here after you activate."
   },
   {
    "op": "poll_visible",
@@ -245,7 +290,7 @@
   },
   {
    "op": "note",
-   "text": "ENTRY 2 \u2014 RE-AIMED AT NA-0765 (`D-0042`). The Chats header's '+' is RETIRED: adding people is a Contacts act. The count below stays an EXACT equality, now at ZERO, so the retired element REAPPEARING fails this row rather than being absorbed by a loose comparison (the Z6 precedent). The narration is rewritten rather than deleted, because the property it named is retired deliberately and its replacement is driven immediately below."
+   "text": "ENTRY 2 — RE-AIMED AT NA-0765 (`D-0042`). The Chats header's '+' is RETIRED: adding people is a Contacts act. The count below stays an EXACT equality, now at ZERO, so the retired element REAPPEARING fails this row rather than being absorbed by a loose comparison (the Z6 precedent). The narration is rewritten rather than deleted, because the property it named is retired deliberately and its replacement is driven immediately below."
   },
   {
    "op": "find_count",
@@ -254,7 +299,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 THE REPLACEMENT CARRIER, DRIVEN RATHER THAN ASSUMED. `D-0036` put a '+' in the Chats header because the welcome pane -- the only other entry -- disappeared once the first contact landed. NA-0765 keeps the welcome panel on screen AND gives Contacts its own '+', so the premise and the cure retire together."
+   "text": "⚠ THE REPLACEMENT CARRIER, DRIVEN RATHER THAN ASSUMED. `D-0036` put a '+' in the Chats header because the welcome pane -- the only other entry -- disappeared once the first contact landed. NA-0765 keeps the welcome panel on screen AND gives Contacts its own '+', so the premise and the cure retire together."
   },
   {
    "op": "click",
@@ -298,11 +343,11 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 NOT DRIVEN HERE: a successful mint, the clipboard write, Cancel, and the per-row Remove. No fixture relay exists (ENG-0226), so the green path is the operator's card. The clipboard mechanism is sealed in design_polish.rs, and readText is DENIED to the harness so no automated check could verify clipboard CONTENT anyway."
+   "text": "⚠ NOT DRIVEN HERE: a successful mint, the clipboard write, Cancel, and the per-row Remove. No fixture relay exists (ENG-0226), so the green path is the operator's card. The clipboard mechanism is sealed in design_polish.rs, and readText is DENIED to the harness so no automated check could verify clipboard CONTENT anyway."
   },
   {
    "op": "note",
-   "text": "\u26a0 v3 LABEL-CLEAR TRIPWIRE, driven. The operator's flight found one typed label riding EVERY later mint. Type a label, go to the list, come back \u2014 the field must be EMPTY."
+   "text": "⚠ v3 LABEL-CLEAR TRIPWIRE, driven. The operator's flight found one typed label riding EVERY later mint. Type a label, go to the list, come back — the field must be EMPTY."
   },
   {
    "op": "type",
@@ -317,19 +362,27 @@
    "poll": 3
   },
   {
+   "op": "note",
+   "text": "⚠ v3 LABEL-CLEAR TRIPWIRE, RE-AIMED BY NA-0766 (`D-0043`). The operator's flight found a typed label riding EVERY later mint. There were TWO paths back to a fresh mint and only one cleared; item 14 retires the other, so the surviving path is Close then '+' — driven here, because the defect's cure must outlive the control that exposed it."
+  },
+  {
    "op": "click",
-   "sel": "#btn-invite-review"
+   "sel": "#btn-invite-close"
   },
   {
    "op": "prop_eq",
-   "sel": "#invite-list-view",
+   "sel": "#invite-overlay",
    "prop": "className",
-   "expect": "",
+   "expect": "overlay hidden",
    "poll": 5
   },
   {
    "op": "click",
-   "sel": "#btn-invite-back"
+   "sel": "#btn-contacts-add"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-create"
   },
   {
    "op": "prop_eq",
@@ -347,7 +400,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 AND the same on a fresh open of the surface \u2014 both paths route through the one owner."
+   "text": "⚠ AND the same on a fresh open of the surface — both paths route through the one owner."
   },
   {
    "op": "type",
@@ -367,7 +420,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 THE REPLACEMENT CARRIER, DRIVEN RATHER THAN ASSUMED. `D-0036` put a '+' in the Chats header because the welcome pane -- the only other entry -- disappeared once the first contact landed. NA-0765 keeps the welcome panel on screen AND gives Contacts its own '+', so the premise and the cure retire together."
+   "text": "⚠ THE REPLACEMENT CARRIER, DRIVEN RATHER THAN ASSUMED. `D-0036` put a '+' in the Chats header because the welcome pane -- the only other entry -- disappeared once the first contact landed. NA-0765 keeps the welcome panel on screen AND gives Contacts its own '+', so the premise and the cure retire together."
   },
   {
    "op": "click",
@@ -404,7 +457,7 @@
   },
   {
    "op": "note",
-   "text": "v3 copy control: ONE always-visible text link below the box, both re-copy and the fallback's recovery. \u26a0 NOT DRIVEN: its click needs a minted code, which needs the real relay (ENG-0226) \u2014 the operator's re-fly card covers it."
+   "text": "v3 copy control: ONE always-visible text link below the box, both re-copy and the fallback's recovery. ⚠ NOT DRIVEN: its click needs a minted code, which needs the real relay (ENG-0226) — the operator's re-fly card covers it."
   },
   {
    "op": "find_count",
@@ -423,7 +476,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 v4 POLISH \u2014 the ratified layout, driven where the harness can reach it."
+   "text": "⚠ v4 POLISH — the ratified layout, driven where the harness can reach it."
   },
   {
    "op": "note",
@@ -445,7 +498,7 @@
   },
   {
    "op": "find_count",
-   "sel": "#invite-post .code-island .meta-line",
+   "sel": "#invite-mint .code-island .meta-line",
    "expect": 1
   },
   {
@@ -455,7 +508,7 @@
   {
    "op": "read_tc",
    "sel": "#invite-warning strong",
-   "literal": "Only send this code to the person it\u2019s intended for\u2026"
+   "literal": "Only send this code to the person it’s intended for…"
   },
   {
    "op": "note",
@@ -468,7 +521,7 @@
   },
   {
    "op": "note",
-   "text": "The copy link is plain \u2014 never underlined \u2014 and one line."
+   "text": "The copy link is plain — never underlined — and one line."
   },
   {
    "op": "exec",
@@ -477,17 +530,17 @@
   },
   {
    "op": "note",
-   "text": "The New-invite button is ONE LINE at the widened surface."
+   "text": "NA-0766 (`D-0043`) — ITEMS 5 and 14 RE-AIM, AS ABSENCES. The list head's fresh-mint button and the slot-counter pill are both retired, so what was a geometry pin becomes an ELEMENT pin: neither may return."
   },
   {
    "op": "exec",
-   "script": "var b=document.getElementById('btn-invite-back'); var cs=getComputedStyle(b); return JSON.stringify({ws:cs.whiteSpace, oneLine:(b.getBoundingClientRect().height < 44)});",
-   "expect": "{\"ws\":\"nowrap\",\"oneLine\":true}"
+   "script": "var a=document.getElementById('btn-invite-back');var b=document.getElementById('btn-invite-review');var c=document.getElementById('invite-count');return JSON.stringify({back:!!a,pill:!!b,count:!!c});",
+   "expect": "{\"back\":false,\"pill\":false,\"count\":false}"
   },
   {
    "op": "exec",
-   "script": "var hd=document.querySelector('#invite-mint .modal-head');var t=hd.querySelector('h2').getBoundingClientRect();var b=hd.querySelector('#btn-invite-review').getBoundingClientRect();var overlap=(t.top < b.bottom) && (b.top < t.bottom);return JSON.stringify({headOneRow:overlap, btnOneLine:(b.height < 44)});",
-   "expect": "{\"headOneRow\":true,\"btnOneLine\":true}"
+   "script": "var hd=document.querySelector('#invite-mint .modal-head');return JSON.stringify({children:hd.children.length,only:hd.children[0].tagName});",
+   "expect": "{\"children\":1,\"only\":\"H2\"}"
   },
   {
    "op": "exec",
@@ -496,11 +549,11 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 v5 \u00a72 \u2014 MEASURED PROPERTIES, not asserted CSS. A synthetic list row is rendered so the geometry can be read; the source side is pinned in design_polish.rs."
+   "text": "⚠ v5 §2 — MEASURED PROPERTIES, not asserted CSS. A synthetic list row is rendered so the geometry can be read; the source side is pinned in design_polish.rs."
   },
   {
    "op": "exec",
-   "script": "\nwindow.__g={};\n(function(){\n  var host=document.getElementById('invite-rows');\n  var row=document.createElement('div'); row.className='invite-row';\n  var main=document.createElement('div'); main.className='invite-row-main';\n  main.innerHTML='<div class=\"invite-row-head\">1 \u2014 probe</div><div class=\"invite-row-meta\">created x \u2014 expires in y</div>';\n  var side=document.createElement('div'); side.className='invite-row-side';\n  var chip=document.createElement('span'); chip.className='invite-chip'; chip.textContent='Not yet accepted';\n  var a=document.createElement('a'); a.className='rm plain link-danger'; a.textContent='Revoke';\n  side.append(chip,a); row.append(main,side); host.appendChild(row);\n  document.getElementById('invite-list-view').classList.remove('hidden');\n  var cr=chip.getBoundingClientRect(), ar=a.getBoundingClientRect();\n  var overlap=Math.min(cr.bottom,ar.bottom)-Math.max(cr.top,ar.top);\n  // the danger token resolved by the SAME engine \u2014 never a literal\n  var probe=document.createElement('span'); probe.style.color='var(--danger-link)';\n  document.body.appendChild(probe); var want=getComputedStyle(probe).color; probe.remove();\n  window.__g={ onOneRow: overlap > 0, tokenMatch: getComputedStyle(a).color === want,\n               deco: getComputedStyle(a).textDecorationLine, want: want };\n  row.remove();\n})();\nreturn JSON.stringify(window.__g);"
+   "script": "\nwindow.__g={};\n(function(){\n  var host=document.getElementById('invite-rows');\n  var row=document.createElement('div'); row.className='invite-row';\n  var main=document.createElement('div'); main.className='invite-row-main';\n  main.innerHTML='<div class=\"invite-row-head\">1 — probe</div><div class=\"invite-row-meta\">created x — expires in y</div>';\n  var side=document.createElement('div'); side.className='invite-row-side';\n  var chip=document.createElement('span'); chip.className='invite-chip'; chip.textContent='Not yet accepted';\n  var a=document.createElement('a'); a.className='rm plain link-danger'; a.textContent='Revoke';\n  side.append(chip,a); row.append(main,side); host.appendChild(row);\n  document.getElementById('invite-list-view').classList.remove('hidden');\n  var cr=chip.getBoundingClientRect(), ar=a.getBoundingClientRect();\n  var overlap=Math.min(cr.bottom,ar.bottom)-Math.max(cr.top,ar.top);\n  // the danger token resolved by the SAME engine — never a literal\n  var probe=document.createElement('span'); probe.style.color='var(--danger-link)';\n  document.body.appendChild(probe); var want=getComputedStyle(probe).color; probe.remove();\n  window.__g={ onOneRow: overlap > 0, tokenMatch: getComputedStyle(a).color === want,\n               deco: getComputedStyle(a).textDecorationLine, want: want };\n  row.remove();\n  // ⚠ NA-0766 (`D-0043`): PUT BACK WHAT THIS PROBE BORROWED. It un-hides the list view to\n  // measure a row, and until this lane leaving it up was harmless -- the mint showed only its\n  // pre-activation half, so the modal stayed short. Item 6 makes the mint render its FULL final\n  // shape from open, so two visible views now overflow the surface and push the footer's Close\n  // BELOW THE VIEWPORT, where WebDriver cannot click it. The probe restores the class it\n  // cleared, exactly as it already removes the row it added.\n  document.getElementById('invite-list-view').classList.add('hidden');\n})();\nreturn JSON.stringify(window.__g);"
   },
   {
    "op": "exec",
@@ -509,7 +562,7 @@
   },
   {
    "op": "note",
-   "text": "I6 (creation half) \u2014 NA-0765 (`D-0042`). The invite-CREATION view had a foot Close but no X and no Back. Escape and the scrim already worked and are NOT re-proven here; what is new is that both are now REACHABLE ON SCREEN."
+   "text": "NA-0766 (`D-0043`) — ITEMS 1..4, DRIVEN. The corner X is GONE and the invite window's ONE exit is the full-width Close in the shared footer. Asserted BY ELEMENT (the NA-0765 lesson: a string-shaped check passed three element-level defects straight through)."
   },
   {
    "op": "click",
@@ -535,13 +588,13 @@
    "poll": 5
   },
   {
-   "op": "find_count",
-   "sel": "#btn-invite-x",
-   "expect": 1
+   "op": "exec",
+   "script": "var m=document.getElementById('invite-overlay');var b=m.querySelectorAll('button');var ids=[];for(var i=0;i<b.length;i++){if(b[i].getClientRects().length)ids.push(b[i].id);}return JSON.stringify({visible:ids.sort()});",
+   "expect": "{\"visible\":[\"btn-invite-activate\",\"btn-invite-close\"]}"
   },
   {
    "op": "click",
-   "sel": "#btn-invite-x"
+   "sel": "#btn-invite-close"
   },
   {
    "op": "prop_eq",
@@ -549,10 +602,6 @@
    "prop": "className",
    "expect": "overlay hidden",
    "poll": 5
-  },
-  {
-   "op": "note",
-   "text": "\u26a0\u26a0 AND BACK HERE IS NOT THE SAME GESTURE AS BACK ON THE CODE-ENTRY VIEW. `btn-choose-create` HIDES the chooser's overlay before opening this one, so returning has to close THIS overlay and RE-OPEN THAT one. Both halves are asserted, because closing without re-opening would strand the user on the main screen and would still look like a working Back."
   },
   {
    "op": "click",
@@ -570,8 +619,12 @@
    "poll": 5
   },
   {
+   "op": "note",
+   "text": "NA-0766 (`D-0043`) — ITEM 3 RE-AIM. The cross-overlay Back is RETIRED. Returning to the chooser is now Close then '+', which is the SAME two gestures every other return uses. Driven, not assumed."
+  },
+  {
    "op": "click",
-   "sel": "#btn-invite-back-chooser"
+   "sel": "#btn-invite-close"
   },
   {
    "op": "prop_eq",
@@ -579,6 +632,10 @@
    "prop": "className",
    "expect": "overlay hidden",
    "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
   },
   {
    "op": "prop_eq",
@@ -593,6 +650,218 @@
    "prop": "className",
    "expect": "",
    "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "══ NA-0766 (`D-0043`) — I3: A NAME IS REQUIRED ══ Item 10. Activate stays disabled until the field holds a real name after trimming, and the DISABLED CONTROL IS THE WHOLE ENFORCEMENT — there is no error text by design. ⚠ WHY THE ENVIRONMENT IS SET FROM SCRIPT AND NOT THROUGH THE UI: persisting a relay requires a SUCCESSFUL PROBE (NA-0754's test-and-save-on-proof invariant) and the desktop harness has no fixture relay (`ENG-0226`, open), so the relay cause would mask the name cause forever. Only the environment fact is synthesized; the gate itself is the PRODUCT'S OWN `inviteSyncActivate()`, driven for real — the same idiom `f_n` uses to reach the contacts render."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-create"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "exec",
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;document.getElementById('invite-label').value='';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
+   "expect": "disabled"
+  },
+  {
+   "op": "exec",
+   "script": "document.getElementById('invite-label').value='   ';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
+   "expect": "disabled"
+  },
+  {
+   "op": "exec",
+   "script": "document.getElementById('invite-label').value='\\t \\n ';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
+   "expect": "disabled"
+  },
+  {
+   "op": "exec",
+   "script": "document.getElementById('invite-label').value='Dana';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
+   "expect": "enabled"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND NO ERROR TEXT APPEARS FOR THE NAME CAUSE — item 10 says the disabled control is the WHOLE enforcement. ⚠ MY FIRST FORM OF THIS STEP ASSERTED THAT NO HINT WAS VISIBLE AND THE INSTRUMENT CAUGHT IT: the no-relay hint IS legitimately on screen here, because the harness genuinely has no relay (`ENG-0226`), and that is a DIFFERENT cause with a message of its own. The property actually ordered is that the NAME cause adds nothing — so it is measured as what it is: the VISIBLE SET must be identical with an empty name and with a valid one. Corrected against the measurement rather than guessed a second time."
+  },
+  {
+   "op": "exec",
+   "script": "function V(){var r=document.getElementById('invite-mint');var o=[];var e=r.querySelectorAll('*');for(var i=0;i<e.length;i++){if(e[i].getClientRects().length)o.push(e[i].id||e[i].tagName);}return o.join('|');}document.getElementById('invite-label').value='';inviteSyncActivate();var empty=V();document.getElementById('invite-label').value='Dana';inviteSyncActivate();var named=V();return empty===named?'identical':('DIFFERS empty=['+empty+'] named=['+named+']');",
+   "expect": "identical"
+  },
+  {
+   "op": "note",
+   "text": "══ NA-0766 (`D-0043`) — I4: NO TRANSFORM, MEASURED BY VISIBILITY ══ Item 6. ⚠ RULING Q4 = (A): this compares what the user SEES, not which nodes exist. An inventory-only comparison would stay GREEN even if an element were hidden before activation, which is exactly why it was ruled. The transition is the PRODUCT'S OWN `inviteAdoptCode()` — the one function every successful mint routes through — driven with a synthetic code because no fixture relay can make `invite_create` succeed."
+  },
+  {
+   "op": "exec",
+   "script": "function V(){var r=document.getElementById('invite-mint');var o=[];var e=r.querySelectorAll('*');for(var i=0;i<e.length;i++){if(e[i].getClientRects().length)o.push(e[i].id||e[i].tagName);}return o.join('|');}document.getElementById('invite-label').value='Dana';inviteSyncActivate();window.__b=V();return window.__b.length>0?'captured':'empty';",
+   "expect": "captured"
+  },
+  {
+   "op": "exec",
+   "script": "inviteAdoptCode('QSLI-1-AQHJuXa0gk6i0eK0m24Au9eZAAAAAGqT0t0AG2h0dHBzOi8vcmVsYXkuZXhhbXBsZS5uZXQ6ODQ0Mwa');return document.getElementById('invite-code').classList.contains('minted')?'minted':'not-minted';",
+   "expect": "minted"
+  },
+  {
+   "op": "exec",
+   "script": "function V(){var r=document.getElementById('invite-mint');var o=[];var e=r.querySelectorAll('*');for(var i=0;i<e.length;i++){if(e[i].getClientRects().length)o.push(e[i].id||e[i].tagName);}return o.join('|');}return window.__b===V()?'identical':('MOVED before=['+window.__b+'] after=['+V()+']');",
+   "expect": "identical"
+  },
+  {
+   "op": "note",
+   "text": "══ NA-0766 (`D-0043`) — I6: POST-ACTIVATION LOCKS ══ Item 12. One invite per window: Activate is disabled, the name field is read-only showing what the invite was minted with, and a second press cannot mint. Before this lane `inviteRefresh()` RE-ENABLED the control after a successful mint, so a second press burned a second slot — this is a slot-accounting fix, not a cosmetic one."
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify({activate:document.getElementById('btn-invite-activate').disabled,readonly:document.getElementById('invite-label').readOnly,name:document.getElementById('invite-label').value});",
+   "expect": "{\"activate\":true,\"readonly\":true,\"name\":\"Dana\"}"
+  },
+  {
+   "op": "note",
+   "text": "⚠ THE LATCH SURVIVES A REFRESH, WHICH IS THE WHOLE POINT — the old defect was that the refresh undid the disable. Driven: re-run the ONE decision and confirm the control stays down."
+  },
+  {
+   "op": "exec",
+   "script": "inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'still-disabled':'RE-ENABLED';",
+   "expect": "still-disabled"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND THE SLOT IS NOT BURNED TWICE: a click on the disabled control changes nothing. The code in the box is the one already minted."
+  },
+  {
+   "op": "exec",
+   "script": "var before=document.getElementById('invite-code').textContent;document.getElementById('btn-invite-activate').click();return document.getElementById('invite-code').textContent===before?'unchanged':'CHANGED';",
+   "expect": "unchanged"
+  },
+  {
+   "op": "note",
+   "text": "══ NA-0766 (`D-0043`) — I4's CAN-FAIL ARM AT THE TENTH-INVITE BOUNDARY ══ Ordered by ruling Q4. This is the ONE place the old shape moved: `inviteRefresh()` recomputed the cap after every mint, so minting the TENTH invite made the cap line APPEAR after activation. The cap is now decided ONCE at open and held for the window's life. Driven AT the boundary, because an instrument that never reaches the boundary cannot fail there."
+  },
+  {
+   "op": "exec",
+   "script": "inviteMinted=false;inviteNoRelay=false;inviteCapFull=true;inviteResetSlot();document.getElementById('invite-label').readOnly=false;document.getElementById('invite-label').value='Dana';inviteSyncActivate();return document.getElementById('invite-cap-full').getClientRects().length>0?'cap-line-shown':'cap-line-hidden';",
+   "expect": "cap-line-hidden"
+  },
+  {
+   "op": "exec",
+   "script": "function V(){var r=document.getElementById('invite-mint');var o=[];var e=r.querySelectorAll('*');for(var i=0;i<e.length;i++){if(e[i].getClientRects().length)o.push(e[i].id||e[i].tagName);}return o.join('|');}window.__b2=V();return 'captured';",
+   "expect": "captured"
+  },
+  {
+   "op": "exec",
+   "script": "inviteAdoptCode('QSLI-1-CAPBOUNDARYTESTCODE');return 'adopted';",
+   "expect": "adopted"
+  },
+  {
+   "op": "note",
+   "text": "══ NA-0766 (`D-0043`) — I5: THE COPY CYCLE ══ Item 13, which measured ALREADY SHIPPED EXACTLY AS ORDERED and is therefore NOT rebuilt. This lane's obligation is to carry it UNBROKEN through item 6's restructure, so it is pinned here for the first time rather than assumed: click → 'copied' → reverts on its own → clickable again, indefinitely. ⚠ NO SLEEP (brief sec 8): the revert is awaited with the harness's bounded `poll_exec`, which is the shipped polling idiom, not a timer. ⚠ The clipboard API's reachability in this harness was MEASURED before this block was written, not assumed."
+  },
+  {
+   "op": "read_tc",
+   "sel": "#btn-invite-copy",
+   "literal": "copy code"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-copy"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('btn-invite-copy').textContent;",
+   "expect": "copied",
+   "poll": 20,
+   "label": "copy link acknowledges"
+  },
+  {
+   "op": "exec",
+   "script": "var a=document.getElementById('btn-invite-copy');return JSON.stringify({green:a.classList.contains('copied')});",
+   "expect": "{\"green\":true}"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND IT REVERTS ON ITS OWN — the acknowledgement is temporary by design, so the control returns to being an offer rather than a report."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('btn-invite-copy').textContent;",
+   "expect": "copy code",
+   "poll": 40,
+   "label": "copy link reverts"
+  },
+  {
+   "op": "exec",
+   "script": "var a=document.getElementById('btn-invite-copy');return JSON.stringify({green:a.classList.contains('copied')});",
+   "expect": "{\"green\":false}"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND IT IS REUSABLE INDEFINITELY — nothing disables it, so a second click behaves exactly like the first. That is what makes it the recovery path when the single-gesture copy could not copy."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-copy"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('btn-invite-copy').textContent;",
+   "expect": "copied",
+   "poll": 20,
+   "label": "copy link acknowledges a SECOND time"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('btn-invite-copy').textContent;",
+   "expect": "copy code",
+   "poll": 40,
+   "label": "and reverts a second time"
+  },
+  {
+   "op": "exec",
+   "script": "function V(){var r=document.getElementById('invite-mint');var o=[];var e=r.querySelectorAll('*');for(var i=0;i<e.length;i++){if(e[i].getClientRects().length)o.push(e[i].id||e[i].tagName);}return o.join('|');}return window.__b2===V()?'identical':('MOVED AT CAP before=['+window.__b2+'] after=['+V()+']');",
+   "expect": "identical"
+  },
+  {
+   "op": "note",
+   "text": "══ NA-0766 (`D-0043`) — I7: THE LINK ══ Item 1. Lowercase, not a button, no count, and it opens the invites list. The outstanding-count line is gone from the pane entirely."
+  },
+  {
+   "op": "exec",
+   "script": "var a=document.getElementById('btn-contacts-review');return JSON.stringify({tag:a.tagName,text:a.textContent,deco:getComputedStyle(a).textDecorationLine,hint:!!document.querySelector('.contacts-hint')});",
+   "expect": "{\"tag\":\"A\",\"text\":\"review invites\",\"deco\":\"none\",\"hint\":false}"
   },
   {
    "op": "teardown"

@@ -78,7 +78,7 @@
   },
   {
    "op": "note",
-   "text": "I5 (empty half) \u2014 NA-0765 (`D-0042`). Nothing is selected and the list is empty, so the detail pane shows the WELCOME PANEL, not the bare sentence it shipped with. \u26a0 ONE welcome element is reused rather than a second one rendered into the detail body: a duplicate `.welcome-title` inside `#scr-main` would make the read census's single-match selector AMBIGUOUS rather than red, which is the worse failure of the two."
+   "text": "I5 (empty half) — NA-0765 (`D-0042`). Nothing is selected and the list is empty, so the detail pane shows the WELCOME PANEL, not the bare sentence it shipped with. ⚠ ONE welcome element is reused rather than a second one rendered into the detail body: a duplicate `.welcome-title` inside `#scr-main` would make the read census's single-match selector AMBIGUOUS rather than red, which is the worse failure of the two."
   },
   {
    "op": "find_count",
@@ -97,7 +97,7 @@
   },
   {
    "op": "note",
-   "text": "I1 \u2014 THE RAIL ROUND TRIP, BOTH DIRECTIONS, INDEFINITELY. \u26a0\u26a0 The shipped defect was NOT 'the highlight fails to move': the Chats button carried a HARD-CODED `active` and nothing ever moved it, so opening Contacts left the rail SELECTING THE PANE YOU HAD LEFT. Each step therefore asserts BOTH buttons in one value \u2014 a highlight stuck on Chats and a highlight lit on both are distinct wrong strings, and a one-button check would pass on the second."
+   "text": "I1 — THE RAIL ROUND TRIP, BOTH DIRECTIONS, INDEFINITELY. ⚠⚠ The shipped defect was NOT 'the highlight fails to move': the Chats button carried a HARD-CODED `active` and nothing ever moved it, so opening Contacts left the rail SELECTING THE PANE YOU HAD LEFT. Each step therefore asserts BOTH buttons in one value — a highlight stuck on Chats and a highlight lit on both are distinct wrong strings, and a one-button check would pass on the second."
   },
   {
    "op": "exec",
@@ -134,7 +134,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 AND AGAIN, because 'switches back once' and 'switches indefinitely' are different claims and the shipped build would have passed the first."
+   "text": "⚠ AND AGAIN, because 'switches back once' and 'switches indefinitely' are different claims and the shipped build would have passed the first."
   },
   {
    "op": "click",
@@ -279,7 +279,7 @@
   },
   {
    "op": "note",
-   "text": "I2 \u2014 DETAIL COMPLETENESS, BY ELEMENT. \u26a0\u26a0 THIS IS THE INSTRUMENT WHOSE ABSENCE LET THE GAP SHIP: the review that passed the defective build checked for STRINGS where the claim was ELEMENTS, so a pane missing its rename control and its section structure read as complete. Every row below counts NODES in the rendered DOM."
+   "text": "I2 — DETAIL COMPLETENESS, BY ELEMENT. ⚠⚠ THIS IS THE INSTRUMENT WHOSE ABSENCE LET THE GAP SHIP: the review that passed the defective build checked for STRINGS where the claim was ELEMENTS, so a pane missing its rename control and its section structure read as complete. Every row below counts NODES in the rendered DOM."
   },
   {
    "op": "exec",
@@ -313,7 +313,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 THE SECTIONS ARE COUNTED, not merely present. A connected contact draws THREE: the name you gave them, the code, and the connection. The hairlines come from `.pane-sect + .pane-sect`, so the rule count follows the section count and cannot drift to a trailing rule."
+   "text": "⚠ THE SECTIONS ARE COUNTED, not merely present. A connected contact draws THREE: the name you gave them, the code, and the connection. The hairlines come from `.pane-sect + .pane-sect`, so the rule count follows the section count and cannot drift to a trailing rule."
   },
   {
    "op": "exec",
@@ -327,7 +327,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 NO BLOCKING CONTROL, IN ANY STATE \u2014 A RULING, NOT AN OMISSION (R-1 = Option A). Measured at this pin: the honest symmetric pair exists in the engine and is NOT in the facade, and the one verb the desktop CAN reach is one-way and sets the primary device to REVOKED, which nothing exposed restores \u2014 so the blessed 'restores the connection you already had' would be FALSE. A control whose copy is measurably untrue does not ship. `ENG-0248` names the missing pair."
+   "text": "⚠ NO BLOCKING CONTROL, IN ANY STATE — A RULING, NOT AN OMISSION (R-1 = Option A). Measured at this pin: the honest symmetric pair exists in the engine and is NOT in the facade, and the one verb the desktop CAN reach is one-way and sets the primary device to REVOKED, which nothing exposed restores — so the blessed 'restores the connection you already had' would be FALSE. A control whose copy is measurably untrue does not ship. `ENG-0248` names the missing pair."
   },
   {
    "op": "exec",
@@ -346,16 +346,16 @@
   {
    "op": "exec",
    "script": "contactsNewBadge.add('dana'); renderContactDetail(); return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent + '|' + byId('contact-detail-body').querySelector('.contact-detail-state').textContent;",
-   "expect": "Verification code|New contact \u2014 verify identity"
+   "expect": "Verification code|New contact — verify identity"
   },
   {
    "op": "note",
-   "text": "\u26a0 AND THE LIST ROW STAYS SHORT. Only the DETAIL title lengthens; the row keeps the two-word form, which is the operator's own ruling on that pair and is easy to break by editing one table and not the other."
+   "text": "⚠ AND THE LIST ROW STAYS SHORT. Only the DETAIL title lengthens; the row keeps the two-word form, which is the operator's own ruling on that pair and is easy to break by editing one table and not the other."
   },
   {
    "op": "exec",
    "script": "renderContactsList(); return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').textContent;",
-   "expect": "new \u2014 verify"
+   "expect": "new — verify"
   },
   {
    "op": "exec",
@@ -364,7 +364,7 @@
   },
   {
    "op": "note",
-   "text": "I3 \u2014 RENAME, ROUND TRIP. \u26a0\u26a0 THE INVARIANT UNDER TEST IS THAT `alias` IS THE KEY AND THE TYPED NAME IS ONLY A LABEL. `alias` keys the contact store, the identity pin and the live session, so a rename that RE-KEYED would reach all three while looking reasonable. The call is intercepted so its ARGUMENT SHAPE is measured, not merely its effect."
+   "text": "I3 — RENAME, ROUND TRIP. ⚠⚠ THE INVARIANT UNDER TEST IS THAT `alias` IS THE KEY AND THE TYPED NAME IS ONLY A LABEL. `alias` keys the contact store, the identity pin and the live session, so a rename that RE-KEYED would reach all three while looking reasonable. The call is intercepted so its ARGUMENT SHAPE is measured, not merely its effect."
   },
   {
    "op": "exec",
@@ -387,7 +387,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 THE KEY IS THE ALIAS, AND THE LABEL IS THE LABEL. If these two were swapped the app would still look right on screen and would be re-keying identity underneath."
+   "text": "⚠ THE KEY IS THE ALIAS, AND THE LABEL IS THE LABEL. If these two were swapped the app would still look right on screen and would be re-keying identity underneath."
   },
   {
    "op": "exec",
@@ -410,7 +410,7 @@
   },
   {
    "op": "note",
-   "text": "I5 (has-contacts half) \u2014 the SAME welcome panel, and the button wording is the only difference. Deselecting is the ordinary way a user reaches this: the pane is open, nothing is chosen."
+   "text": "I5 (has-contacts half) — the SAME welcome panel, and the button wording is the only difference. Deselecting is the ordinary way a user reaches this: the pane is open, nothing is chosen."
   },
   {
    "op": "exec",
@@ -429,22 +429,35 @@
   },
   {
    "op": "note",
-   "text": "I6' -- THE OUTSTANDING HINT AT 0 / 1 / n. At ZERO the line is hidden rather than reading '0 invites'."
+   "text": "NA-0766 (`D-0043`) — ITEM 1 RE-AIM. The 0/1/n outstanding-count line is RETIRED from the Contacts pane: it becomes a plain blue text link reading exactly 'review invites', lowercase, never underlined, carrying NO count (the operator's variant-B ruling, taken knowingly). ⚠ ALWAYS VISIBLE by ruling Q2 = (A) — a navigation control that vanishes at zero is the clutter this lane removes, and an empty 'Your invites' screen must stay reachable. So the count states this seal used to drive no longer exist to drive; what replaces them is the ONE state the link now has."
   },
   {
    "op": "exec",
-   "script": "contactsOutstanding = 0; renderContactsList(); return byId('contacts-hint').classList.contains('hidden') ? 'hidden' : 'shown';",
-   "expect": "hidden"
+   "script": "var a=document.getElementById('btn-contacts-review');return JSON.stringify({present:!!a,tag:a?a.tagName:null,text:a?a.textContent:null,visible:a?a.getClientRects().length>0:false});",
+   "expect": "{\"present\":true,\"tag\":\"A\",\"text\":\"review invites\",\"visible\":true}"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND IT DOES NOT MOVE WITH THE COUNT — driven at zero and at four, the two states the retired line rendered differently. The old line hid at zero; the link does not."
   },
   {
    "op": "exec",
-   "script": "contactsOutstanding = 1; renderContactsList(); return byId('contacts-hint').textContent;",
-   "expect": "1 invite outstanding."
+   "script": "contactsOutstanding=0;renderContactsList();var a=document.getElementById('btn-contacts-review');return a.getClientRects().length>0?'visible':'hidden';",
+   "expect": "visible"
   },
   {
    "op": "exec",
-   "script": "contactsOutstanding = 4; renderContactsList(); return byId('contacts-hint').textContent;",
-   "expect": "4 invites outstanding."
+   "script": "contactsOutstanding=4;renderContactsList();var a=document.getElementById('btn-contacts-review');return JSON.stringify({vis:a.getClientRects().length>0,text:a.textContent});",
+   "expect": "{\"vis\":true,\"text\":\"review invites\"}"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND THE RETIRED ELEMENT IS GONE, not merely emptied — pinned as an ABSENCE so it cannot quietly return."
+  },
+  {
+   "op": "find_count",
+   "sel": ".contacts-hint",
+   "expect": 0
   },
   {
    "op": "note",
