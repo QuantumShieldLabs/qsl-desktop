@@ -207,12 +207,12 @@
   {
    "op": "read_text",
    "sel": "#redeem-name-caption",
-   "literal": "Their name (only you see this)"
+   "literal": "Their name"
   },
   {
    "op": "read_text",
    "sel": "#redeem-name-hint",
-   "literal": "Stored only on this device."
+   "literal": "Stored only on this device \u2014 never sent anywhere."
   },
   {
    "op": "read_text",
@@ -290,7 +290,7 @@
   {
    "op": "read_text",
    "sel": "#redeem-name-hint",
-   "literal": "Stored only on this device."
+   "literal": "Stored only on this device \u2014 never sent anywhere."
   },
   {
    "op": "note",
@@ -441,8 +441,16 @@
    "text": "And a fresh open lands on the CHOOSER, not on whatever state was last showing \u2014 the same one-owner rule the v3 label-clear fix established for Lane A."
   },
   {
+   "op": "note",
+   "text": "\u26a0 RETARGETED AT NA-0765 (`D-0042`): the Chats header's '+' is retired, so this drives the entry that replaced it. The property under test here \u2014 a fresh open lands on the CHOOSER \u2014 is unchanged; only the door is."
+  },
+  {
    "op": "click",
-   "sel": "#btn-invite-open"
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
   },
   {
    "op": "prop_eq",
@@ -507,6 +515,80 @@
   {
    "op": "note",
    "text": "\u26a0 NOT DRIVEN HERE, stated so the coverage claim stays honest: a SUCCESSFUL redeem (state 2 'Request sent'), the relay-reported arms (not_found / revoked / expired_at_relay / already_used), and a finish that actually completes. All need a relay the harness does not have (ENG-0226, open). The green half is the operator's card; the engine half is the protocol-side facade drive."
+  },
+  {
+   "op": "note",
+   "text": "I6 (code-entry half) \u2014 NA-0765 (`D-0042`). \u26a0\u26a0 THIS VIEW HAD NO WAY OUT AT ALL \u2014 not an X, not a Back, not even a Close. Its only exits were Escape and the scrim, neither of which is on screen, so a user who chose 'I have a code' had nothing to click. Escape and the scrim ALREADY worked and are deliberately not re-proven here; what is new is that a way out is now VISIBLE."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-redeem"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-form",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-redeem-x",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-redeem-back",
+   "expect": 1
+  },
+  {
+   "op": "note",
+   "text": "BACK is a VIEW SWITCH inside ONE overlay: the chooser and the code entry are siblings under `#redeem-overlay`. So the overlay must STAY OPEN and the chooser must come back \u2014 both halves asserted, because an overlay that closed would look like a working Back while actually being an X."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-redeem-back"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "X CLOSES THE FLOW, and it is wired to the SAME dismissal Escape uses, so the two cannot drift apart."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-redeem"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-redeem-x"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
   },
   {
    "op": "teardown"

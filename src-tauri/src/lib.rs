@@ -374,6 +374,9 @@ pub fn configure_builder<R: tauri::Runtime>(
             commands::contact_request_accept,
             commands::contact_request_ignore,
             commands::contact_request_block,
+            // NA-0765 (`D-0042`): Rename. The facade verb landed at NA-0764 and was
+            // unreachable until this line existed.
+            commands::contact_set_display_name,
             commands::invite_list,
             commands::invite_create,
             commands::invite_redeem,

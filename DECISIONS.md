@@ -3339,3 +3339,101 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
   - **References:** spine `D-1405`; `D-0040` (the tick this rides); `D-0033` (the footer's
     two-source ruling, amended in the open by this lane); `D-0037`/`D-0036` (the invite flows);
     `ENG-0226` (no fixture relay).
+
+- **ID:** D-0042
+  - **Status:** Accepted
+  - **Date:** 2026-08-27
+  - **Lane:** desktop **NA-0765 / THE LANE C ACCEPTANCE REPAIRS**. Executing the Director's
+    formalization brief `BRIEF_laneC_repairs_20260827.md` (sha256
+    `0e3c5ac5f48d5e77687aed0c4b189b6a21990be42ea6a19c5362ff3ce94b59b8`) and his build ruling
+    `RULING_NA0765_build_20260827.md` (sha256
+    `7d652957b1d90a9f7ce47404e7fdda8c8e37b74e66b9056fa8fe714333bca217`), against blessed layout
+    authority `MOCKUP_laneC_repairs_v2_20260827.html` (sha256
+    `e88cbbd9ee37d37521173b2891525f1e702a200db81bb5f2e79e28a366c536d4`). All three banked 444
+    and sha-VERIFIED against their own bytes BEFORE being read — all 64 digits compared
+    mechanically, with a negative control proving the comparator discriminates and the tamper
+    proven to have landed. Ruled from `STOP_NA0765_001_20260827T045720Z.md` (sha256
+    `007d0086ea498575b9a11dfa75b440b642a5ebf7e3b3b991b8866565db81ca56`). Spine decision
+    **D-1406**. Base `5cee1e16f2551035e3c741b715f847c82288cebf`, re-derived bare and unpiped at
+    the NAMED github remote (these seats have no `origin` at all — it was removed at checkout,
+    so the local-mirror trap cannot fire in this lane).
+  - ⛳⛳ **WHAT THIS BUYS: THE SHIPPED SCREENS NOW MATCH WHAT WAS BLESSED.** NA-0764's machinery
+    flew — auto-connect worked, the contact appeared hands-off — and its SURFACE shipped
+    defective. The rail can switch back and its highlight follows the pane; the contact detail
+    renders with the blessed padding and structure; Rename ships; the code-entry and
+    invite-creation flows have a visible way out; and the app has ONE word for one thing.
+  - ⚠⚠ **A1 WAS WORSE THAN THE ORDER DESCRIBED, AND THE RECORD CARRIES THE ACCURATE SENTENCE.**
+    The defect was not "the highlight fails to move". The main rail's Chats button carried a
+    **HARD-CODED `active`** in the markup and nothing ever moved it, so opening Contacts left
+    the rail **selecting the pane you had left**. Measured before the fix: `rail-btn` occurred
+    **ZERO** times in `ui/main.js` (the same needle returns **9** in `ui/index.html`, so it
+    works), and the file's only `classList.*("active")` targets the settings rail's category
+    list. ⚠ And it was BETTER in one respect than the pre-read said: `showChatsPane()` has
+    exactly one call site, in the **SETTINGS** rail, so a user was never trapped — Contacts →
+    gear → Chats worked in two hops. Only the main-screen rail could not return.
+  - ⛳ **THE HIGHLIGHT MOVER LIVES IN THE PANE FUNCTIONS, NOT THE LISTENERS**, so both rails get
+    it and the shipped listener line that a design seal pins byte-exact stayed untouched. One
+    predicted re-aim was therefore NOT NEEDED, which is a better outcome than performing it.
+  - ⚠ **THE MAIN RAIL'S CHATS BUTTON IS `btn-rail-chats-m`, NOT THE BARE NAME.**
+    `btn-rail-chats` is already the SETTINGS rail's button and is pinned by two scenarios, one
+    of them NA-0752's ruled footer scenario. Renaming it for symmetry would have dragged ruled
+    territory into this lane's diff for a cosmetic gain. The pre-existing asymmetry — bare =
+    main for Contacts, bare = settings for Chats — is RECORDED here rather than fixed.
+  - ⚠⚠ **A2's MECHANISM, NAMED SO IT CANNOT RECUR SILENTLY.** `.content-pane` set no padding and
+    only the `.welcome` modifier saved the one pane anybody looked at, by centring it. Measured:
+    `padding` occurs **44** times in `ui/style.css` and **ZERO** times in any `.content-pane`
+    rule. The cure is scoped `:not(.welcome)` so the welcome pane keeps centring in an unpadded
+    box, and is expressed in shipped tokens rather than the mockup's literal pixels.
+  - ⛳⛳ **A3's SMOKING GUN WAS DEAD CSS.** `.contact-detail-divider` was declared once and used
+    **ZERO** times — styling for a v5 button row that was never built. That is the artifact
+    which let a string-shaped review believe the row had shipped, and it is exactly the
+    instrument-narrower-than-the-claim family. The rule is removed; the section hairline now
+    comes free from the shipped `.pane-sect + .pane-sect` idiom.
+  - ⚠⚠ **BLOCK AND UNBLOCK DO NOT SHIP, AND THAT IS A RULING RATHER THAN AN OMISSION (R-1 =
+    Option A).** The blessed layout draws Block and an Unblock whose copy promises it "restores
+    the connection you already had". Measured at this pin, independently confirmed by the
+    Director from his own chair: the honest symmetric pair `contacts_block`/`contacts_unblock`
+    exists in the engine (`contacts/mod.rs:1541`/`:1551`) and is **NOT IN THE FACADE** — 0 hits
+    each, with `contact_set_display_name` returning 1 as the positive control on the same
+    needle — and the one verb the desktop CAN reach, `contact_request_block`, is **one-way** and
+    writes **`primary.state = "REVOKED"`**, which nothing exposed restores. So its blessed
+    sentence would be FALSE. A control whose copy is measurably untrue does not ship. The
+    detail pane therefore carries NO blocking control in ANY state, `ENG-0248` names the missing
+    pair as the successor lane's subject, and the seal asserts the ABSENCE structurally.
+  - ⛳ **RENAME SHIPS, AND IT COST TWO RUST LINES OF SURFACE.** `facade::contact_set_display_name`
+    landed at NA-0764 and was **never reachable**: it was not in `generate_handler!`, so a
+    `ui/`-only edit set could not have delivered A3 at all. One forwarder in the shipped
+    `contact_list` idiom plus one registration line — **zero protocol bytes, no pin change**.
+    Registered commands **42 → 43**.
+  - ⚠ **THE ALIAS INVARIANT IS AIMED AT THE NEW CALL, NOT MERELY INHERITED.** NA-0764's
+    structural census and its can-fail proof were already in main and green, so the ruling's
+    "committed and red-capable BEFORE Rename is wired" holds by construction. That proves
+    nothing about code which did not exist when it was written, so the lane ran a control that
+    swaps the label into the key's argument position and observed the census go red.
+  - ⚠⚠ **THE SELF-FALSIFYING-NEEDLE HAZARD FIRED TWICE MORE IN THIS ONE LANE.** A seal that bans
+    a phrase and then SPELLS that phrase in its own prose satisfies itself — `ENG-0235`. Once it
+    was caught in review before running; once the test caught it, because a CSS comment
+    explaining a removed class named the class. The cure is the shipped one: DESCRIBE the
+    retired thing, never spell it — and where a needle must exist, ASSEMBLE it at runtime from
+    halves that never sit adjacent in any file.
+  - **THE COPY, AS THE OPERATOR PICKED IT (R-4).** "Their name" everywhere, short form. "Stored
+    only on this device — never sent anywhere." as the SINGLE wording in all three places it
+    appears, byte-identical, asserted as an exact count of 3 so a fourth site drifting in fails.
+    The code-entry subtitle KEEPS its shipped clause "You'll connect through their relay" — the
+    only disclosure of the relay hop at the moment of connecting — while its TITLE takes the
+    layout's "Enter your invite code", which also removes a duplicate (the chooser was already
+    "Add a contact"). Only the DETAIL title lengthens to "New contact — verify identity"; the
+    list row stays "new — verify".
+  - **B5 REQUIRED NO PRODUCT CHANGE.** `#redeem-code` was already the app's ONLY `<textarea>`,
+    at `min-height: 5.5rem` — 88px against the layout's 86px. The ordered repair described a
+    MOCKUP-VERSION delta (v1 → v2), not an app defect. No token bump was invented either.
+  - ⚠ **Claim boundary.** Zero protocol bytes. Zero `.github/**`. No pin change. No new colour
+    token; exactly ONE new CSS class (the code card), named as such. No test weakened, skipped
+    or deleted — seven re-aims, every one keeping an EXACT equality exact and carrying its own
+    can-fail proof. **HARNESS GREEN IS NOT A FIELD CLAIM**: this repo still has no fixture relay
+    (`ENG-0226`, open), so no scenario completes a handshake; the acceptance is the operator's
+    flight.
+  - **References:** spine `D-1406`; `D-0041` (the lane these repairs accept); `D-0036` (the
+    Chats "+" whose premise this lane retires with it); `D-0037` (the code-entry copy);
+    `ENG-0247`, `ENG-0248` (filed by this lane); `ENG-0235` (the plant hazard, twice more);
+    `ENG-0226` (no fixture relay).

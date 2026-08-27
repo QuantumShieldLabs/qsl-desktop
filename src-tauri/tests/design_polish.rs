@@ -2555,12 +2555,28 @@ fn na0756_the_redeem_copy_ships_in_its_blessed_form() {
         modal.contains("Paste the invite code they sent you, and choose what to call them. You&rsquo;ll connect through their relay."),
         "state 1's intro ships verbatim, in the house entity form"
     );
+    // ⚠ RE-AIMED at NA-0765 (`D-0042`, R-4 row 1): the operator picked the SHORT form,
+    // "Their name", for every place this label appears. The pin is STRENGTHENED in the
+    // same move — it was a bare phrase and is now the whole element, so the same two
+    // words appearing in some unrelated node cannot satisfy it. Its can-fail proof is
+    // the lane's control C-9, which restores the retired parenthetical and observes red.
     assert!(
-        modal.contains("Their name (only you see this)"),
-        "the name caption ships verbatim"
+        modal.contains(r#"<span class="field-label" id="redeem-name-caption">Their name</span>"#),
+        "the name caption ships verbatim, as its whole element"
+    );
+    // ⚠ RE-AIMED at NA-0765 (`D-0042`, R-4 row 2): the operator picked the FULLEST truth
+    // — the sentence the Settings pane already shipped — as the single wording everywhere.
+    // C1 had to CURE the inconsistency, not relocate it, so this asserts the count across
+    // the whole file: the first-run pane, Settings, and the code-entry hint. An exact
+    // equality, so a fourth site drifting in fails here rather than passing quietly.
+    assert_eq!(
+        html.matches("Stored only on this device — never sent anywhere.")
+            .count(),
+        3,
+        "one sentence, byte-identical, in all three places the app says it"
     );
     assert!(
-        modal.contains("Stored only on this device."),
+        modal.contains("Stored only on this device — never sent anywhere."),
         "the standing hint ships verbatim"
     );
     // State 2: the body and the accent callout.
@@ -2915,5 +2931,256 @@ fn na0756_v2_the_chooser_stacks_full_width_and_the_inline_form_is_gone() {
     assert!(
         js.contains(r#"byId("btn-choose-close").addEventListener("click", closeRedeemModal);"#),
         "Close reuses the one shipped dismissal path rather than minting a second one"
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// NA-0765 (`D-0042`) — THE LANE C ACCEPTANCE REPAIRS
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+/// **I7 — ONE NAME FOR ONE THING.**
+///
+/// The shipped Settings > Identity pane called the user's own code "Verification
+/// code" before Lane C existed. Lane C introduced a second term for the same object,
+/// and a lane that invents a word for a thing the app already names creates a second
+/// vocabulary that every later screen has to choose between.
+///
+/// ⚠ MUST GO RED IF: the retired term returns anywhere under `ui/`, or the label
+/// stops being the app's own word.
+///
+/// ⚠⚠ THE NEEDLE IS BUILT SO IT CANNOT FIRE ON ITS OWN RATIONALE. A test that bans a
+/// phrase and then SPELLS that phrase in its own prose is self-falsifying — this file
+/// records the same lesson at `strip_html_comments`, and `ENG-0235` is it firing for
+/// real. So the banned phrase is never written here or in the sources: it is
+/// ASSEMBLED at runtime from two halves that never sit adjacent in any file.
+#[test]
+fn na0765_the_verification_code_naming_is_singular() {
+    let retired = format!("{} {}", "identity", "code");
+    for name in ["index.html", "main.js", "style.css"] {
+        let body = ui_file(name);
+        assert_eq!(
+            body.to_lowercase().matches(retired.as_str()).count(),
+            0,
+            "the retired term must not survive anywhere in `ui/{name}` — comments included, \
+             because a second vocabulary spreads from prose into copy"
+        );
+    }
+    // And the surviving word is the app's own, in BOTH places that render a code.
+    let html = ui_file("index.html");
+    let js = ui_file("main.js");
+    assert!(
+        html.contains(r#"<span class="field-label">Verification code</span>"#),
+        "Settings keeps the label this lane standardised on"
+    );
+    assert!(
+        js.contains(
+            r#"label(d, ui === "changed" ? "Verification code (new)" : "Verification code");"#
+        ),
+        "the contact detail uses the same word, with the changed-key variant the layout draws"
+    );
+}
+
+/// **A1 — THE RAIL CAN GO BACK, AND THE HIGHLIGHT FOLLOWS THE PANE.**
+///
+/// The shipped main rail's Chats button carried NO id and NO listener, and a
+/// HARD-CODED `active` that nothing ever moved — so Contacts was a one-way door and
+/// the rail kept selecting the pane you had left.
+///
+/// ⚠ MUST GO RED IF: the button loses its id or its listener, or the highlight mover
+/// stops being called from either pane function.
+#[test]
+fn na0765_the_main_rail_switches_both_ways_and_the_highlight_follows() {
+    let html = ui_file("index.html");
+    let js = ui_file("main.js");
+
+    // ⚠ THE ID IS `-m`, NOT THE BARE NAME: `btn-rail-chats` is already the SETTINGS
+    // rail's button and is pinned by two scenarios. Asserted here so the asymmetry is
+    // deliberate and documented rather than looking like a typo to the next reader.
+    assert!(
+        html.contains(r#"id="btn-rail-chats-m" data-tip="Chats""#),
+        "the MAIN rail's Chats button carries its own id"
+    );
+    assert!(
+        html.contains(r#"id="btn-rail-chats" data-tip="Chats""#),
+        "the SETTINGS rail's Chats button keeps the bare name it was pinned under"
+    );
+    assert!(
+        js.contains(
+            r#"byId("btn-rail-chats-m").addEventListener("click", () => showChatsPane());"#
+        ),
+        "the main rail's Chats button opens the Chats pane"
+    );
+
+    // The highlight mover exists and is called from BOTH pane functions — which is what
+    // makes the settings rail get it for free.
+    assert!(
+        js.contains("function railSelect(id) {"),
+        "the highlight mover exists"
+    );
+    assert_eq!(
+        js.matches("railSelect(\"btn-rail-contacts\");").count(),
+        1,
+        "showContactsPane selects Contacts, exactly once"
+    );
+    assert_eq!(
+        js.matches("railSelect(\"btn-rail-chats-m\");").count(),
+        1,
+        "showChatsPane selects Chats, exactly once"
+    );
+}
+
+/// **A2 — THE DETAIL PANE HAS THE PADDING THE BLESSED LAYOUT DRAWS.**
+///
+/// It shipped flush against the divider because `.content-pane` sets no padding and
+/// only the `.welcome` modifier saved the one pane anybody looked at.
+///
+/// ⚠ MUST GO RED IF: the padded rule disappears, or it stops excluding `.welcome`
+/// (which centres itself and must keep doing so in an unpadded box).
+#[test]
+fn na0765_the_detail_pane_is_padded_and_the_welcome_pane_is_not() {
+    let css = ui_file("style.css");
+    assert!(
+        css.contains(
+            ".content-pane:not(.welcome) { padding: var(--sp-x20) var(--sp-5); overflow: auto; }"
+        ),
+        "the detail pane is padded in SHIPPED tokens, and the welcome pane is excluded"
+    );
+    // The dead styling that let a string-shaped review believe the v5 button row had
+    // shipped is gone; the hairline now comes from the shipped section idiom.
+    assert_eq!(
+        css.matches("contact-detail-divider").count(),
+        0,
+        "the divider class was declared once and used zero times — dead styling for a row \
+         that was never built, and exactly what made the gap invisible to review"
+    );
+}
+
+/// **I2 — THE DETAIL RENDERS ITS PARTS, AND `Block` IS DELIBERATELY ABSENT.**
+///
+/// ⚠⚠ THIS IS THE INSTRUMENT WHOSE ABSENCE LET THE GAP SHIP. The review that passed
+/// the defective build checked for STRINGS where the claim was ELEMENTS. The
+/// element-level half runs in the gui-driver against the RENDERED DOM; this half pins
+/// the renderer's own structure, which a string check cannot fake.
+///
+/// ⚠ MUST GO RED IF: the rename control, the code card, the Devices projection or the
+/// shipped section idiom leaves the renderer — or if a Block control appears while the
+/// verb that would make its blessed copy true is still unreachable.
+#[test]
+fn na0765_the_contact_detail_is_complete_and_block_is_deferred() {
+    let js = ui_file("main.js");
+    for needle in [
+        r#"form.className = "pane-form";"#,
+        r#"d.className = "pane-sect";"#,
+        r#"l.className = "field-label";"#,
+        r#"rowEl.className = "ctlrow";"#,
+        r#"card.className = "contact-code-card";"#,
+        r#"save.id = "btn-contact-rename";"#,
+        r#"input.id = "contact-rename-input";"#,
+        r#"label(d, "Their name");"#,
+        r#"label(d, "Connection");"#,
+    ] {
+        assert!(
+            js.contains(needle),
+            "the detail renders its blessed part: `{needle}`"
+        );
+    }
+
+    // ⚠ THE DEFERRAL IS ASSERTED, NOT ASSUMED. R-1 ruled the blocking controls OUT of
+    // this lane because the only reachable verb is one-way and destructive, so the
+    // blessed "restores the connection you already had" would be FALSE.
+    //
+    // ⚠⚠ THE NEEDLE IS STRUCTURAL, NOT A WORD — AND THE FIRST DRAFT OF THIS VERY
+    // ASSERTION PROVED WHY. It banned the two English words, and the paragraph
+    // explaining the ban contained both of them, so the seal fired on its own
+    // rationale. That is `ENG-0235` a third time, caught here before it ran. Ids and a
+    // verb name cannot appear in prose by accident.
+    for banned in [
+        "btn-contact-block",
+        "btn-contact-unblock",
+        "contact_request_block",
+    ] {
+        assert_eq!(
+            js.matches(banned).count(),
+            0,
+            "no blocking control ships while the honest symmetric pair is absent from the \
+             facade — and in particular the app must not reach for the destructive \
+             request-family verb instead (ENG-0248)"
+        );
+    }
+}
+
+/// **B1 — THE CHATS "+" IS GONE, AND THE FLOW IT CARRIED IS NOT.**
+///
+/// ⚠ MUST GO RED IF: the retired element returns, or the entries that replaced it
+/// stop reaching the chooser.
+#[test]
+fn na0765_the_chats_plus_is_retired_and_the_flow_still_has_two_entries() {
+    let html = ui_file("index.html");
+    let js = ui_file("main.js");
+    assert_eq!(
+        html.matches("btn-invite-open").count(),
+        0,
+        "adding people is a Contacts act — the Chats header carries no entry any more"
+    );
+    assert_eq!(
+        js.matches("btn-invite-open").count(),
+        0,
+        "and its listener retires with it, rather than dangling on a missing node"
+    );
+    // The replacements, measured rather than assumed — this is what makes the removal a
+    // RETIREMENT rather than a hole.
+    assert!(
+        js.contains(
+            r#"byId("btn-contacts-add").addEventListener("click", () => openRedeemChooser());"#
+        ),
+        "the Contacts pane's own + reaches the chooser"
+    );
+    assert!(
+        js.contains(
+            r#"byId("btn-add-contact").addEventListener("click", () => openRedeemChooser());"#
+        ),
+        "and so does the welcome panel, which this lane keeps on screen"
+    );
+}
+
+/// **B4 — BOTH FLOWS HAVE A VISIBLE WAY OUT.**
+///
+/// The code-entry view had NONE — not an X, not a Back, not a Close — so its only
+/// exits were Escape and the scrim, neither of which is on screen.
+///
+/// ⚠ MUST GO RED IF: either X stops sharing its overlay's ONE closer (which is what
+/// keeps X and Escape from ever disagreeing), or either Back disappears.
+#[test]
+fn na0765_both_modal_flows_have_a_visible_way_out() {
+    let html = ui_file("index.html");
+    let js = ui_file("main.js");
+    for needle in [
+        r#"id="btn-redeem-x""#,
+        r#"id="btn-redeem-back""#,
+        r#"id="btn-invite-x""#,
+        r#"id="btn-invite-back-chooser""#,
+    ] {
+        assert!(html.contains(needle), "the control ships: `{needle}`");
+    }
+    // X IS Escape, structurally: same closer, so they cannot drift apart.
+    assert!(
+        js.contains(r#"byId("btn-redeem-x").addEventListener("click", closeRedeemModal);"#),
+        "the code-entry X reuses the one shipped dismissal, which is also Escape's"
+    );
+    assert!(
+        js.contains(r#"byId("btn-invite-x").addEventListener("click", () => closeInviteModal());"#),
+        "the invite X reuses that overlay's one dismissal, which is also Escape's"
+    );
+    // Back is a VIEW switch in one overlay and a CROSS-OVERLAY move in the other. The two
+    // are pinned separately because they are not the same gesture.
+    assert!(
+        js.contains(
+            r#"byId("btn-redeem-back").addEventListener("click", () => redeemShow("choose-view"));"#
+        ),
+        "code-entry Back is one view switch inside its own overlay"
+    );
+    assert!(
+        js.contains("byId(\"btn-invite-back-chooser\").addEventListener(\"click\", async () => {"),
+        "invite Back closes this overlay and re-opens the chooser's"
     );
 }

@@ -78,6 +78,79 @@
   },
   {
    "op": "note",
+   "text": "I5 (empty half) \u2014 NA-0765 (`D-0042`). Nothing is selected and the list is empty, so the detail pane shows the WELCOME PANEL, not the bare sentence it shipped with. \u26a0 ONE welcome element is reused rather than a second one rendered into the detail body: a duplicate `.welcome-title` inside `#scr-main` would make the read census's single-match selector AMBIGUOUS rather than red, which is the worse failure of the two."
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-main .welcome-title",
+   "expect": 1
+  },
+  {
+   "op": "read_text",
+   "sel": "#welcome-sub",
+   "literal": "Add a contact to start your first conversation."
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-add-contact",
+   "literal": "Add your first contact"
+  },
+  {
+   "op": "note",
+   "text": "I1 \u2014 THE RAIL ROUND TRIP, BOTH DIRECTIONS, INDEFINITELY. \u26a0\u26a0 The shipped defect was NOT 'the highlight fails to move': the Chats button carried a HARD-CODED `active` and nothing ever moved it, so opening Contacts left the rail SELECTING THE PANE YOU HAD LEFT. Each step therefore asserts BOTH buttons in one value \u2014 a highlight stuck on Chats and a highlight lit on both are distinct wrong strings, and a one-button check would pass on the second."
+  },
+  {
+   "op": "exec",
+   "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
+   "expect": "false,true"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-chats-m"
+  },
+  {
+   "op": "exec",
+   "script": "return byId('pane-contacts').classList.contains('hidden') ? 'hidden' : 'shown';",
+   "expect": "hidden"
+  },
+  {
+   "op": "exec",
+   "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
+   "expect": "true,false"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "exec",
+   "script": "return byId('pane-contacts').classList.contains('hidden') ? 'hidden' : 'shown';",
+   "expect": "shown"
+  },
+  {
+   "op": "exec",
+   "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
+   "expect": "false,true"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 AND AGAIN, because 'switches back once' and 'switches indefinitely' are different claims and the shipped build would have passed the first."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-chats-m"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "exec",
+   "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
+   "expect": "false,true"
+  },
+  {
+   "op": "note",
    "text": "⚠⚠ SUPERSEDE ANY IN-FLIGHT REFRESH BEFORE PLANTING, AND SAY WHY. `showContactsPane()` fires an async `refreshContacts()` that awaits real IPC, so it resolves AFTER the planting step below. The first version of this scenario raced exactly there: planted rows were asserted PRESENT and were gone two steps later. That was the PRODUCT racing (cold read C-12), and it is now cured in main.js by a generation guard. Bumping the generation here is how the test uses that same cure to make its own setup deterministic, rather than hoping the timing holds."
   },
   {
@@ -203,6 +276,156 @@
    "op": "exec",
    "script": "return byId('contact-detail-body').querySelector('.contact-code').textContent;",
    "expect": "84930 12657 09214 77380 55162 09447"
+  },
+  {
+   "op": "note",
+   "text": "I2 \u2014 DETAIL COMPLETENESS, BY ELEMENT. \u26a0\u26a0 THIS IS THE INSTRUMENT WHOSE ABSENCE LET THE GAP SHIP: the review that passed the defective build checked for STRINGS where the claim was ELEMENTS, so a pane missing its rename control and its section structure read as complete. Every row below counts NODES in the rendered DOM."
+  },
+  {
+   "op": "exec",
+   "script": "contactsSelected='dana'; renderContactsList(); renderContactDetail(); return byId('contact-detail-body').querySelector('.contact-detail-name').textContent;",
+   "expect": "dana"
+  },
+  {
+   "op": "find_count",
+   "sel": "#contact-detail-body .pane-form",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#contact-detail-body .contact-code-card",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#contact-rename-input",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-contact-rename",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#contact-detail-body .contact-detail-kv",
+   "expect": 1
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 THE SECTIONS ARE COUNTED, not merely present. A connected contact draws THREE: the name you gave them, the code, and the connection. The hairlines come from `.pane-sect + .pane-sect`, so the rule count follows the section count and cannot drift to a trailing rule."
+  },
+  {
+   "op": "exec",
+   "script": "return String(document.querySelectorAll('#contact-detail-body .pane-sect').length);",
+   "expect": "3"
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent + '|' + document.querySelectorAll('#contact-detail-body .field-label')[1].textContent + '|' + document.querySelectorAll('#contact-detail-body .field-label')[2].textContent;",
+   "expect": "Their name|Verification code|Connection"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 NO BLOCKING CONTROL, IN ANY STATE \u2014 A RULING, NOT AN OMISSION (R-1 = Option A). Measured at this pin: the honest symmetric pair exists in the engine and is NOT in the facade, and the one verb the desktop CAN reach is one-way and sets the primary device to REVOKED, which nothing exposed restores \u2014 so the blessed 'restores the connection you already had' would be FALSE. A control whose copy is measurably untrue does not ship. `ENG-0248` names the missing pair."
+  },
+  {
+   "op": "exec",
+   "script": "contactsSelected='oldpeer'; renderContactDetail(); return document.querySelectorAll('#contact-detail-body button').length + '|' + byId('contact-detail-body').querySelector('.contact-detail-state').textContent;",
+   "expect": "0|Blocked"
+  },
+  {
+   "op": "note",
+   "text": "STATE-DEPENDENT SECTION ORDER, which the blessed layout chooses deliberately: a CONNECTED contact leads with the name you gave them, a NEW one leads with the code you are being asked to compare."
+  },
+  {
+   "op": "exec",
+   "script": "contactsSelected='dana'; renderContactDetail(); return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent;",
+   "expect": "Their name"
+  },
+  {
+   "op": "exec",
+   "script": "contactsNewBadge.add('dana'); renderContactDetail(); return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent + '|' + byId('contact-detail-body').querySelector('.contact-detail-state').textContent;",
+   "expect": "Verification code|New contact \u2014 verify identity"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 AND THE LIST ROW STAYS SHORT. Only the DETAIL title lengthens; the row keeps the two-word form, which is the operator's own ruling on that pair and is easy to break by editing one table and not the other."
+  },
+  {
+   "op": "exec",
+   "script": "renderContactsList(); return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').textContent;",
+   "expect": "new \u2014 verify"
+  },
+  {
+   "op": "exec",
+   "script": "contactsNewBadge.delete('dana'); renderContactsList(); renderContactDetail(); return 'restored';",
+   "expect": "restored"
+  },
+  {
+   "op": "note",
+   "text": "I3 \u2014 RENAME, ROUND TRIP. \u26a0\u26a0 THE INVARIANT UNDER TEST IS THAT `alias` IS THE KEY AND THE TYPED NAME IS ONLY A LABEL. `alias` keys the contact store, the identity pin and the live session, so a rename that RE-KEYED would reach all three while looking reasonable. The call is intercepted so its ARGUMENT SHAPE is measured, not merely its effect."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0765 = { calls: [], realInvoke: invoke }; invoke = function(cmd, args) { window.__na0765.calls.push({cmd: cmd, args: args}); return Promise.resolve(null); }; contactsSelected='dana'; renderContactDetail(); return 'stubbed';",
+   "expect": "stubbed"
+  },
+  {
+   "op": "clear_type",
+   "sel": "#contact-rename-input",
+   "text": "Dana from choir"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contact-rename"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(window.__na0765.calls.filter(function(c){return c.cmd==='contact_set_display_name';}).length);",
+   "expect": "1"
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 THE KEY IS THE ALIAS, AND THE LABEL IS THE LABEL. If these two were swapped the app would still look right on screen and would be re-keying identity underneath."
+  },
+  {
+   "op": "exec",
+   "script": "var c=window.__na0765.calls.filter(function(x){return x.cmd==='contact_set_display_name';})[0]; return c.args.alias + '|' + c.args.displayName;",
+   "expect": "dana|Dana from choir"
+  },
+  {
+   "op": "note",
+   "text": "AND THE STORED ALIAS IS UNCHANGED once the new label renders: the row's key is still what every verb receives, while the NAME on screen is the one the user chose."
+  },
+  {
+   "op": "exec",
+   "script": "contactsRows.find(function(r){return r.alias==='dana';}).display_name='Dana from choir'; renderContactsList(); renderContactDetail(); var row=document.querySelector('.contact-row[data-alias=\"dana\"]'); return row.dataset.alias + '|' + row.querySelector('.contact-name').textContent + '|' + byId('contact-detail-body').querySelector('.contact-detail-name').textContent;",
+   "expect": "dana|Dana from choir|Dana from choir"
+  },
+  {
+   "op": "exec",
+   "script": "invoke = window.__na0765.realInvoke; return 'restored';",
+   "expect": "restored"
+  },
+  {
+   "op": "note",
+   "text": "I5 (has-contacts half) \u2014 the SAME welcome panel, and the button wording is the only difference. Deselecting is the ordinary way a user reaches this: the pane is open, nothing is chosen."
+  },
+  {
+   "op": "exec",
+   "script": "contactsSelected=null; renderContactsList(); renderContactDetail(); return byId('pane-contact-detail').classList.contains('hidden') ? 'detail-hidden' : 'detail-shown';",
+   "expect": "detail-hidden"
+  },
+  {
+   "op": "read_text",
+   "sel": "#welcome-sub",
+   "literal": "Select a contact, or add another."
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-add-contact",
+   "literal": "Add a contact"
   },
   {
    "op": "note",
