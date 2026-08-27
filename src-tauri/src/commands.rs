@@ -1062,6 +1062,35 @@ pub async fn contact_request_block(st: State<'_, AppState>, alias: String) -> Re
         .await
 }
 
+// NA-0765 (`D-0042`) — RENAME. The facade verb shipped at NA-0764 and was never
+// REACHABLE: it was not in `generate_handler!`, so a `ui/`-only edit set could not
+// reach it at all. This is the whole of the desktop's Rust cost for A3.
+//
+// ⚠ `alias` IS THE KEY and `display_name` is a LOCAL LABEL. The two are not
+// interchangeable: `alias` keys `ContactsStore.peers`, `identity_read_pin` and
+// `qsp_session_for_channel`, so passing the label where the key belongs would reach
+// identity pins and live sessions while looking perfectly reasonable in review. The
+// front end is sealed against exactly that by a structural census that counts
+// `display_name` in invoke-argument positions and holds it at ZERO.
+//
+// ⚠ `None` CLEARS the name. The engine normalises an empty or all-whitespace string
+// to `None`, so no caller has to special-case `Some("")`.
+#[tauri::command]
+pub async fn contact_set_display_name(
+    st: State<'_, AppState>,
+    alias: String,
+    display_name: Option<String>,
+) -> Result<(), ErrorDto> {
+    st.gw
+        .call(move || {
+            Ok(qsc::facade::contact_set_display_name(
+                &alias,
+                display_name.as_deref(),
+            )?)
+        })
+        .await
+}
+
 #[tauri::command]
 pub async fn invite_list(st: State<'_, AppState>) -> Result<Vec<InviteDto>, ErrorDto> {
     st.gw

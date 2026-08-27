@@ -133,7 +133,7 @@
 <section id="scr-main" class="screen hidden">
   <div class="main-layout">
     <nav class="rail">
-      <button class="rail-btn tip active" data-tip="Chats" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.5-.7L3 21l1.7-5.1a8.4 8.4 0 1 1 16.3-4.4z"/></svg></button>
+      <button class="rail-btn tip active" id="btn-rail-chats-m" data-tip="Chats" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.5-.7L3 21l1.7-5.1a8.4 8.4 0 1 1 16.3-4.4z"/></svg></button>
       <button class="rail-btn tip" id="btn-rail-contacts" data-tip="Contacts" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
       <div class="rail-spacer"></div>
       <button class="rail-btn tip" id="btn-settings" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
@@ -142,11 +142,13 @@
       <div class="list-header">
         <div class="list-head-row">
           <h2>Chats</h2>
-          <!-- NA-0755 (D-0036): the SECOND entry to the invite modal. It exists so the
-               flow stays reachable after the first contact lands and the welcome pane —
-               the only other entry — is gone. `.rail-btn`+`.tip` is the shipped
-               small-icon-button pattern; no new button CSS is minted for it. -->
-          <button class="rail-btn tip" id="btn-invite-open" data-tip="Invite someone" aria-label="Invite someone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          <!-- NA-0765 (`D-0042`): THE CHATS "+" IS RETIRED. Adding people is a CONTACTS act,
+               so the entry lives on the Contacts pane ("+", `#btn-contacts-add`) and on the
+               welcome panel, which NA-0765 keeps on screen instead of letting it disappear.
+               ⚠ `D-0036` put a "+" here because the welcome pane -- the only other entry --
+               went away once the first contact landed. That premise stops being true in this
+               same lane, which is why the cure retires WITH it rather than being deleted from
+               under a still-true reason. -->
         </div>
         <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span>Search</span></div>
       </div>
@@ -175,7 +177,7 @@
     <main class="content-pane welcome">
       <svg class="welcome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><rect x="9" y="10" width="6" height="5" rx="1"/><path d="M10 10V8a2 2 0 0 1 4 0v2"/></svg>
       <p class="welcome-title">Welcome to QuantumShield Chat</p>
-      <p class="welcome-sub">Add a contact to start your first conversation.</p>
+      <p class="welcome-sub" id="welcome-sub">Add a contact to start your first conversation.</p>
       <button id="btn-add-contact" class="primary">Add your first contact</button>
       <p id="stub-note" class="hint stub-gap hidden">Adding contacts arrives in a future update.</p>
     </main>
@@ -441,6 +443,7 @@
         <h2 id="invite-title">Invite someone</h2>
         <!-- The slot counter is ALWAYS visible in BOTH states, so the cap can never ambush. -->
         <button class="secondary" id="btn-invite-review">Review invites (<span id="invite-count">0</span> of 10) &rarr;</button>
+        <button class="rail-btn tip" id="btn-invite-x" data-tip="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <!-- ── before activation ── -->
@@ -520,7 +523,11 @@
       </div>
     </div>
 
-    <div class="block"><button class="secondary full" id="btn-invite-close">Close</button></div>
+    <!-- NA-0765 (`D-0042`): Back returns to the chooser. It is a CROSS-OVERLAY move --
+         `btn-choose-create` hides `#redeem-overlay` before opening this one -- so Back has
+         to close this overlay and re-open that one, which is not the same gesture as the
+         code-entry view's Back. Measured before it was written. -->
+    <div class="block ctlrow"><button class="secondary full" id="btn-invite-close">Close</button><button class="secondary" id="btn-invite-back-chooser">Back</button></div>
   </div>
 </div>
 
@@ -593,11 +600,11 @@
          verb, so the name is collected BEFORE Connect, not after. mockup-15's two-step order
          is superseded; see docs/mockups/mockup-15-add-contact.html's superseded-by note. -->
     <div id="redeem-form" class="hidden">
-      <div class="modal-head"><h2>Add a contact</h2></div>
+      <div class="modal-head"><h2>Enter your invite code</h2><button class="rail-btn tip" id="btn-redeem-x" data-tip="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
       <p class="muted">Paste the invite code they sent you, and choose what to call them. You&rsquo;ll connect through their relay.</p>
       <span class="field-label" id="redeem-code-caption">Invite code</span>
       <textarea id="redeem-code" class="full" autocomplete="off" spellcheck="false" placeholder="QSLI-1-&hellip;" aria-labelledby="redeem-code-caption"></textarea>
-      <span class="field-label" id="redeem-name-caption">Their name (only you see this)</span>
+      <span class="field-label" id="redeem-name-caption">Their name</span>
       <input type="text" id="redeem-name" class="full" autocomplete="off" spellcheck="false" placeholder="Ben" aria-labelledby="redeem-name-caption">
       <!-- ⚠ TWO HINTS, ONE SLOT. The standing hint is the truth while the field is empty or
            valid; the name hint replaces it while the typed name is inadmissible to the
@@ -605,8 +612,13 @@
            [A-Za-z0-9_#-], the alias is NOT validated until 25 lines AFTER the invite burns
            (qsc invite/mod.rs :1107 vs the burn at :1081), so a name with a space would
            destroy the code. The gate is defence; ENG-0236 is the defect's record. -->
-      <p class="hint" id="redeem-name-hint">Stored only on this device.</p>
-      <div class="block"><button id="btn-redeem-connect" class="primary full" disabled>Connect</button></div>
+      <p class="hint" id="redeem-name-hint">Stored only on this device — never sent anywhere.</p>
+      <!-- NA-0765 (`D-0042`): THE WAY OUT OF THE CODE-ENTRY VIEW. Until this lane it had
+           NONE -- not an X, not a Back, not even a Close -- so the only exits were Escape
+           and the scrim, neither of which is visible. Back returns to the chooser (one
+           `redeemShow`, same overlay); the X above closes the flow, which is what Escape
+           already did. -->
+      <div class="block ctlrow"><button id="btn-redeem-connect" class="primary" disabled>Connect</button><button id="btn-redeem-back" class="secondary">Back</button></div>
       <div id="redeem-error" class="hidden">
         <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
         <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>

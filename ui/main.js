@@ -799,14 +799,45 @@ byId("btn-add-contact").addEventListener("click", () => openRedeemChooser());
 // the app claims contacts are unbuilt, and deleting a message is not this
 // lane's act.
 byId("btn-rail-contacts").addEventListener("click", () => showContactsPane());
+// NA-0765 (`D-0042`) — A1: THE RAIL CAN GO BACK. Until this lane the main rail's
+// Chats button carried NO id and NO listener, so Contacts was a one-way door from
+// this rail. ⚠ The id is `btn-rail-chats-m`, not `btn-rail-chats`: that name is
+// already the SETTINGS rail's button and is pinned by two scenarios. The resulting
+// asymmetry (bare = main for Contacts, bare = settings for Chats) is pre-existing and
+// is recorded rather than fixed here.
+byId("btn-rail-chats-m").addEventListener("click", () => showChatsPane());
 
 // ── NA-0764: SWITCHING BETWEEN THE TWO LIST PANES ────────────────────────────
 // Contacts is a PEER of Chats, not a replacement. The rail owns which is shown.
+//
+// ── NA-0765 (`D-0042`) — A1: THE HIGHLIGHT FOLLOWS THE PANE ──────────────────
+// ⚠⚠ THE DEFECT WAS NOT "the highlight fails to move". The Chats button carried a
+// HARD-CODED `active` in the markup and nothing ever moved it, so opening Contacts
+// left the rail SELECTING THE PANE YOU WERE NO LONGER ON. Measured before the fix:
+// `rail-btn` occurred ZERO times in this file (the same needle returns 9 in
+// index.html, so it works), and this file's only `classList.*("active")` targets the
+// settings rail's category list.
+//
+// ⚠ IT LIVES IN THE PANE FUNCTIONS, NOT THE LISTENERS. Every caller then gets it —
+// including the SETTINGS rail, which reaches both panes through `enterMain()` — rather
+// than two listeners each having to remember. It also leaves the listener line above
+// byte-identical, so the design seal that pins that exact line stays green untouched
+// instead of being re-aimed for a cosmetic reason.
+function railSelect(id) {
+  for (const b of document.querySelectorAll("#scr-main .rail .rail-btn")) {
+    b.classList.toggle("active", b.id === id);
+  }
+}
+
 function showContactsPane() {
   byId("pane-contacts").classList.remove("hidden");
-  byId("pane-contact-detail").classList.remove("hidden");
   document.querySelector(".list-pane:not(#pane-contacts)").classList.add("hidden");
-  document.querySelector(".content-pane.welcome").classList.add("hidden");
+  railSelect("btn-rail-contacts");
+  // NA-0765 (B3): the detail-vs-welcome choice belongs to ONE place — the renderer —
+  // so opening the pane with nothing selected lands on the Welcome panel rather than
+  // on a bare sentence. Called synchronously here so the pane is never briefly wrong
+  // while the async refresh below is still in flight.
+  renderContactDetail();
   // F4(i): the surface opening is a refresh trigger.
   refreshContacts();
 }
@@ -816,6 +847,22 @@ function showChatsPane() {
   byId("pane-contact-detail").classList.add("hidden");
   document.querySelector(".list-pane:not(#pane-contacts)").classList.remove("hidden");
   document.querySelector(".content-pane.welcome").classList.remove("hidden");
+  railSelect("btn-rail-chats-m");
+  renderWelcome();
+}
+
+// ── NA-0765 (`D-0042`) — B3: ONE WELCOME ELEMENT, REUSED ─────────────────────
+// The button wording is the only difference between the two cases, exactly as the
+// blessed layout says. ⚠ THE ALTERNATIVE WAS REFUSED ON MEASUREMENT: rendering welcome
+// markup into the detail body would put a SECOND `.welcome-title` inside `#scr-main`,
+// and the read census pins that node by exactly that selector — a duplicate would make
+// that pin AMBIGUOUS rather than red, which is the worse failure of the two.
+function renderWelcome() {
+  const has = contactsRows.length > 0;
+  byId("welcome-sub").textContent = has
+    ? "Select a contact, or add another."
+    : "Add a contact to start your first conversation.";
+  byId("btn-add-contact").textContent = has ? "Add a contact" : "Add your first contact";
 }
 
 // The bare "+" — the EXISTING chooser, the same flow the welcome button uses.
@@ -2560,8 +2607,21 @@ byId("btn-invite-back").addEventListener("click", async () => {
   inviteEnterMintFresh();     // ⚠ the v3 fix: this path is the one that leaked the old label
   await inviteRefresh();
 });
-byId("btn-invite-open").addEventListener("click", () => openRedeemChooser());
+// NA-0765 (`D-0042`): the Chats "+" and its listener retire together — adding people is
+// a Contacts act. `#btn-contacts-add` and the welcome button carry the flow.
 byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
+// ── NA-0765 (`D-0042`) — B4: X AND BACK ON THE INVITE-CREATION VIEW ─────────────────
+// X is the visible form of Escape, wired to the same closer.
+byId("btn-invite-x").addEventListener("click", () => closeInviteModal());
+// ⚠ BACK HERE IS NOT THE SAME GESTURE AS BACK ON THE CODE-ENTRY VIEW, and the difference
+// is structural rather than stylistic: `btn-choose-create` HIDES `#redeem-overlay` before
+// opening `#invite-overlay`, so returning to the chooser has to close this overlay and
+// re-open that one. Measured before it was written. Re-opening the chooser runs its own
+// surface-open trigger, which is the shipped behaviour of that opener and not new here.
+byId("btn-invite-back-chooser").addEventListener("click", async () => {
+  closeInviteModal();
+  await openRedeemChooser();
+});
 byId("invite-overlay").addEventListener("click", (ev) => {
   if (ev.target === byId("invite-overlay")) closeInviteModal();
 });
@@ -2600,7 +2660,7 @@ const REDEEM_VIEWS = ["choose-view", "redeem-form", "redeem-sent", "redeem-faile
 const REDEEM_NAME_RE = /^[A-Za-z0-9_#-]+$/;
 function redeemNameOk(v) { return REDEEM_NAME_RE.test(v); }
 
-const REDEEM_NAME_HINT_OK = "Stored only on this device.";
+const REDEEM_NAME_HINT_OK = "Stored only on this device \u2014 never sent anywhere.";
 const REDEEM_NAME_HINT_BAD = "Names here can use letters, numbers, and - _ # — no spaces. It stays on your device.";
 
 function redeemShow(view) {
@@ -2800,7 +2860,7 @@ function contactUiState(row, st) {
   return "connecting";
 }
 
-// The ratified tier-1 identity code: 30 digits, grouped 6x5, read aloud and
+// The ratified tier-1 verification code: 30 digits, grouped 6x5, read aloud and
 // compared. ⚠ THE GROUPING IS THE RATIFIED FORM, not decoration — the mockup's
 // `QF3K-92MB-7A` was a placeholder and is NOT a format (STOP 002 D-B).
 function voiceGroups(voice) {
@@ -2880,13 +2940,24 @@ function renderContactDetail() {
   if (!body) return;
   body.innerHTML = "";
   const row = contactsRows.find((r) => r.alias === contactsSelected);
+  const onContacts = !byId("pane-contacts").classList.contains("hidden");
+
+  // NA-0765 (`D-0042`) — B3: NOTHING SELECTED IS THE WELCOME PANEL, not a bare
+  // sentence. The blessed layout shows the same welcome the Chats pane shows; only
+  // the button wording differs between the has-contacts and empty-list cases.
   if (!row) {
-    const p = document.createElement("p");
-    p.className = "contact-detail-note";
-    p.textContent = "Select a contact.";
-    body.appendChild(p);
+    renderWelcome();
+    if (onContacts) {
+      byId("pane-contact-detail").classList.add("hidden");
+      document.querySelector(".content-pane.welcome").classList.remove("hidden");
+    }
     return;
   }
+  if (onContacts) {
+    byId("pane-contact-detail").classList.remove("hidden");
+    document.querySelector(".content-pane.welcome").classList.add("hidden");
+  }
+
   const ui = contactUiState(row, contactsStatus[row.alias]);
 
   const name = document.createElement("div");
@@ -2899,15 +2970,118 @@ function renderContactDetail() {
   state.textContent = CONTACT_DETAIL_STATE[ui];
   body.appendChild(state);
 
+  // ── NA-0765 (`D-0042`) — A2/A3/B2: THE PANE ADOPTS THE SHIPPED SETTINGS>IDENTITY
+  // IDIOM. `.pane-form` + `.pane-sect` + `.field-label` + `.ctlrow` + `.hint` all
+  // ship and are globally scoped, so the structure the blessed layout draws costs
+  // ZERO new classes; the adjacent-sibling rule on `.pane-sect` draws the hairlines,
+  // so their count follows the section count and cannot drift.
+  const form = document.createElement("div");
+  form.className = "pane-form";
+  body.appendChild(form);
+
+  const sect = () => {
+    const d = document.createElement("div");
+    d.className = "pane-sect";
+    form.appendChild(d);
+    return d;
+  };
+  const label = (host, text) => {
+    const l = document.createElement("span");
+    l.className = "field-label";
+    l.textContent = text;
+    host.appendChild(l);
+  };
+  const hint = (host, text) => {
+    const h = document.createElement("p");
+    h.className = "hint";
+    h.textContent = text;
+    host.appendChild(h);
+  };
+
+  // The state's own explainer, as a box where the blessed layout draws one.
+  // ⚠ THE BOX TIER IS THE SHIPPED ONE, NOT THE MOCKUP'S HEX. The layout authority
+  // draws the two warning boxes in the danger tier; the shipped tokens are the
+  // COLOUR authority and `.callout.warning` carries a ruling of its own —
+  // "warning accent, NEVER red: red stays reserved for vault loss" — which
+  // NA-0763 and NA-0764 both carried forward rather than reversed.
   const note = CONTACT_DETAIL_NOTE[ui];
   if (note) {
-    const n = document.createElement("p");
-    n.className = "contact-detail-note";
-    n.textContent = ui === "new" ? note.replace("{name}", row.alias) : note;
-    body.appendChild(n);
+    const n = document.createElement("div");
+    n.className = CONTACT_DETAIL_BOX[ui] || "contact-detail-note";
+    n.textContent = ui === "new" ? note.replace("{name}", contactDisplayName(row)) : note;
+    form.appendChild(n);
   }
 
-  // ⚠ R3: DEVICES on the connected detail -- and "Connected since" is DROPPED.
+  // ⚠ SECTION ORDER IS STATE-DEPENDENT, and that is the blessed layout's own
+  // choice rather than an accident: a CONNECTED contact leads with the name you
+  // gave them, a NEW one leads with the code you are being asked to compare.
+  const codeFirst = ui === "new" || ui === "changed";
+  const wantsName = ui !== "blocked" && ui !== "changed";
+
+  const renderCode = () => {
+    if (!row.fingerprint || !voiceGroups(row.fingerprint.voice)) return;
+    const d = sect();
+    label(d, ui === "changed" ? "Verification code (new)" : "Verification code");
+    const card = document.createElement("div");
+    card.className = "contact-code-card";
+    const code = document.createElement("div");
+    code.className = "contact-code";
+    code.textContent = voiceGroups(row.fingerprint.voice);
+    card.appendChild(code);
+    d.appendChild(card);
+    if (ui === "new" || ui === "connected") {
+      hint(d, "If you can, compare this code with them over a call or in person. The full verification screen arrives in a later update.");
+    }
+  };
+
+  // ── NA-0765 (`D-0042`) — A3: RENAME. `display_name` sits BESIDE the alias key and
+  // is RENDER-ONLY; `alias` is what the verb receives, which is why the structural
+  // seal counting `display_name` in invoke-argument positions stays at ZERO. An
+  // empty box CLEARS the name — the engine normalises, so no caller special-cases "".
+  const renderName = () => {
+    const d = sect();
+    label(d, "Their name");
+    const rowEl = document.createElement("div");
+    rowEl.className = "ctlrow";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = "contact-rename-input";
+    input.className = "w-alias";
+    input.maxLength = 32;
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    input.value = row.display_name ? row.display_name : "";
+    input.placeholder = row.alias;
+    const save = document.createElement("button");
+    save.className = "secondary";
+    save.id = "btn-contact-rename";
+    save.textContent = "Save";
+    rowEl.append(input, save);
+    d.appendChild(rowEl);
+    hint(d, "Stored only on this device — never sent anywhere.");
+    const status = document.createElement("p");
+    status.className = "hint";
+    status.id = "contact-rename-status";
+    d.appendChild(status);
+    save.addEventListener("click", async () => {
+      const typed = input.value.trim();
+      const keyed = row.alias;
+      status.textContent = "";
+      try {
+        await invoke("contact_set_display_name", { alias: keyed, displayName: typed === "" ? null : typed });
+      } catch (_) {
+        status.textContent = "That name could not be saved.";
+        return;
+      }
+      await refreshContacts();
+    });
+  };
+
+  if (codeFirst) renderCode();
+  if (wantsName) renderName();
+  if (!codeFirst) renderCode();
+
+  // R3: DEVICES on the connected detail — and "Connected since" is DROPPED.
   // `seen_at` reads as LAST SEEN, not "connected since"; rendering it under that
   // label would show today's date for a contact made a year ago, and rendering it
   // truthfully would be a per-contact presence disclosure at a precision nobody
@@ -2917,39 +3091,33 @@ function renderContactDetail() {
   // ⚠ The count is a PROJECTION the facade computes; the device ARRAY never
   // crosses this boundary, because it carries device ids and key material.
   if (ui === "connected" && typeof row.device_count === "number") {
+    const d = sect();
+    label(d, "Connection");
     const dev = document.createElement("div");
     dev.className = "contact-detail-kv";
     dev.textContent = "Devices: ";
     const n = document.createElement("b");
     n.textContent = String(row.device_count);
     dev.appendChild(n);
-    body.appendChild(dev);
+    d.appendChild(dev);
+    hint(d, "Messaging options will appear here when messaging ships.");
   }
 
-  // The identity code, wherever there is one to compare.
-  if (row.fingerprint && voiceGroups(row.fingerprint.voice)) {
-    const cap = document.createElement("div");
-    cap.className = "contact-detail-kv";
-    cap.textContent = "identity code";
-    const code = document.createElement("div");
-    code.className = "contact-code";
-    code.textContent = voiceGroups(row.fingerprint.voice);
-    body.append(cap, code);
-    if (ui === "new" || ui === "connected") {
-      const hint = document.createElement("p");
-      hint.className = "contact-detail-note";
-      hint.textContent =
-        "If you can, compare this code with them over a call or in person. The full verification screen arrives in a later update.";
-      body.appendChild(hint);
-    }
-  }
+  // ⚠ NO BLOCK CONTROL, IN ANY STATE, AND THAT IS A RULING RATHER THAN AN OMISSION
+  // (NA-0765 R-1 = Option A). The blessed layout draws Block and an Unblock that
+  // "restores the connection you already had". Measured at this pin: the honest
+  // symmetric pair `contacts_block`/`contacts_unblock` exists in the engine and is
+  // NOT in the facade, so the desktop cannot reach it; the one verb that IS
+  // reachable is one-way AND sets the primary device to REVOKED, which no exposed
+  // verb restores — so its blessed sentence would be false. A control whose copy is
+  // measurably untrue does not ship. `ENG-0248` names the missing pair.
   byId("pane-contact-detail").dataset.uiState = ui;
 }
 
 const CONTACT_DETAIL_STATE = {
   connected: "✓ Connected",
   connecting: "Connecting…",
-  new: "New — verify identity",
+  new: "New contact — verify identity",
   changed: "Check identity",
   attention: "Needs attention",
   blocked: "Blocked",
@@ -2962,12 +3130,19 @@ const CONTACT_DETAIL_TONE = {
   attention: "is-warn",
   blocked: "is-blocked",
 };
+// NA-0765 (`D-0042`): which states render their explainer as a BOX, and in which
+// shipped tier. States with no entry render the plain muted note they always did.
+const CONTACT_DETAIL_BOX = {
+  new: "callout",
+  changed: "callout warning",
+  attention: "callout warning",
+};
 const CONTACT_DETAIL_NOTE = {
-  new: "Connected using your invite for {name}. Compare identity codes with them before sharing anything sensitive.",
+  new: "Connected using your invite for {name}. Compare verification codes with them before sharing anything sensitive.",
   connecting:
     "Finishing automatically in the background — nothing for you to do. If it never completes, the status line below will say why.",
   changed:
-    "Their identity code has changed. Don't share anything sensitive until you compare codes with them again.",
+    "Their verification code has changed. Don't share anything sensitive until you compare codes with them again.",
   attention: "This connection has a storage problem and can't finish on its own.",
   connected: "",
   blocked: "",
@@ -3241,6 +3416,17 @@ byId("btn-choose-redeem").addEventListener("click", () => {
 // agreement because there is nothing here. ⚠ It fires NO invite call — the finish scan rides
 // the chooser's OPENER, never its close.
 byId("btn-choose-close").addEventListener("click", closeRedeemModal);
+// ── NA-0765 (`D-0042`) — B4: THE CODE-ENTRY VIEW GETS A VISIBLE WAY OUT ──────────────
+// ⚠ IT HAD NONE. Not an X, not a Back, not even a Close: once "I have a code" was chosen
+// the only exits were Escape and the scrim, neither of which is on screen. Escape and the
+// scrim ALREADY worked and are untouched — X is simply the visible form of what Escape
+// does, wired to the SAME `closeRedeemModal` so the two can never disagree.
+byId("btn-redeem-x").addEventListener("click", closeRedeemModal);
+// Back is a view switch inside ONE overlay — the chooser and the code entry are siblings
+// under `#redeem-overlay`. It deliberately does NOT clear the pasted code: backing up to
+// look at the other choice is not the same act as abandoning the flow, and `closeRedeemModal`
+// remains the one place that clears.
+byId("btn-redeem-back").addEventListener("click", () => redeemShow("choose-view"));
 byId("redeem-code").addEventListener("input", redeemSyncConnect);
 byId("redeem-name").addEventListener("input", redeemSyncConnect);
 byId("btn-redeem-connect").addEventListener("click", redeemConnect);

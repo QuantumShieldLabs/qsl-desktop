@@ -245,16 +245,24 @@
   },
   {
    "op": "note",
-   "text": "ENTRY 2 \u2014 the '+' in the Chats header opens the SAME surface, so the flow survives the welcome pane disappearing."
+   "text": "ENTRY 2 \u2014 RE-AIMED AT NA-0765 (`D-0042`). The Chats header's '+' is RETIRED: adding people is a Contacts act. The count below stays an EXACT equality, now at ZERO, so the retired element REAPPEARING fails this row rather than being absorbed by a loose comparison (the Z6 precedent). The narration is rewritten rather than deleted, because the property it named is retired deliberately and its replacement is driven immediately below."
   },
   {
    "op": "find_count",
    "sel": "#btn-invite-open",
-   "expect": 1
+   "expect": 0
+  },
+  {
+   "op": "note",
+   "text": "\u26a0 THE REPLACEMENT CARRIER, DRIVEN RATHER THAN ASSUMED. `D-0036` put a '+' in the Chats header because the welcome pane -- the only other entry -- disappeared once the first contact landed. NA-0765 keeps the welcome panel on screen AND gives Contacts its own '+', so the premise and the cure retire together."
   },
   {
    "op": "click",
-   "sel": "#btn-invite-open"
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
   },
   {
    "op": "prop_eq",
@@ -358,8 +366,16 @@
    "poll": 5
   },
   {
+   "op": "note",
+   "text": "\u26a0 THE REPLACEMENT CARRIER, DRIVEN RATHER THAN ASSUMED. `D-0036` put a '+' in the Chats header because the welcome pane -- the only other entry -- disappeared once the first contact landed. NA-0765 keeps the welcome panel on screen AND gives Contacts its own '+', so the premise and the cure retire together."
+  },
+  {
    "op": "click",
-   "sel": "#btn-invite-open"
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
   },
   {
    "op": "prop_eq",
@@ -490,6 +506,93 @@
    "op": "exec",
    "script": "return JSON.stringify({onOneRow:window.__g.onOneRow, tokenMatch:window.__g.tokenMatch, deco:window.__g.deco});",
    "expect": "{\"onOneRow\":true,\"tokenMatch\":true,\"deco\":\"none\"}"
+  },
+  {
+   "op": "note",
+   "text": "I6 (creation half) \u2014 NA-0765 (`D-0042`). The invite-CREATION view had a foot Close but no X and no Back. Escape and the scrim already worked and are NOT re-proven here; what is new is that both are now REACHABLE ON SCREEN."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-create"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-invite-x",
+   "expect": 1
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-x"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "\u26a0\u26a0 AND BACK HERE IS NOT THE SAME GESTURE AS BACK ON THE CODE-ENTRY VIEW. `btn-choose-create` HIDES the chooser's overlay before opening this one, so returning has to close THIS overlay and RE-OPEN THAT one. Both halves are asserted, because closing without re-opening would strand the user on the main screen and would still look like a working Back."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-create"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-back-chooser"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
   },
   {
    "op": "teardown"
