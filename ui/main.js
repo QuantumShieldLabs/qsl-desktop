@@ -646,6 +646,13 @@ const STATUS_FOOTER_LOCKED = "Locked — unlock to connect.";
 const STATUS_FOOTER_UNKNOWN = "Status unknown — please report this.";
 const STATUS_FOOTER_NO_RELAY = "No relay configured — add one in Settings › Relay.";
 
+// NA-0764 (R5): the footer's last known inputs. The tick repaints the SAME line
+// when its failure counter crosses the threshold, and it must not re-invoke the
+// desk to do so — a status line that opens IPC calls on a timer is a second
+// clock, which this lane is explicitly not adding.
+let lastFooterReason = null;
+let lastFooterRelayUrl = "";
+
 // PURE AND TOTAL: every input maps to exactly one shipped sentence. `reason`
 // is the desk's wire string, or `null` when the desk did not answer.
 //
@@ -662,7 +669,34 @@ const STATUS_FOOTER_NO_RELAY = "No relay configured — add one in Settings › 
 // `missing_home` is unreachable while `bootstrap()` sets QSC_CONFIG_DIR before
 // the runtime exists. A footer that could not say "storage is wrong" when the
 // desk says so is the dishonesty this lane exists to remove.
-function statusFooterLine(reason, relayUrl) {
+// ⚠⚠ NA-0764 (`D-1405`, ruling R5) — REASON-FIRST PRECEDENCE, AND IT IS THE
+// WHOLE POINT OF WHERE THE NEW ARM SITS.
+//
+// The reachability arm is NOT a `reason`. It is derived from `tickFails >=
+// TICK_FAIL_THRESHOLD`, a global the tick owns, so it is keyed on a different
+// source than the five arms above it. The natural place to put "trouble
+// replaces normal" is at the TOP — and that is exactly wrong. Placed there, a
+// relay outage would MASK the storage line, the locked line, and the
+// please-report tripwire, all three of which are real problems the user can
+// act on and none of which an outage cures. Worse, an outage and a storage
+// fault are CORRELATED: both follow a bad restart or a moved vault.
+//
+// So the outage arm sits LAST, above `Ready` and below every real problem: it
+// renders only in the otherwise-Ready case. The seal for this is a BEHAVIOUR
+// test (`na0764_footer_precedence_behaviour`), because the presence seal
+// beside it stays green through the whole defect — an arm reordered is still
+// an arm present.
+//
+// ⚠ THE FLAT IF-CHAIN AND THE `const` SHAPE ARE HELD DELIBERATELY this lane.
+// The neighbouring seal extracts this body by text and asserts the sentences
+// exist as `const NAME = "...";` declarations, so the tempting refactor of a
+// six-arm chain into a lookup table would either move the required tokens out
+// of the body or truncate the extraction at a column-0 brace.
+//
+// ⚠ NO RECOVERY BLURB. Recovery is a simple return to normal — the counter
+// resets and this function's last arm answers again. A "Reconnected" line was
+// refused for this lane.
+function statusFooterLine(reason, relayUrl, tickTrouble) {
   if (reason === "missing_home" || reason === "unsafe_parent") {
     return STATUS_FOOTER_STORAGE;
   }
@@ -677,7 +711,34 @@ function statusFooterLine(reason, relayUrl) {
   if (!relayUrl) {
     return STATUS_FOOTER_NO_RELAY;
   }
+  if (tickTrouble) {
+    return TICK_UNREACHABLE_COPY;
+  }
   return `Ready. Relay: ${relayUrl}`;
+}
+
+// The footer's TIER. Accent, never danger: an unreachable relay needs
+// attention, but the danger tier stays reserved for the erasure ceremony —
+// NA-0763's ruling, carried forward unchanged rather than reversed here.
+function paintStatusFooter(reason, relayUrl) {
+  const trouble = tickFails >= TICK_FAIL_THRESHOLD;
+  const el = byId("status-line");
+  el.textContent = statusFooterLine(reason, relayUrl, trouble);
+  el.classList.toggle("is-trouble", trouble && !!relayUrl && isPlainReason(reason));
+}
+
+// The outage tier paints only where the outage arm can actually render — the
+// otherwise-Ready case. Keeping this in ONE predicate stops the class and the
+// text from drifting apart, which is how a line ends up accent-coloured while
+// saying "Locked".
+function isPlainReason(reason) {
+  return (
+    reason !== "missing_home" &&
+    reason !== "unsafe_parent" &&
+    reason !== "vault_locked" &&
+    reason !== null &&
+    reason !== "unrecognized"
+  );
 }
 
 async function enterMain() {
@@ -703,7 +764,9 @@ async function enterMain() {
   } catch (_) {
     reason = null;
   }
-  byId("status-line").textContent = statusFooterLine(reason, relayUrl);
+  lastFooterReason = reason;
+  lastFooterRelayUrl = relayUrl;
+  paintStatusFooter(reason, relayUrl);
   // NA-0763: the tick's gate needs to know whether a relay exists at all, and
   // this function has just read it. R10: no relay configured => no ticks, which
   // is both correct product behaviour (there is nothing to pull) and politeness
@@ -731,8 +794,44 @@ async function enterMain() {
 // flow. The chooser is a STOPGAP: Lane C replaces it with the New-chat panel, and the panel
 // IS the chooser plus the contacts list (design bank §1).
 byId("btn-add-contact").addEventListener("click", () => openRedeemChooser());
-byId("btn-rail-contacts").addEventListener("click", () => {
-  byId("stub-note").classList.remove("hidden");
+// NA-0764: the Contacts pane exists now, so this opens it instead of revealing
+// the stub. The stub element and its copy survive untouched — nothing else in
+// the app claims contacts are unbuilt, and deleting a message is not this
+// lane's act.
+byId("btn-rail-contacts").addEventListener("click", () => showContactsPane());
+
+// ── NA-0764: SWITCHING BETWEEN THE TWO LIST PANES ────────────────────────────
+// Contacts is a PEER of Chats, not a replacement. The rail owns which is shown.
+function showContactsPane() {
+  byId("pane-contacts").classList.remove("hidden");
+  byId("pane-contact-detail").classList.remove("hidden");
+  document.querySelector(".list-pane:not(#pane-contacts)").classList.add("hidden");
+  document.querySelector(".content-pane.welcome").classList.add("hidden");
+  // F4(i): the surface opening is a refresh trigger.
+  refreshContacts();
+}
+
+function showChatsPane() {
+  byId("pane-contacts").classList.add("hidden");
+  byId("pane-contact-detail").classList.add("hidden");
+  document.querySelector(".list-pane:not(#pane-contacts)").classList.remove("hidden");
+  document.querySelector(".content-pane.welcome").classList.remove("hidden");
+}
+
+// The bare "+" — the EXISTING chooser, the same flow the welcome button uses.
+// One entry point serves both, which was measured true before it was relied on.
+byId("btn-contacts-add").addEventListener("click", () => openRedeemChooser());
+
+// Row selection, and I8's badge clear. ⚠ THE ACK IS IN MEMORY ONLY (ruling
+// sec 5). Opening the detail is the acknowledgment; the COMPARE NOTE stays
+// until a future verification lane makes "verified" a recorded fact.
+byId("contacts-rows").addEventListener("click", (ev) => {
+  const row = ev.target.closest(".contact-row");
+  if (!row) return;
+  contactsSelected = row.dataset.alias;
+  contactsNewBadge.delete(contactsSelected);
+  renderContactsList();
+  renderContactDetail();
 });
 
 // ---- settings (item 14: a VIEW in the same shell; the icon rail is live) --
@@ -751,10 +850,13 @@ async function openSettings(pane) {
     `Slice ${info.slice}. This build makes no security-assurance claims.`;
 }
 byId("btn-settings").addEventListener("click", () => openSettings("identity"));
-byId("btn-rail-chats").addEventListener("click", () => enterMain());
-byId("btn-rail-contacts-s").addEventListener("click", () => {
-  enterMain();
-  byId("stub-note").classList.remove("hidden");
+byId("btn-rail-chats").addEventListener("click", async () => {
+  await enterMain();
+  showChatsPane();
+});
+byId("btn-rail-contacts-s").addEventListener("click", async () => {
+  await enterMain();
+  showContactsPane();
 });
 
 function selectPane(name) {
@@ -1803,16 +1905,28 @@ function tickGateOpen() {
 // ⚠ `setStatusLine` rewrites `className` wholesale, so the hidden state is
 // re-applied HERE, in the same helper — one place, never a habit re-derived at
 // each call site.
+// ⚠⚠ NA-0764 (`D-1405`, ruling R5) — THE VISIBLE ROLE MIGRATED; THE NODE STAYS.
+//
+// NA-0763 shipped this message on the quiet line ABOVE the footer, and the
+// operator's own complaint was the resulting two-line pairing. F1 moves the
+// message into the footer's closed reason set, so this function no longer
+// writes any text.
+//
+// ⚠⚠ `#tick-status` IS NOT DELETED, AND DELETING IT IS FORBIDDEN. `tickMark()`
+// still dereferences it every beat to write the tick's five `data-*` counters;
+// removing the element would turn that into a TypeError inside the scan's hot
+// path — an E3 break caused by the very edit E3 was cleared for. "Retire the
+// visible role" and "delete the node" are different acts and only one of them
+// is ruled.
 function renderTickStatus() {
   const el = byId("tick-status");
   if (!el) return;
-  if (tickFails >= TICK_FAIL_THRESHOLD) {
-    setStatusLine(el, "accent", TICK_UNREACHABLE_COPY);
-    el.classList.remove("hidden");
-  } else {
-    setStatusLine(el, "neutral", "");
-    el.classList.add("hidden");
-  }
+  // Hidden always: the footer now carries this state. The element survives as
+  // the tick's observable carrier and nothing else.
+  setStatusLine(el, "neutral", "");
+  el.classList.add("hidden");
+  // Repaint the ONE line that now speaks for reachability.
+  paintStatusFooter(lastFooterReason, lastFooterRelayUrl);
 }
 
 // The tick's OWN observable counter (R6). Never touches `#redeem-overlay`.
@@ -2640,9 +2754,342 @@ async function finishScanClass(marks) {
   return marks;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// NA-0764 (`D-1405`) — THE CONTACTS SURFACE: auto-connect, and verify first.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// R4's RULED MAPPING, as MEASURED at STOP 003 S1(e) — and the measurement
+// REVERSED the cold read's classification, so the order of these arms is not a
+// matter of taste.
+//
+// ⚠⚠ `missing_seed` IS "CONNECTING", NOT A FAULT, AND GETTING THIS BACKWARDS
+// SHIPS FALSE COPY ON THE COMMONEST STATE. The desktop never sets
+// `QSC_QSP_SEED`, so `qsp_status_tuple`'s no-session branch ALWAYS takes the
+// `else` arm: `no_session` is unreachable in this app and every not-yet-
+// connected contact answers `missing_seed`. Mapping it to "Needs attention"
+// would tell every establishing contact it has a storage problem AND would
+// leave "Connecting…" with no reachable member at all. The shipped footer
+// already ruled this once (D-0033): "A healthy fresh profile answers
+// missing_seed, so a footer rendering it as a problem would call every new
+// install broken."
+const CONTACT_FAULT_REASONS = [
+  "session_invalid",   // a dead session is not "connecting"
+  "unsafe_parent",     // reachable in the field: the qsc dir's perms change
+  "missing_home",      // unreachable in-app (bootstrap sets QSC_CONFIG_DIR) — mapped for TOTALITY
+  "channel_invalid",   // unreachable for listed rows (store keys passed channel_label_ok) — TOTALITY
+];
+
+// The badge set. ⚠ IN-MEMORY ONLY, by ruling sec 5: "No new persistence for the
+// badge ack." It is a NUDGE, not a record — the future verification lane is
+// what makes "verified" a durable fact.
+const contactsNewBadge = new Set();
+
+let contactsRows = [];
+let contactsStatus = {};
+let contactsSelected = null;
+let contactsOutstanding = 0;
+
+/// The six blessed states, resolved in RULED precedence order.
+/// blocked > CHANGED > new-badge > connected > fault > connecting.
+function contactUiState(row, st) {
+  if (row.blocked) return "blocked";                       // dominates CHANGED (R4)
+  if (row.state === "CHANGED") return "changed";           // dominates Active (R4)
+  if (contactsNewBadge.has(row.alias)) return "new";
+  if (st && st.state === "active") return "connected";
+  if (st && CONTACT_FAULT_REASONS.indexOf(st.reason) !== -1) return "attention";
+  return "connecting";
+}
+
+// The ratified tier-1 identity code: 30 digits, grouped 6x5, read aloud and
+// compared. ⚠ THE GROUPING IS THE RATIFIED FORM, not decoration — the mockup's
+// `QF3K-92MB-7A` was a placeholder and is NOT a format (STOP 002 D-B).
+function voiceGroups(voice) {
+  if (typeof voice !== "string" || voice.length !== 30) return "";
+  return voice.match(/.{5}/g).join(" ");
+}
+
+function contactDisplayName(row) {
+  // display_name is RENDER-ONLY. `alias` is what every command receives.
+  return row.display_name ? row.display_name : row.alias;
+}
+
+function renderContactsList() {
+  const host = byId("contacts-rows");
+  if (!host) return;
+  host.innerHTML = "";
+  for (const row of contactsRows) {
+    const ui = contactUiState(row, contactsStatus[row.alias]);
+    const el = document.createElement("div");
+    el.className = "contact-row";
+    if (ui === "new") el.classList.add("is-new");
+    if (contactsSelected === row.alias) el.classList.add("is-selected");
+    el.dataset.alias = row.alias;
+    el.dataset.uiState = ui;
+
+    const dot = document.createElement("span");
+    dot.className = "contact-dot " + CONTACT_DOT[ui];
+    const name = document.createElement("span");
+    name.className = "contact-name";
+    name.textContent = contactDisplayName(row);
+    el.append(dot, name);
+
+    const word = CONTACT_WORD[ui];
+    if (word) {
+      const w = document.createElement("span");
+      w.className = "contact-word" + (CONTACT_WORD_TONE[ui] || "");
+      w.textContent = word;
+      el.appendChild(w);
+    }
+    host.appendChild(el);
+  }
+  byId("contacts-empty").classList.toggle("hidden", contactsRows.length > 0);
+
+  // I6': 0 / 1 / n. At zero the line is HIDDEN rather than reading "0 invites".
+  const hint = byId("contacts-hint");
+  hint.classList.toggle("hidden", contactsOutstanding === 0);
+  hint.textContent =
+    contactsOutstanding === 1
+      ? "1 invite outstanding."
+      : `${contactsOutstanding} invites outstanding.`;
+}
+
+const CONTACT_DOT = {
+  connected: "is-connected",
+  connecting: "is-connecting",
+  new: "is-connecting",
+  changed: "is-warn",
+  attention: "is-warn",
+  blocked: "is-blocked",
+};
+const CONTACT_WORD = {
+  connected: "",
+  connecting: "…",
+  new: "new — verify",
+  changed: "check identity",
+  attention: "needs attention",
+  blocked: "",
+};
+const CONTACT_WORD_TONE = {
+  new: " is-accent",
+  changed: " is-warn",
+  attention: " is-warn",
+};
+
+function renderContactDetail() {
+  const body = byId("contact-detail-body");
+  if (!body) return;
+  body.innerHTML = "";
+  const row = contactsRows.find((r) => r.alias === contactsSelected);
+  if (!row) {
+    const p = document.createElement("p");
+    p.className = "contact-detail-note";
+    p.textContent = "Select a contact.";
+    body.appendChild(p);
+    return;
+  }
+  const ui = contactUiState(row, contactsStatus[row.alias]);
+
+  const name = document.createElement("div");
+  name.className = "contact-detail-name";
+  name.textContent = contactDisplayName(row);
+  body.appendChild(name);
+
+  const state = document.createElement("div");
+  state.className = "contact-detail-state " + CONTACT_DETAIL_TONE[ui];
+  state.textContent = CONTACT_DETAIL_STATE[ui];
+  body.appendChild(state);
+
+  const note = CONTACT_DETAIL_NOTE[ui];
+  if (note) {
+    const n = document.createElement("p");
+    n.className = "contact-detail-note";
+    n.textContent = ui === "new" ? note.replace("{name}", row.alias) : note;
+    body.appendChild(n);
+  }
+
+  // ⚠ R3: DEVICES on the connected detail -- and "Connected since" is DROPPED.
+  // `seen_at` reads as LAST SEEN, not "connected since"; rendering it under that
+  // label would show today's date for a contact made a year ago, and rendering it
+  // truthfully would be a per-contact presence disclosure at a precision nobody
+  // blessed (cold read C-20). The honest answer was to drop the line, not to
+  // dress up the wrong field.
+  //
+  // ⚠ The count is a PROJECTION the facade computes; the device ARRAY never
+  // crosses this boundary, because it carries device ids and key material.
+  if (ui === "connected" && typeof row.device_count === "number") {
+    const dev = document.createElement("div");
+    dev.className = "contact-detail-kv";
+    dev.textContent = "Devices: ";
+    const n = document.createElement("b");
+    n.textContent = String(row.device_count);
+    dev.appendChild(n);
+    body.appendChild(dev);
+  }
+
+  // The identity code, wherever there is one to compare.
+  if (row.fingerprint && voiceGroups(row.fingerprint.voice)) {
+    const cap = document.createElement("div");
+    cap.className = "contact-detail-kv";
+    cap.textContent = "identity code";
+    const code = document.createElement("div");
+    code.className = "contact-code";
+    code.textContent = voiceGroups(row.fingerprint.voice);
+    body.append(cap, code);
+    if (ui === "new" || ui === "connected") {
+      const hint = document.createElement("p");
+      hint.className = "contact-detail-note";
+      hint.textContent =
+        "If you can, compare this code with them over a call or in person. The full verification screen arrives in a later update.";
+      body.appendChild(hint);
+    }
+  }
+  byId("pane-contact-detail").dataset.uiState = ui;
+}
+
+const CONTACT_DETAIL_STATE = {
+  connected: "✓ Connected",
+  connecting: "Connecting…",
+  new: "New — verify identity",
+  changed: "Check identity",
+  attention: "Needs attention",
+  blocked: "Blocked",
+};
+const CONTACT_DETAIL_TONE = {
+  connected: "is-connected",
+  connecting: "is-connecting",
+  new: "is-new",
+  changed: "is-warn",
+  attention: "is-warn",
+  blocked: "is-blocked",
+};
+const CONTACT_DETAIL_NOTE = {
+  new: "Connected using your invite for {name}. Compare identity codes with them before sharing anything sensitive.",
+  connecting:
+    "Finishing automatically in the background — nothing for you to do. If it never completes, the status line below will say why.",
+  changed:
+    "Their identity code has changed. Don't share anything sensitive until you compare codes with them again.",
+  attention: "This connection has a storage problem and can't finish on its own.",
+  connected: "",
+  blocked: "",
+};
+
+/// Read the contact surface. ⚠ A LOCKED VAULT MAKES `contact_list` REFUSE, and
+/// that is NOT "no contacts": M7 measured `require_unlocked_here` running first,
+/// so a locked vault yields Err and ZERO rows. Rendering the empty-state copy
+/// there would tell the user their contacts are gone. The rows are left ALONE
+/// on failure and the footer — which already says "Locked" — speaks instead.
+// ⚠⚠ THE GENERATION GUARD IS NOT DECORATION — A LATE REFRESH MUST NOT OVERWRITE
+// A NEWER ONE. This function awaits several IPC calls (contact_list, one
+// connect_status PER ROW, invite_list), so two refreshes triggered close
+// together — surface-open and a scan completion, say — overlap freely, and the
+// one that STARTED FIRST can FINISH LAST. Without this guard it would then
+// publish its stale rows over the newer result, and the pane would silently
+// show a state the app had already moved past.
+//
+// The cold read named this exact hazard (C-12: "F4's refresh path is UNMEASURED
+// for re-entrancy"), and the gui-driver then reproduced it: planted rows were
+// published, asserted present, and were GONE two steps later when an in-flight
+// refresh from the pane-open resolved on top of them. That was the product
+// racing, not the scenario, so the cure is here.
+//
+// ⚠ ONE COUNTER, CHECKED AT EVERY PUBLICATION POINT — never merely at the end.
+// The status loop awaits per row, so a newer refresh can start midway through
+// it; a guard that only checked before the final render would still let a stale
+// pass do all its work and win.
+let contactsRefreshGen = 0;
+
+async function refreshContacts() {
+  const gen = ++contactsRefreshGen;
+  let rows = null;
+  try {
+    rows = await invoke("contact_list");
+  } catch (_) {
+    return;                       // locked or unavailable: say nothing, change nothing
+  }
+  if (gen !== contactsRefreshGen) return;   // superseded before we published anything
+  const status = {};
+  for (const row of rows) {
+    try {
+      status[row.alias] = await invoke("connect_status", { peer: row.alias });
+    } catch (_) { /* one peer's status must not cost the whole pane */ }
+    if (gen !== contactsRefreshGen) return; // superseded mid-loop
+  }
+  let outstanding = contactsOutstanding;
+  try {
+    const invites = await invoke("invite_list");
+    const now = Math.floor(Date.now() / 1000);
+    outstanding = invites.filter(
+      (i) => i.state === "active" && i.expiry > now
+    ).length;
+  } catch (_) { /* the hint simply does not move */ }
+  if (gen !== contactsRefreshGen) return;   // superseded before publication
+  // PUBLISH, all at once, only as the newest refresh.
+  contactsRows = rows;
+  contactsStatus = status;
+  contactsOutstanding = outstanding;
+  renderContactsList();
+  renderContactDetail();
+}
+
+// ── R1: THE AUTO-CONNECT SCAN CLASS ──────────────────────────────────────────
+//
+// While ANY invite is outstanding, the beat that already runs also watches that
+// invite's drop-box. An empty slot is a no-op — MEASURED at M3, on the real
+// relay: it mutates nothing and takes no lease, which is what makes running it
+// every beat safe rather than merely cheap.
+//
+// ⚠⚠ AN UNLABELLED INVITE CANNOT AUTO-CONNECT, AND THE SKIP IS COUNTED RATHER
+// THAN SILENT. R1 says `alias := the invite's own label`, but the mint's own
+// caption reads "Who is this invite for? (optional — stays on this device)", so
+// a blessed GUI flow produces invites with NO label and therefore no alias to
+// provision under. Those are skipped and tallied in `marks.unlabelled`, so the
+// gap is observable instead of being a blessed flow that quietly never
+// completes. The disposition is the operator's, and it is declared at STOP 2.
+async function autoConnectClass(marks) {
+  let relayUrl = "";
+  try {
+    const cfg = await invoke("relay_config_get");
+    relayUrl = cfg.relay_url || "";
+  } catch (_) { return marks; }
+  if (relayUrl === "") return marks;
+
+  let invites = [];
+  try { invites = await invoke("invite_list"); } catch (_) { return marks; }
+
+  const now = Math.floor(Date.now() / 1000);
+  for (const inv of invites) {
+    // EQUALITY on the extracted value, never a substring: `active` is not a
+    // prefix of anything here today, and relying on that is how the 187-day
+    // prefix lesson happens again. Revoked, redeemed, expired and creating
+    // invites are never scanned — I2' is the arm that proves it.
+    if (inv.state !== "active") continue;
+    if (inv.expiry <= now) continue;
+    if (!inv.label) { marks.unlabelled += 1; continue; }
+
+    marks.pending += 1;
+    marks.attempted += 1;
+    try {
+      const fp = await invoke("invite_accept", {
+        selfLabel: null, inviteId: inv.invite_id, alias: inv.label, max: 1,
+      });
+      marks.scanned += 1;
+      // `null` is the EMPTY-SLOT sentinel — nobody has redeemed yet. Only a
+      // fingerprint means a handshake completed and a contact now exists.
+      if (fp !== null && fp !== undefined) {
+        marks.finished += 1;
+        contactsNewBadge.add(inv.label);
+      }
+    } catch (_) {
+      marks.scanned += 1;
+      marks.failed += 1;
+    }
+  }
+  return marks;
+}
+
 // Rung 1's class list. The handshake-poll class joins it when a GUI handshake surface exists
 // and `ENG-0198` can report its own no-op; until then the omission is stated, not hidden.
-const SCAN_CLASSES = [finishScanClass];
+const SCAN_CLASSES = [finishScanClass, autoConnectClass];
 
 // ── THE ONE HANDLER (P2 / ladder 1.1) ─────────────────────────────────────────────────
 // Single entry, event {source, at}; sources: unlock | surface_open | tick. Idempotent.
@@ -2662,7 +3109,7 @@ let relayScanBusyRejects = 0;
 
 async function relayScanOnce(ev) {
   let marks = { why: ev.source, at: ev.at, scanned: 0, finished: 0, pending: 0,
-                attempted: 0, failed: 0 };
+                attempted: 0, failed: 0, unlabelled: 0 };
   for (const cls of SCAN_CLASSES) marks = await cls(marks);
   recordScanOutcome(ev, marks);
   return marks;
@@ -2727,6 +3174,15 @@ function recordScanOutcome(ev, marks) {
   }
   renderTickStatus();
   tickMark();
+  // ⚠ F4(ii)/I5: re-render ONLY when the scan actually changed contact state.
+  // `marks.finished` counts completed handshakes — the one signal that means a
+  // row's state moved. Re-rendering on every scan would repaint a static list
+  // every beat; re-rendering on none would leave an auto-created contact
+  // invisible until the user clicked something, which is the whole point of
+  // the tick.
+  if (marks.finished > 0) {
+    refreshContacts();
+  }
 }
 
 // The observable half of Z6: the outcome of the last scan, readable BY EQUALITY from the DOM.

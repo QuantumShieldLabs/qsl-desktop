@@ -211,13 +211,22 @@
    "expect": "3"
   },
   {
-   "op": "exec",
-   "script": "return byId(\"tick-status\").className;",
-   "expect": "status-line-quiet"
+   "op": "note",
+   "text": "NA-0764 (R5) RE-AIM, WITH ITS OWN CAN-FAIL PROOF. These three rows moved from #tick-status to #status-line because F1 migrated the message into the footer's closed reason set. A re-aimed assertion is a DIFFERENT assertion, so the row below first proves the quiet line is now SILENT -- if the message were still there, the re-aim would be additive rather than a migration and this row would fail."
   },
   {
    "op": "exec",
    "script": "return byId(\"tick-status\").querySelector(\".status-text\").textContent;",
+   "expect": ""
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"status-line\").className;",
+   "expect": "status-line is-trouble"
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"status-line\").textContent;",
    "expect": "Can't reach the relay — still trying. Contacts may not finish connecting until it's back."
   },
   {
@@ -231,8 +240,17 @@
   },
   {
    "op": "exec",
-   "script": "return byId(\"tick-status\").className;",
-   "expect": "status-line-quiet hidden"
+   "script": "return byId(\"status-line\").className;",
+   "expect": "status-line"
+  },
+  {
+   "op": "note",
+   "text": "RECOVERY IS A SIMPLE RETURN TO NORMAL -- no 'Reconnected' blurb, refused for this lane (ruling R5). The trouble CLASS is gone and the line answers Ready again, which is the whole of the recovery behaviour."
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"status-line\").textContent.slice(0, 6);",
+   "expect": "Ready."
   },
   {
    "op": "note",

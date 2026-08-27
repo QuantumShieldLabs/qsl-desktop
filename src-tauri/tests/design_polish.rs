@@ -1908,14 +1908,27 @@ fn the_invite_code_box_wraps_and_is_selectable() {
     );
 }
 
-/// R380 §4 — THE UN-STUBBING IS SCOPED TO ONE HANDLER, AND THE OTHER TWO SURVIVE.
+/// R380 §4, RE-AIMED BY NA-0764 (`D-1405`) — THE LAST TWO REVEALERS RETIRE,
+/// BECAUSE THE PANE THEY WERE WAITING FOR NOW EXISTS.
 ///
-/// ⚠ MUST GO RED IF: someone "finishes the job" by deleting `#stub-note` or its
-/// remaining revealers. The Contacts pane is Lane C and is still unbuilt, so on
-/// those two paths the stub is still the truth. The brief's global claim that the
-/// stub message is GONE measured FALSE and was struck at R380 §4.
+/// ⚠⚠ THIS SEAL WENT RED ON LANE C'S FIRST EDIT, AND THAT IS THE SEAL WORKING.
+/// Its v1 doc said in its own words: *"The Contacts pane is Lane C and is still
+/// unbuilt, so on those two paths the stub is still the truth."* Lane C built
+/// the pane, so both rail buttons now open it and the revealer count moves
+/// **2 -> 0**. Following the Z6 precedent (NA-0763), the seal is **RE-AIMED to
+/// what is measured, never weakened and never deleted**: the count stays an
+/// EXACT equality, so an unaccounted revealer reappearing still fails it, and
+/// the property that replaces it — both rail buttons reach the real pane — is
+/// pinned here rather than left to prose.
+///
+/// ⚠ THE ELEMENT AND ITS COPY SURVIVE UNTOUCHED. "Retire the revealers" and
+/// "delete the message" are different acts, and only the first is this lane's.
+/// Nothing else in the app claims contacts are unbuilt.
+///
+/// ⚠ MUST GO RED IF: a revealer is reintroduced, `#stub-note` is deleted, or
+/// either rail button stops opening the Contacts pane.
 #[test]
-fn the_un_stubbing_is_handler_scoped_and_lane_cs_stub_survives() {
+fn the_stub_survives_and_lane_c_retired_its_last_revealer() {
     let js = ui_file("main.js");
     let html = ui_file("index.html");
     // ⚠ NA-0756 (D-0037, R387 §S4) — RETARGETED, and the pin moves WITH the change rather
@@ -1937,9 +1950,28 @@ fn the_un_stubbing_is_handler_scoped_and_lane_cs_stub_survives() {
     assert_eq!(
         js.matches(r#"byId("stub-note").classList.remove("hidden");"#)
             .count(),
-        2,
-        "exactly TWO revealers remain — btn-rail-contacts and btn-rail-contacts-s, both Lane C's; \
-         Lane A removed exactly one and invented none"
+        0,
+        "ZERO revealers remain — Lane C built the pane both rail buttons were waiting for. \
+         An EXACT equality, deliberately: a revealer reappearing must fail this, not be \
+         absorbed by a >= comparison"
+    );
+    // The property that REPLACES the retired one: both rail buttons reach the
+    // real surface. Pinned here so the retirement above cannot be satisfied by
+    // simply deleting the handlers.
+    assert!(
+        js.contains(
+            r#"byId("btn-rail-contacts").addEventListener("click", () => showContactsPane());"#
+        ),
+        "the main rail's Contacts button opens the pane"
+    );
+    assert!(
+        js.contains(r#"byId("btn-rail-contacts-s").addEventListener("click", async () => {"#),
+        "the settings rail's Contacts button returns to main and opens the pane"
+    );
+    // And the stub's own copy is untouched — retiring a path is not deleting a message.
+    assert!(
+        html.contains("Adding contacts arrives in a future update."),
+        "the stub sentence survives verbatim"
     );
 }
 

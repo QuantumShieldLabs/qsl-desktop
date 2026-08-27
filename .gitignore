@@ -1,2 +1,10 @@
 /target
 /src-tauri/gen/
+
+# NA-0764 (`D-0041`) — Python bytecode caches. `scripts/ci/*.py` is run in place by CI
+# and locally, so CPython drops a `__pycache__/` beside it; one .pyc reached a commit
+# through a `git add -A` and carried an embedded ABSOLUTE BUILD PATH into the tree.
+# ⚠ The infra-literal scanner did NOT catch it: it reads text and a .pyc is binary, so
+# it reported the tree clean while that path sat inside the artifact. That blindness is
+# filed for a later lane; this rule stops the artifact reaching the tree at all.
+__pycache__/
