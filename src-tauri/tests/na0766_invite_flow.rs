@@ -411,3 +411,52 @@ fn na0766_a_comment_cannot_satisfy_a_copy_seal() {
         );
     }
 }
+
+/// **RULING Q4 — THE CAP EXPLANATION IS DECIDED ONCE, AT OPEN, AND NEVER AGAIN.**
+///
+/// This is the one boundary at which the invite window used to MOVE.
+/// `inviteRefresh()` runs on open AND after every mint, and it used to recompute
+/// the cap and toggle the explanation line — so minting the TENTH invite made a
+/// line APPEAR after activation, in direct contradiction of item 6's "nothing
+/// appears ... on activation".
+///
+/// ⚠⚠ THIS SEAL EXISTS BECAUSE THE RUNTIME INSTRUMENT CANNOT REACH THE REAL
+/// BOUNDARY, AND THAT LIMIT IS STATED RATHER THAN PAPERED OVER. Reaching it for
+/// real needs TEN live invites, which needs a successful `invite_create`, which
+/// needs a relay — and the desktop harness has no fixture relay (`ENG-0226`,
+/// open). `f_k` therefore drives the adopt path with the cap latched and proves
+/// the window does not move; what it CANNOT do is prove that no OTHER code path
+/// re-shows the line. That is a structural fact, so it is sealed structurally:
+/// the toggle exists EXACTLY ONCE and lives in the OPENER.
+///
+/// ⚠ MUST GO RED IF: a second toggle appears anywhere, or the one toggle moves
+/// back into the refresh — which is precisely the shape of the retired defect.
+#[test]
+fn na0766_the_cap_line_is_decided_once_at_open() {
+    let js = ui_file("main.js");
+    // Assembled at runtime: this seal must not be satisfiable by its own prose.
+    let toggle = format!("byId(\"invite-cap-{}\").classList.toggle", "full");
+
+    assert_eq!(
+        js.matches(toggle.as_str()).count(),
+        1,
+        "the cap explanation is toggled in EXACTLY ONE place — a second site is how it \
+         starts appearing as a RESULT of activation again"
+    );
+
+    fn body<'a>(js: &'a str, sig: &str) -> &'a str {
+        let a = js.find(sig).unwrap_or_else(|| panic!("`{sig}` not found"));
+        let rest = &js[a..];
+        let e = rest.find("\n}\n").expect("function ends");
+        &rest[..e]
+    }
+    assert!(
+        body(&js, "async function openInviteModal() {").contains(toggle.as_str()),
+        "and that one place is the OPENER, so the decision is made once per window"
+    );
+    assert!(
+        !body(&js, "async function inviteRefresh() {").contains(toggle.as_str()),
+        "and it is NOT in the refresh, which runs again after every mint — that is the \
+         exact code path by which the tenth invite used to make the window grow"
+    );
+}
