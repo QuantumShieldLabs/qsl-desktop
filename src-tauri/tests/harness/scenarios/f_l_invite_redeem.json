@@ -7,7 +7,7 @@
   },
   {
    "op": "note",
-   "text": "NA-0756 (D-0037, R387) \u2014 INVITE LANE B: THE REDEEM FLOW. Fresh profile: onboard first, because invite_redeem needs an unlocked vault AND an identity (require_unlocked_here at facade/mod.rs:794, then identity_resolved_self_label at invite/mod.rs:1042)."
+   "text": "NA-0756 (D-0037, R387) — INVITE LANE B: THE REDEEM FLOW. Fresh profile: onboard first, because invite_redeem needs an unlocked vault AND an identity (require_unlocked_here at facade/mod.rs:794, then identity_resolved_self_label at invite/mod.rs:1042)."
   },
   {
    "op": "clear_type",
@@ -72,7 +72,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 TRIGGER (b) \u2014 the finish scan fires on the CHOOSER's opener, not on the create modal's (R387 \u00a7S6). Item 1 retargets BOTH entries here, so a trigger left on openInviteModal would have covered only the create branch."
+   "text": "⚠ TRIGGER (b) — the finish scan fires on the CHOOSER's opener, not on the create modal's (R387 §S6). Item 1 retargets BOTH entries here, so a trigger left on openInviteModal would have covered only the create branch."
   },
   {
    "op": "click",
@@ -94,7 +94,7 @@
   },
   {
    "op": "note",
-   "text": "Z6 \u2014 the trigger is OBSERVABLE, and every comparison is BY EQUALITY on the extracted value, never `contains`. With no relay configured the scan short-circuits: pending=0, scanned=0, finished=0, and the WHY names which trigger ran."
+   "text": "Z6 — the trigger is OBSERVABLE, and every comparison is BY EQUALITY on the extracted value, never `contains`. With no relay configured the scan short-circuits: pending=0, scanned=0, finished=0, and the WHY names which trigger ran."
   },
   {
    "op": "exec",
@@ -103,7 +103,7 @@
   },
   {
    "op": "note",
-   "text": "Z1 \u2014 THE CHOOSER'S COPY, the operator's own authored sentence, pinned as RENDERED text (R387 \u00a7S5: seals pin at the DOM textContent level, which is immune to the entity-versus-literal choice)."
+   "text": "Z1 — THE CHOOSER'S COPY, the operator's own authored sentence, pinned as RENDERED text (R387 §S5: seals pin at the DOM textContent level, which is immune to the entity-versus-literal choice)."
   },
   {
    "op": "read_text",
@@ -112,7 +112,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0\u26a0 v2 \u2014 THE ROW COPY IS PINNED PER LINE, NOT PER ROW. WebDriver's element text returns the RENDERED text of the whole subtree, so a single pin on the row would concatenate title and subtitle and could stay green while either line drifted. Two selectors per row is the honest instrument, and it is STRONGER than the v1 pin it replaces: four pins where there were two."
+   "text": "⚠⚠ v2 — THE ROW COPY IS PINNED PER LINE, NOT PER ROW. WebDriver's element text returns the RENDERED text of the whole subtree, so a single pin on the row would concatenate title and subtitle and could stay green while either line drifted. Two selectors per row is the honest instrument, and it is STRONGER than the v1 pin it replaces: four pins where there were two."
   },
   {
    "op": "read_text",
@@ -145,7 +145,7 @@
   },
   {
    "op": "note",
-   "text": "Z2 \u2014 GEOMETRY, not just presence. The v4 lesson was that presence was pinned and geometry was not, and the banked same-row markup shipped stacked. The surface width is read from the RESOLVED style: `.modal` is the v5 shared 500px class and it is expressed exactly once in the stylesheet."
+   "text": "Z2 — GEOMETRY, not just presence. The v4 lesson was that presence was pinned and geometry was not, and the banked same-row markup shipped stacked. The surface width is read from the RESOLVED style: `.modal` is the v5 shared 500px class and it is expressed exactly once in the stylesheet."
   },
   {
    "op": "exec",
@@ -154,7 +154,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0\u26a0 v2 \u2014 GEOMETRY IS ASSERTED AS LAYOUT, NOT AS PRESENCE. This is the exact defect class v1 shipped: the copy and the structure were pinned, the LAYOUT was not, and the surface went out with both controls packed onto one line at content width. Presence pins cannot see that. So the five rows of the chooser are measured from their RENDERED bounding boxes \u2014 each spans the content box, and each starts at or below the previous one's bottom, which is what 'stacked, never side-by-side' means when a machine has to check it."
+   "text": "⚠⚠ v2 — GEOMETRY IS ASSERTED AS LAYOUT, NOT AS PRESENCE. This is the exact defect class v1 shipped: the copy and the structure were pinned, the LAYOUT was not, and the surface went out with both controls packed onto one line at content width. Presence pins cannot see that. So the five rows of the chooser are measured from their RENDERED bounding boxes — each spans the content box, and each starts at or below the previous one's bottom, which is what 'stacked, never side-by-side' means when a machine has to check it."
   },
   {
    "op": "exec",
@@ -163,7 +163,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 THE NEGATIVE HALF, LIVE: no descendant of the chooser is a side-by-side row, and the retired v1 shape cannot be reached from the rendered DOM either. Counted, not eyeballed."
+   "text": "⚠ THE NEGATIVE HALF, LIVE: no descendant of the chooser is a side-by-side row, and the retired v1 shape cannot be reached from the rendered DOM either. Counted, not eyeballed."
   },
   {
    "op": "exec",
@@ -183,7 +183,7 @@
   },
   {
    "op": "note",
-   "text": "Z2 (cont.) \u2014 the SAME class on the form state, so the surface cannot resize between states. That per-state width defect is exactly what v5 cured for Lane A."
+   "text": "Z2 (cont.) — the SAME class on the form state, so the surface cannot resize between states. That per-state width defect is exactly what v5 cured for Lane A."
   },
   {
    "op": "exec",
@@ -192,12 +192,12 @@
   },
   {
    "op": "note",
-   "text": "Z1 \u2014 STATE 1's copy, operator-blessed, pinned as rendered."
+   "text": "Z1 — STATE 1's copy, operator-blessed, pinned as rendered."
   },
   {
    "op": "read_text",
    "sel": "#redeem-form .muted",
-   "literal": "Paste the invite code they sent you, and choose what to call them. You\u2019ll connect through their relay."
+   "literal": "Paste the invite code they sent you, and choose what to call them. You’ll connect through their relay."
   },
   {
    "op": "read_text",
@@ -212,7 +212,7 @@
   {
    "op": "read_text",
    "sel": "#redeem-name-hint",
-   "literal": "Stored only on this device \u2014 never sent anywhere."
+   "literal": "Stored only on this device — never sent anywhere."
   },
   {
    "op": "read_text",
@@ -221,7 +221,7 @@
   },
   {
    "op": "note",
-   "text": "Z3 \u2014 THE SINGLE COMMIT. Connect is DISABLED until the code is non-empty AND the name is admissible to the engine's own predicate. R387 \u00a7S3 amended Z3 from 'non-empty' to this."
+   "text": "Z3 — THE SINGLE COMMIT. Connect is DISABLED until the code is non-empty AND the name is admissible to the engine's own predicate. R387 §S3 amended Z3 from 'non-empty' to this."
   },
   {
    "op": "prop_eq",
@@ -237,7 +237,7 @@
   },
   {
    "op": "note",
-   "text": "Code alone is not enough \u2014 the name is still empty."
+   "text": "Code alone is not enough — the name is still empty."
   },
   {
    "op": "prop_eq",
@@ -248,7 +248,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0\u26a0 Z3's CONTROL PERFORMS THE OPERATOR-CLASS DEFECT EXACTLY (R387 \u00a7S3, the NA-0755 label-clear precedent). `channel_label_ok` (qsc lib.rs:2568-2573) admits ONLY [A-Za-z0-9_#-], and the alias is NOT validated until 25 lines AFTER the invite burns. Typing the most natural thing in a field labelled 'Their name' would have destroyed the user's one-time code. Connect MUST stay disabled."
+   "text": "⚠⚠ Z3's CONTROL PERFORMS THE OPERATOR-CLASS DEFECT EXACTLY (R387 §S3, the NA-0755 label-clear precedent). `channel_label_ok` (qsc lib.rs:2568-2573) admits ONLY [A-Za-z0-9_#-], and the alias is NOT validated until 25 lines AFTER the invite burns. Typing the most natural thing in a field labelled 'Their name' would have destroyed the user's one-time code. Connect MUST stay disabled."
   },
   {
    "op": "type",
@@ -269,7 +269,7 @@
   {
    "op": "read_text",
    "sel": "#redeem-name-hint",
-   "literal": "Names here can use letters, numbers, and - _ # \u2014 no spaces. It stays on your device."
+   "literal": "Names here can use letters, numbers, and - _ # — no spaces. It stays on your device."
   },
   {
    "op": "note",
@@ -290,11 +290,11 @@
   {
    "op": "read_text",
    "sel": "#redeem-name-hint",
-   "literal": "Stored only on this device \u2014 never sent anywhere."
+   "literal": "Stored only on this device — never sent anywhere."
   },
   {
    "op": "note",
-   "text": "Z3 (cont.) \u2014 NO POST-CONNECT NAMING STEP EXISTS. The negative pin matches mockup-15's OLD SHIPPED FORM, not the bare words: the superseded two-step order had a step-2 'Connected' heading with its own name field. Neither may appear anywhere in the shipped UI."
+   "text": "Z3 (cont.) — NO POST-CONNECT NAMING STEP EXISTS. The negative pin matches mockup-15's OLD SHIPPED FORM, not the bare words: the superseded two-step order had a step-2 'Connected' heading with its own name field. Neither may appear anywhere in the shipped UI."
   },
   {
    "op": "exec",
@@ -303,7 +303,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0\u26a0 Z5 \u2014 THE WIRING, DRIVEN FOR REAL AND WITH NO RELAY. `malformed` is decided at invite/mod.rs:435-442, BEFORE any socket is opened (the burn is at :1081), so this is a genuine end-to-end drive of Connect -> invite_redeem -> the ruled copy. It is the likeliest real failure in the whole flow, because it is what a truncated paste produces."
+   "text": "⚠⚠ Z5 — THE WIRING, DRIVEN FOR REAL AND WITH NO RELAY. `malformed` is decided at invite/mod.rs:435-442, BEFORE any socket is opened (the burn is at :1081), so this is a genuine end-to-end drive of Connect -> invite_redeem -> the ruled copy. It is the likeliest real failure in the whole flow, because it is what a truncated paste produces."
   },
   {
    "op": "click",
@@ -324,11 +324,11 @@
   {
    "op": "read_text",
    "sel": "#redeem-error .hint",
-   "literal": "Check the whole code was pasted \u2014 it starts with QSLI-1-. If it looks complete, ask them to send it again."
+   "literal": "Check the whole code was pasted — it starts with QSLI-1-. If it looks complete, ask them to send it again."
   },
   {
    "op": "note",
-   "text": "\u26a0 And the flow does NOT advance on a failure: the form is still the visible state and nothing was provisioned. An error that silently moved the user to 'Request sent' would be the worst possible lie here."
+   "text": "⚠ And the flow does NOT advance on a failure: the form is still the visible state and nothing was provisioned. An error that silently moved the user to 'Request sent' would be the worst possible lie here."
   },
   {
    "op": "prop_eq",
@@ -346,7 +346,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0\u26a0 Z4 \u2014 THE SECURITY-FAILURE STATE. CLAIM BOUNDARY, stated honestly: the harness has no relay (ENG-0226), and commitment_mismatch / signature_invalid are produced only inside verify_redeemed_bundle, which needs a relay to answer. So THIS step drives the STATE'S RENDERING, not the engine path. The ENGINE path is driven for the first time ever on the protocol side (Z7(i), the facade drive) \u2014 the two halves together are the whole claim, and neither is dressed up as the other."
+   "text": "⚠⚠ Z4 — THE SECURITY-FAILURE STATE. CLAIM BOUNDARY, stated honestly: the harness has no relay (ENG-0226), and commitment_mismatch / signature_invalid are produced only inside verify_redeemed_bundle, which needs a relay to answer. So THIS step drives the STATE'S RENDERING, not the engine path. The ENGINE path is driven for the first time ever on the protocol side (Z7(i), the facade drive) — the two halves together are the whole claim, and neither is dressed up as the other."
   },
   {
    "op": "exec",
@@ -363,16 +363,16 @@
   {
    "op": "read_text",
    "sel": "#redeem-failed h2",
-   "literal": "Couldn\u2019t make a secure connection"
+   "literal": "Couldn’t make a secure connection"
   },
   {
    "op": "read_text",
    "sel": "#redeem-failed .callout",
-   "literal": "This code failed its security checks \u2014 that can mean a bug, or that someone tampered with the invite. Nothing was set up, and this code can no longer be used. Reach them another way and ask for a fresh invite."
+   "literal": "This code failed its security checks — that can mean a bug, or that someone tampered with the invite. Nothing was set up, and this code can no longer be used. Reach them another way and ask for a fresh invite."
   },
   {
    "op": "note",
-   "text": "R387 \u00a7S2a COMPOSED the two ruled texts rather than discarding either: the operator's blessed callout above ships VERBATIM, and one arm-specific line beneath carries the FIRST SENTENCE of the shipped R380 \u00a75 copy \u2014 so substituted KEYS stay distinguishable from altered FIELDS."
+   "text": "R387 §S2a COMPOSED the two ruled texts rather than discarding either: the operator's blessed callout above ships VERBATIM, and one arm-specific line beneath carries the FIRST SENTENCE of the shipped R380 §5 copy — so substituted KEYS stay distinguishable from altered FIELDS."
   },
   {
    "op": "read_text",
@@ -387,11 +387,11 @@
   {
    "op": "read_text",
    "sel": "#redeem-failed-detail",
-   "literal": "This invite's signature doesn't check out \u2014 its contents have been changed since it was made."
+   "literal": "This invite's signature doesn't check out — its contents have been changed since it was made."
   },
   {
    "op": "note",
-   "text": "\u26a0\u26a0 Z4's LOAD-BEARING NEGATIVE: there is NO Retry control in this state, and that is FACT rather than caution \u2014 the capability burned at invite/mod.rs:1081, BEFORE the verification at :1101, so a retry would return already-redeemed. Pinned as an ABSENCE across the whole state, by shipped form."
+   "text": "⚠⚠ Z4's LOAD-BEARING NEGATIVE: there is NO Retry control in this state, and that is FACT rather than caution — the capability burned at invite/mod.rs:1081, BEFORE the verification at :1101, so a retry would return already-redeemed. Pinned as an ABSENCE across the whole state, by shipped form."
   },
   {
    "op": "exec",
@@ -400,7 +400,7 @@
   },
   {
    "op": "note",
-   "text": "Z4 (cont.) \u2014 the callout renders in the WARNING accent, never red. The token is resolved BY THE SAME ENGINE and compared against the shipped --warn-* pair, never against a literal hex; and it is proven DIFFERENT from the danger token, which is what 'never red' actually means."
+   "text": "Z4 (cont.) — the callout renders in the WARNING accent, never red. The token is resolved BY THE SAME ENGINE and compared against the shipped --warn-* pair, never against a literal hex; and it is proven DIFFERENT from the danger token, which is what 'never red' actually means."
   },
   {
    "op": "exec",
@@ -409,7 +409,7 @@
   },
   {
    "op": "note",
-   "text": "Escape closes the surface and the pasted code is CLEARED \u2014 the one-time boundary's local half, held structurally: show() closes this overlay for the same reason it closes the mint's."
+   "text": "Escape closes the surface and the pasted code is CLEARED — the one-time boundary's local half, held structurally: show() closes this overlay for the same reason it closes the mint's."
   },
   {
    "op": "exec",
@@ -438,11 +438,11 @@
   },
   {
    "op": "note",
-   "text": "And a fresh open lands on the CHOOSER, not on whatever state was last showing \u2014 the same one-owner rule the v3 label-clear fix established for Lane A."
+   "text": "And a fresh open lands on the CHOOSER, not on whatever state was last showing — the same one-owner rule the v3 label-clear fix established for Lane A."
   },
   {
    "op": "note",
-   "text": "\u26a0 RETARGETED AT NA-0765 (`D-0042`): the Chats header's '+' is retired, so this drives the entry that replaced it. The property under test here \u2014 a fresh open lands on the CHOOSER \u2014 is unchanged; only the door is."
+   "text": "⚠ RETARGETED AT NA-0765 (`D-0042`): the Chats header's '+' is retired, so this drives the entry that replaced it. The property under test here — a fresh open lands on the CHOOSER — is unchanged; only the door is."
   },
   {
    "op": "click",
@@ -468,7 +468,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0\u26a0 v2 \u2014 CLOSE WORKS, AND IT IS THE ONLY NEW CONTROL THIS PASS WIRES. It dismisses the surface and returns the user to what was underneath. The load-bearing half is the NEGATIVE one: it must fire NO invite call. The chooser's OPENER is what runs the finish scan and stamps the overlay's dataset; `closeRedeemModal` never calls the stamper, so re-reading the stamp after the click is a real test \u2014 a close that reached any invite path would have re-stamped it, and the WHY would no longer name the open that preceded it."
+   "text": "⚠⚠ v2 — CLOSE WORKS, AND IT IS THE ONLY NEW CONTROL THIS PASS WIRES. It dismisses the surface and returns the user to what was underneath. The load-bearing half is the NEGATIVE one: it must fire NO invite call. The chooser's OPENER is what runs the finish scan and stamps the overlay's dataset; `closeRedeemModal` never calls the stamper, so re-reading the stamp after the click is a real test — a close that reached any invite path would have re-stamped it, and the WHY would no longer name the open that preceded it."
   },
   {
    "op": "click",
@@ -494,7 +494,7 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 AND NOTHING WAS INVITED. The stamp still reads the OPEN that preceded the close, with all three counters where the opener left them."
+   "text": "⚠ AND NOTHING WAS INVITED. The stamp still reads the OPEN that preceded the close, with all three counters where the opener left them."
   },
   {
    "op": "exec",
@@ -503,7 +503,7 @@
   },
   {
    "op": "note",
-   "text": "And the chooser is the state a NEXT open would land on \u2014 Close leaves the surface reset, exactly as Escape does."
+   "text": "And the chooser is the state a NEXT open would land on — Close leaves the surface reset, exactly as Escape does."
   },
   {
    "op": "prop_eq",
@@ -514,11 +514,11 @@
   },
   {
    "op": "note",
-   "text": "\u26a0 NOT DRIVEN HERE, stated so the coverage claim stays honest: a SUCCESSFUL redeem (state 2 'Request sent'), the relay-reported arms (not_found / revoked / expired_at_relay / already_used), and a finish that actually completes. All need a relay the harness does not have (ENG-0226, open). The green half is the operator's card; the engine half is the protocol-side facade drive."
+   "text": "⚠ NOT DRIVEN HERE, stated so the coverage claim stays honest: a SUCCESSFUL redeem (state 2 'Request sent'), the relay-reported arms (not_found / revoked / expired_at_relay / already_used), and a finish that actually completes. All need a relay the harness does not have (ENG-0226, open). The green half is the operator's card; the engine half is the protocol-side facade drive."
   },
   {
    "op": "note",
-   "text": "I6 (code-entry half) \u2014 NA-0765 (`D-0042`). \u26a0\u26a0 THIS VIEW HAD NO WAY OUT AT ALL \u2014 not an X, not a Back, not even a Close. Its only exits were Escape and the scrim, neither of which is on screen, so a user who chose 'I have a code' had nothing to click. Escape and the scrim ALREADY worked and are deliberately not re-proven here; what is new is that a way out is now VISIBLE."
+   "text": "══ NA-0766 (`D-0043`) — I8: THE CODE-ENTRY VIEW'S ONE EXIT ══ Items 2, 3 and 15, RE-AIMED FROM NA-0765's I6. ⚠⚠ THE HISTORY MATTERS AND THE RECORD CARRIES IT ACCURATELY: this view had NO exit at all before NA-0765 — not an X, not a Back, not a Close — so its only ways out were Escape and the scrim, neither of which is on screen. NA-0765 gave it an X and a Back. NA-0766 replaces BOTH with a single full-width Close beneath a full-width Connect, so every invite surface now reads the same. The three items are LOAD-BEARING ON EACH OTHER: removing the X and the Back before this Close existed would have put the view back in the trap NA-0765 found it in."
   },
   {
    "op": "click",
@@ -540,48 +540,45 @@
    "poll": 5
   },
   {
+   "op": "note",
+   "text": "BY ELEMENT, never by string (the NA-0765 lesson): the retired controls are ABSENT and the foot carries EXACTLY TWO controls."
+  },
+  {
    "op": "find_count",
    "sel": "#btn-redeem-x",
-   "expect": 1
+   "expect": 0
   },
   {
    "op": "find_count",
    "sel": "#btn-redeem-back",
+   "expect": 0
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-redeem-close3",
    "expect": 1
   },
   {
-   "op": "note",
-   "text": "BACK is a VIEW SWITCH inside ONE overlay: the chooser and the code entry are siblings under `#redeem-overlay`. So the overlay must STAY OPEN and the chooser must come back \u2014 both halves asserted, because an overlay that closed would look like a working Back while actually being an X."
-  },
-  {
-   "op": "click",
-   "sel": "#btn-redeem-back"
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#choose-view",
-   "prop": "className",
-   "expect": "",
-   "poll": 5
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#redeem-overlay",
-   "prop": "className",
-   "expect": "overlay",
-   "poll": 5
+   "op": "exec",
+   "script": "var f=document.getElementById('redeem-form');var b=f.querySelectorAll('button');var ids=[];for(var i=0;i<b.length;i++){if(b[i].getClientRects().length)ids.push(b[i].id);}return JSON.stringify({visible:ids});",
+   "expect": "{\"visible\":[\"btn-redeem-connect\",\"btn-redeem-close3\"]}"
   },
   {
    "op": "note",
-   "text": "X CLOSES THE FLOW, and it is wired to the SAME dismissal Escape uses, so the two cannot drift apart."
+   "text": "⚠ BOTH RUN FULL WIDTH, and the Close sits BENEATH Connect — measured as geometry, not asserted as CSS. Equal widths, matching the content box, and Close strictly below."
+  },
+  {
+   "op": "exec",
+   "script": "var f=document.getElementById('redeem-form');var c=document.getElementById('btn-redeem-connect').getBoundingClientRect();var x=document.getElementById('btn-redeem-close3').getBoundingClientRect();var inner=f.getBoundingClientRect().width;return JSON.stringify({connectFull:Math.abs(c.width-inner)<1.5,closeFull:Math.abs(x.width-inner)<1.5,stacked:x.top>=c.bottom-0.5});",
+   "expect": "{\"connectFull\":true,\"closeFull\":true,\"stacked\":true}"
+  },
+  {
+   "op": "note",
+   "text": "AND THE CLOSE ACTUALLY CLOSES, through the SAME dismissal Escape and the scrim take — which is what makes it impossible for the visible exit and the invisible ones to disagree."
   },
   {
    "op": "click",
-   "sel": "#btn-choose-redeem"
-  },
-  {
-   "op": "click",
-   "sel": "#btn-redeem-x"
+   "sel": "#btn-redeem-close3"
   },
   {
    "op": "prop_eq",
@@ -589,6 +586,15 @@
    "prop": "className",
    "expect": "overlay hidden",
    "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "RULING Q1's ONE LINE — the failure view is otherwise OUT OF SCOPE and its copy is untouched, but its foot takes the item-11 shape so the rule reads the same on every invite surface: the action above, the full-width Close last."
+  },
+  {
+   "op": "exec",
+   "script": "var v=document.getElementById('redeem-failed');var d=document.getElementById('btn-redeem-copydetails');var c=document.getElementById('btn-redeem-close2');return JSON.stringify({copyFull:d.className.indexOf('full')>-1,closeFull:c.className.indexOf('full')>-1,closeStacked:c.className.indexOf('stacked')>-1,order:v.innerHTML.indexOf('btn-redeem-copydetails')<v.innerHTML.indexOf('btn-redeem-close2')});",
+   "expect": "{\"copyFull\":true,\"closeFull\":true,\"closeStacked\":true,\"order\":true}"
   },
   {
    "op": "teardown"

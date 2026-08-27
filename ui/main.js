@@ -2083,6 +2083,18 @@ let inviteCopyTimer = null;
 // user sees is READ BACK from `invite_list`, never printed from this constant.
 const INVITE_TTL_SECS = 259200;
 const INVITE_SOFT_CAP = 10;
+// NA-0766 (`D-0043`) -- ITEM 7. The empty slot's sentence lives HERE and is written into the box
+// by every reset path, so the markup's initial text and the code's reset text cannot drift into
+// two different sentences. ⚠ ONE invite per window (item 12): `inviteMinted` latches on a
+// successful mint and only a fresh open clears it, which is what makes burning a second slot a
+// deliberate act rather than a second click.
+const INVITE_SLOT_EMPTY = "Your invite code will appear here after you activate.";
+let inviteMinted = false;
+// The two conditions that are FIXED for the lifetime of one open window. `capFull` is deliberately
+// NOT recomputed after a mint (ruling Q4 = A): recomputing it is what let the cap line APPEAR on
+// activation at the tenth invite, which is the one boundary where the window used to move.
+let inviteNoRelay = false;
+let inviteCapFull = false;
 
 // ⚠⚠ THE CLIPBOARD, AND WHY IT IS SHAPED LIKE THIS — MEASURED, NOT ASSUMED.
 //
@@ -2282,18 +2294,60 @@ function closeInviteModal() {
   const ov = byId("invite-overlay");
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
-  byId("invite-code").textContent = "";
+  inviteResetSlot();
   byId("invite-label").value = "";
+  byId("invite-label").readOnly = false;
   inviteId = null;
+  inviteMinted = false;
   clearInviteErrors();
   inviteShowMint();
 }
 
+// NA-0766 (`D-0043`) -- ITEM 7. The slot returns to its EMPTY state: the sentence back in the
+// box, the minted border off, the empty treatment on. One function owns it and every reset path
+// calls it, for the same reason `inviteEnterMintFresh` exists -- two paths that clear the same
+// thing differently is precisely the defect v3 had to fix once already.
+// ⚠⚠ NA-0766 (`D-0043`) -- EVERY DOM CHANGE A SUCCESSFUL MINT MAKES, IN ONE NAMED PLACE.
+// This is the exact counterpart of `inviteResetSlot`, and it is a named function rather than a
+// run of statements inside the click handler FOR A MEASURABLE REASON: the desktop harness has no
+// fixture relay (`ENG-0226`, open), so a scenario cannot make `invite_create` succeed and could
+// not otherwise reach the post-mint state at all. With the transition owned by one function, the
+// gui-driver drives the PRODUCT'S OWN CODE with a synthetic code -- the same idiom `f_n` already
+// uses to reach the contacts render -- instead of a test re-implementing what the product does,
+// which would prove only that the test agrees with itself.
+function inviteAdoptCode(code) {
+  // ITEM 7: the code lands IN the slot that was already on screen. The box swaps `.empty` for
+  // `.minted` -- a colour change, not a layout one, which is what lets item 6 hold.
+  const box = byId("invite-code");
+  box.textContent = code;
+  box.classList.remove("empty");
+  box.classList.add("minted");
+  // ⚠ ITEM 12: ONE INVITE PER WINDOW, and this is the line that makes burning a second slot
+  // deliberate. Before this lane the handler set `disabled = true` and then `inviteRefresh()`
+  // RE-ASSIGNED it from the relay and cap alone -- so with a relay set and the cap unreached the
+  // control came BACK, and a second press minted a second invite and burned a second slot. The
+  // latch is read by the ONE decision, so no later refresh can undo it.
+  inviteMinted = true;
+  // ITEM 12: the field becomes read-only showing what the invite was actually minted with, so the
+  // window keeps answering "who was this for?" without offering an edit that could no longer
+  // change anything.
+  byId("invite-label").readOnly = true;
+  inviteSyncActivate();
+}
+
+function inviteResetSlot() {
+  const box = byId("invite-code");
+  box.textContent = INVITE_SLOT_EMPTY;
+  box.classList.add("empty");
+  box.classList.remove("minted");
+}
+
+// NA-0766 (`D-0043`) -- ITEM 6. There is no pre/post pair to swap any more: the window renders
+// its final shape from open. This function now only chooses BETWEEN the two views of the overlay
+// (mint vs list), which is a different thing from transforming one of them.
 function inviteShowMint() {
   byId("invite-mint").classList.remove("hidden");
   byId("invite-list-view").classList.add("hidden");
-  byId("invite-pre").classList.remove("hidden");
-  byId("invite-post").classList.add("hidden");
 }
 
 // ⚠⚠ v3 — ENTERING THE MINT FRESH. The operator's flight found that a typed label SILENTLY RODE
@@ -2305,16 +2359,14 @@ function inviteShowMint() {
 // again — which is how the defect existed in the first place.
 function inviteEnterMintFresh() {
   byId("invite-label").value = "";
-  byId("invite-code").textContent = "";
+  byId("invite-label").readOnly = false;
+  inviteMinted = false;
+  inviteResetSlot();
   byId("invite-meta-note").textContent = "Invite code";
   byId("invite-meta-expiry").textContent = "";
   byId("invite-copy-note").classList.add("hidden");
   inviteId = null;
   inviteShowMint();
-}
-function inviteShowPost() {
-  byId("invite-pre").classList.add("hidden");
-  byId("invite-post").classList.remove("hidden");
 }
 function inviteShowList() {
   byId("invite-mint").classList.add("hidden");
@@ -2335,20 +2387,45 @@ async function inviteRefresh() {
     inviteRows = [];
   }
   const live = inviteRows.filter((r) => r.state === "active").length;
-  byId("invite-count").textContent = String(live);
+  // NA-0766 (`D-0043`) -- ITEM 5. The write to the pill's count span retires WITH the pill that
+  // contained it. Keeping it would null-dereference and take the whole surface down, so the two
+  // are one act, not two (ruling sec 2(b)). ⚠ The retired id is DESCRIBED, never spelled: a
+  // comment recording a removal re-plants the removed thing's needle (`ENG-0235`, and this lane's
+  // own ruling Q5).
   byId("invite-slots").textContent = `${live} of ${INVITE_SOFT_CAP} slots used — codes expire on their own`;
   let relayUrl = "";
   try {
     const cfg = await invoke("relay_config_get");
     relayUrl = cfg.relay_url || "";
   } catch (_) { relayUrl = "" ; }
-  const noRelay = relayUrl === "";
-  const capFull = live >= INVITE_SOFT_CAP;
-  // An enabled button whose only outcome is an error is the control-that-cannot-succeed shape.
-  byId("btn-invite-activate").disabled = noRelay || capFull;
-  byId("invite-no-relay").classList.toggle("hidden", !noRelay);
-  byId("invite-cap-full").classList.toggle("hidden", !capFull || noRelay);
+  inviteNoRelay = relayUrl === "";
+  // ⚠ NA-0766 (`D-0043`) -- RULING Q4 = (A). The cap is READ here but its EXPLANATION LINE is not
+  // toggled here, and the `#invite-cap-full` line is never shown from inside a live window. The
+  // old code recomputed it after every mint, so minting the TENTH invite made a line APPEAR after
+  // activation -- the one boundary at which this window used to move. With item 12 disabling
+  // Activate after a mint, the explanation is redundant at exactly the moment it would have
+  // appeared, and the cap stays enforced by the disabled control rather than by prose.
+  inviteCapFull = live >= INVITE_SOFT_CAP;
+  inviteSyncActivate();
+  byId("invite-no-relay").classList.toggle("hidden", !inviteNoRelay);
   return relayUrl;
+}
+
+// ⚠⚠ NA-0766 (`D-0043`) -- ITEM 10, AND ITS SHAPE IS FORCED (ruling sec 2(c)). This is the ONLY
+// place in the file that decides whether Activate is enabled, and the name term is folded INTO
+// that one decision rather than placed beside it. A separate name gate would be silently
+// overwritten the next time `inviteRefresh()` ran -- which it does on open AND after every mint.
+// Four causes, ONE assignment:
+//   no relay        -- the control cannot succeed
+//   cap reached     -- the control cannot succeed
+//   name empty      -- ITEM 10: a name is REQUIRED, and the disabled control is the WHOLE
+//                      enforcement. There is no error text, by design.
+//   already minted  -- ITEM 12: one invite per window.
+// ⚠ The emptiness test TRIMS first, so a field holding only spaces is empty. That matches how
+// the label has always been READ at mint time, so the gate and the mint cannot disagree.
+function inviteSyncActivate() {
+  const nameOk = byId("invite-label").value.trim() !== "";
+  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;
 }
 
 async function openInviteModal() {
@@ -2357,7 +2434,14 @@ async function openInviteModal() {
   byId("btn-invite-activate").textContent = HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate";
   byId("invite-overlay").classList.remove("hidden");
   await inviteRefresh();
+  // RULING Q4 = (A): the cap explanation is decided ONCE, at open, and held for the lifetime of
+  // this window. It can therefore never appear as a RESULT of activation, which is the property
+  // item 6 states and `I4` measures at the tenth-invite boundary.
+  byId("invite-cap-full").classList.toggle("hidden", !inviteCapFull || inviteNoRelay);
 }
+
+// ITEM 10: the gate follows the field, so the control answers the user as they type.
+byId("invite-label").addEventListener("input", inviteSyncActivate);
 
 // `invite_create` returns the CODE, not the id Cancel needs, so the id is recovered by
 // COMPOSITION from an `invite_list` diff — the same call that carries the REAL expiry.
@@ -2396,6 +2480,9 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
   clearInviteErrors();
   const label = byId("invite-label").value.trim();
   const btn = byId("btn-invite-activate");
+  // In-flight guard. Unconditional and deliberately so -- it is not a DECISION about whether the
+  // control may be enabled, which is `inviteSyncActivate`'s single job, but a latch for the
+  // duration of one call.
   btn.disabled = true;
 
   let relayUrl = "";
@@ -2430,18 +2517,19 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
   try {
     code = await mint;
   } catch (e) {
-    btn.disabled = false;
+    // A failed mint burns nothing, so the window returns to whatever the ONE decision says --
+    // never to a bare `true`, which would have re-enabled it with an empty name.
+    inviteSyncActivate();
     renderInviteError("invite-error-mint", e && e.code, e && e.detail, "create");
     await inviteRefresh();
     return;
   }
-  byId("invite-code").textContent = code;
+  inviteAdoptCode(code);
   // v3: on success the link itself is the affordance and no note is needed; the note exists
   // only to say when the single gesture could NOT copy, and it points at the link.
   const note = byId("invite-copy-note");
   note.textContent = copied ? "" : "Copy didn't complete — use the copy code link below.";
   note.classList.toggle("hidden", copied);
-  inviteShowPost();
   await adoptMinted(before);
   await inviteRefresh();
 });
@@ -2476,9 +2564,13 @@ byId("btn-invite-copy").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); inviteCopyLink(); }
 });
 
-// ⚠ v4: the "Cancel Invite" handler is REMOVED with its button. The single kill mechanism is
-// Revoke in the list — one word, one place. Mid-mint regret is Review invites → Revoke, one
+// ⚠ v4: the mid-mint cancel handler is REMOVED with its button. The single kill mechanism is
+// Revoke in the list — one word, one place. Mid-mint regret is the invites list → Revoke, one
 // extra click for a rare case, and that trade is recorded rather than lost.
+// ⚠⚠ NA-0766 (`D-0043`, ruling Q5): this comment previously SPELLED the retired control's label.
+// Its twin in the markup was the sole support for a copy assertion that had been unfalsifiable
+// since v4 — passing on the explanation of the very deletion it denied. Both are now DESCRIBED
+// rather than spelled, which is the general cure `ENG-0235` names.
 
 // ── the list view — THE REFERENCE MARKUP GOVERNS (v3) ─────────────────────
 //
@@ -2596,32 +2688,33 @@ byId("invite-rows").addEventListener("click", async (ev) => {
   }
 });
 
-byId("btn-invite-review").addEventListener("click", async () => {
+// NA-0766 (`D-0043`) -- ITEMS 5 and 14. The slot-counter pill and the fresh-mint button are gone,
+// and their handlers go with them. The list is now reached from the Contacts pane's link, and a
+// fresh mint is Close then "+" -- navigation lives in ONE place instead of being duplicated inside
+// the modals. ⚠ Their labels are DESCRIBED, never spelled (`ENG-0235` / ruling Q5).
+// ⚠ `inviteEnterMintFresh` is NOT orphaned by this: `openInviteModal` still calls it, which is
+// the path that keeps a typed label from riding a later mint (the v3 defect).
+
+// ITEM 1: the Contacts pane's link is the ONE route to the list. It opens the overlay on the list
+// view directly, so the user lands where the link said they would.
+byId("btn-contacts-review").addEventListener("click", async () => {
   clearInviteErrors();
+  byId("invite-overlay").classList.remove("hidden");
   await inviteRefresh();
   await renderInviteList();
   inviteShowList();
 });
-byId("btn-invite-back").addEventListener("click", async () => {
-  clearInviteErrors();
-  inviteEnterMintFresh();     // ⚠ the v3 fix: this path is the one that leaked the old label
-  await inviteRefresh();
+byId("btn-contacts-review").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); byId("btn-contacts-review").click(); }
 });
 // NA-0765 (`D-0042`): the Chats "+" and its listener retire together — adding people is
 // a Contacts act. `#btn-contacts-add` and the welcome button carry the flow.
+// NA-0766 (`D-0043`) -- ITEMS 2, 3 and 4. The corner X and the Back are gone from this overlay
+// and this single full-width Close is its ONE exit control. It reuses `closeInviteModal`, which
+// is also what Escape and the scrim call -- so the visible exit and the invisible ones cannot
+// drift apart. NA-0765 wired the X to that same closer for exactly this reason; the property
+// survives its control.
 byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
-// ── NA-0765 (`D-0042`) — B4: X AND BACK ON THE INVITE-CREATION VIEW ─────────────────
-// X is the visible form of Escape, wired to the same closer.
-byId("btn-invite-x").addEventListener("click", () => closeInviteModal());
-// ⚠ BACK HERE IS NOT THE SAME GESTURE AS BACK ON THE CODE-ENTRY VIEW, and the difference
-// is structural rather than stylistic: `btn-choose-create` HIDES `#redeem-overlay` before
-// opening `#invite-overlay`, so returning to the chooser has to close this overlay and
-// re-open that one. Measured before it was written. Re-opening the chooser runs its own
-// surface-open trigger, which is the shipped behaviour of that opener and not new here.
-byId("btn-invite-back-chooser").addEventListener("click", async () => {
-  closeInviteModal();
-  await openRedeemChooser();
-});
 byId("invite-overlay").addEventListener("click", (ev) => {
   if (ev.target === byId("invite-overlay")) closeInviteModal();
 });
@@ -2904,13 +2997,16 @@ function renderContactsList() {
   }
   byId("contacts-empty").classList.toggle("hidden", contactsRows.length > 0);
 
-  // I6': 0 / 1 / n. At zero the line is HIDDEN rather than reading "0 invites".
-  const hint = byId("contacts-hint");
-  hint.classList.toggle("hidden", contactsOutstanding === 0);
-  hint.textContent =
-    contactsOutstanding === 1
-      ? "1 invite outstanding."
-      : `${contactsOutstanding} invites outstanding.`;
+  // ⚠ NA-0766 (`D-0043`) -- ITEM 1. The outstanding-count line is GONE from the pane; the
+  // "review invites" link stands in its place and carries NO count, by the operator's variant-B
+  // ruling, taken knowingly. The link is ALWAYS VISIBLE (ruling Q2 = A) and therefore needs no
+  // render pass here at all.
+  // ⚠⚠ CONSEQUENCE, NAMED RATHER THAN CARRIED SILENTLY (ruling Q2): `contactsOutstanding` and the
+  // `invite_list` call that computes it in `refreshContacts()` are now DEAD -- nothing reads them
+  // and no live coupling depends on them. They are LEFT IN PLACE because removing them is outside
+  // this lane's ordered edit set. This comment exists so the next reader does not mistake dead
+  // code for a coupling worth preserving, and does not "discover" it as a defect: it is a
+  // consequence of a blessed change, not a bug.
 }
 
 const CONTACT_DOT = {
@@ -3416,17 +3512,13 @@ byId("btn-choose-redeem").addEventListener("click", () => {
 // agreement because there is nothing here. ⚠ It fires NO invite call — the finish scan rides
 // the chooser's OPENER, never its close.
 byId("btn-choose-close").addEventListener("click", closeRedeemModal);
-// ── NA-0765 (`D-0042`) — B4: THE CODE-ENTRY VIEW GETS A VISIBLE WAY OUT ──────────────
-// ⚠ IT HAD NONE. Not an X, not a Back, not even a Close: once "I have a code" was chosen
-// the only exits were Escape and the scrim, neither of which is on screen. Escape and the
-// scrim ALREADY worked and are untouched — X is simply the visible form of what Escape
-// does, wired to the SAME `closeRedeemModal` so the two can never disagree.
-byId("btn-redeem-x").addEventListener("click", closeRedeemModal);
-// Back is a view switch inside ONE overlay — the chooser and the code entry are siblings
-// under `#redeem-overlay`. It deliberately does NOT clear the pasted code: backing up to
-// look at the other choice is not the same act as abandoning the flow, and `closeRedeemModal`
-// remains the one place that clears.
-byId("btn-redeem-back").addEventListener("click", () => redeemShow("choose-view"));
+// ── NA-0766 (`D-0043`) — ITEMS 2, 3 AND 15: ONE EXIT, AND IT IS A CLOSE ──────────────
+// The code-entry view's X and Back are gone and a full-width Close sits beneath a full-width
+// Connect. ⚠ THE THREE ITEMS ARE LOAD-BEARING ON EACH OTHER: removing the X and the Back before
+// this Close existed would have left this screen with NO visible exit at all -- which is the
+// state NA-0765 found it in and cured with an X. Close reuses `closeRedeemModal`, the one
+// dismissal Escape and the scrim already take, so all three agree by construction.
+byId("btn-redeem-close3").addEventListener("click", closeRedeemModal);
 byId("redeem-code").addEventListener("input", redeemSyncConnect);
 byId("redeem-name").addEventListener("input", redeemSyncConnect);
 byId("btn-redeem-connect").addEventListener("click", redeemConnect);

@@ -206,6 +206,11 @@ label.inline { flex-direction: row; align-items: center; gap: var(--sp-2); white
 label.inline input[type="checkbox"] { width: 16px; height: 16px; }
 label.compact { flex-direction: row; align-items: center; gap: var(--sp-2); }
 .field-label { font-size: var(--fs-hint); color: var(--fg-muted); }
+/* NA-0766 (`D-0043`) -- ITEM 8. The local-only assurance, called out beside the caption in the
+   ACCENT token. The blessed layout renders it `var(--accent-text)` and the SHIPPED token of that
+   name carries the same value, so the layout authority and the colour authority agree and there
+   was nothing to reconcile. */
+.field-note-accent { color: var(--accent-text); }
 .inline-label { font-size: var(--fs-body); color: var(--fg-secondary); }
 input[type="password"], input[type="text"], input[type="number"] {
   background: var(--bg-inset); color: var(--fg);
@@ -224,6 +229,13 @@ input.num::-webkit-inner-spin-button { display: none; }
 input.invalid { border-color: var(--danger-border); }
 input.w-alias { width: 190px; }
 input.full { width: 100%; }
+/* NA-0766 (`D-0043`) -- ITEM 12. After activation the name field becomes READ-ONLY, showing what
+   the invite was actually minted with. The blessed layout draws that state as a DASHED border on
+   a transparent ground with the secondary foreground -- a field that plainly is not a field any
+   more, without moving or resizing. ⚠ Attribute-keyed, not class-keyed: `readonly` is the state
+   the browser and the accessibility tree already agree on, so styling it directly cannot drift
+   from the behaviour the way a parallel class would. */
+input[readonly] { background: transparent; border-style: dashed; color: var(--fg-secondary); }
 
 /* §3: the passphrase step — single column, 12px gaps, nothing between
    the two fields (items 1-2) */
@@ -262,6 +274,12 @@ button.acked, button.acked:disabled {
   background: transparent; border-color: var(--ok); color: var(--ok);
 }
 button.full { width: 100%; }
+/* NA-0766 (`D-0043`) -- THE ONE CLASS THIS LANE MINTS, named as such. Item 15 and ruling Q1 both
+   need a full-width control sitting DIRECTLY BENEATH another at the blessed gap. Neither shipped
+   idiom does it: `.ctlrow` is a FLEX ROW and puts them side by side, and `.choose-row` stacks but
+   carries a left-aligned two-line row's padding. Expressed ONCE and reused by both surfaces, so
+   the code-entry foot and the failure foot cannot drift into different geometries. */
+button.full.stacked { display: block; margin-top: var(--sp-3); }
 .btnrow { display: flex; gap: var(--sp-3); }
 .ctlrow { display: flex; align-items: center; gap: var(--sp-2); }
 
@@ -729,6 +747,11 @@ a.rm:hover { color: var(--fg); }
 .copy-row { display: flex; justify-content: flex-end; margin-top: var(--sp-2); }
 /* the minted code's accent border — the one-time value, shown once */
 .code-box.minted { border-color: var(--ok); }
+/* NA-0766 (`D-0043`) -- ITEM 7. The EMPTY slot: present from the moment the window opens, with
+   its own sentence in it, on the neutral border and the muted foreground. The difference between
+   empty and minted is a COLOUR difference only -- the box keeps its geometry across activation,
+   which is what lets item 6's "nothing shifts" be true of the code slot. */
+.code-box.empty { color: var(--fg-muted); font-family: inherit; word-break: normal; }
 
 /* The empty state: centred and quiet — the list answers "what is open", and nothing open is a
    legitimate answer rather than an error. */
@@ -779,7 +802,9 @@ a.rm.plain.copied { color: var(--ok); }
 
 /* ⚠ ONE LINE, ALWAYS. At the old width "← New invite" wrapped; the width change fixes the
    symptom and this fixes the property, so a future narrowing cannot reintroduce it. */
-button.nowrap { white-space: nowrap; }
+/* NA-0766 (`D-0043`) -- the list head's one-line rule RETIRED WITH ITS ELEMENT at item 14. A
+   rule whose only element is gone is dead CSS, and dead CSS is the fingerprint NA-0765 used to
+   prove a blessed row had been styled but never built. */
 
 /* Roomier rows at the new width. */
 .invite-row { padding: var(--sp-4); }
@@ -827,9 +852,14 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
    the same reason — a raw px here is how a design system starts drifting.
    ========================================================================== */
 
-/* The outstanding-invite hint. A quiet line, not a banner: it states standing
-   truth ("2 invites outstanding.") rather than reporting an outcome. */
-.contacts-hint { font-size: var(--fs-hint); color: var(--fg-muted); margin: 0 0 var(--sp-3); padding: 0 var(--sp-4); }
+/* NA-0766 (`D-0043`) -- ITEM 1. The outstanding-count hint's rule RETIRES WITH ITS ELEMENT.
+   Leaving it behind would be dead CSS, and dead CSS is exactly the fingerprint NA-0765 used to
+   prove a blessed row had been styled but never built -- so a rule whose only element is gone is
+   removed in the same act, not left for a later census to trip over.
+   The "review invites" link inherits the position and spacing the hint held, and takes its colour
+   and its no-underline from the shipped `a.rm.plain` idiom rather than re-minting either. It is
+   `display: block` because an inline anchor cannot hold the hint's block position. */
+#btn-contacts-review { display: block; margin: 0 0 var(--sp-3); padding: 0 var(--sp-4); }
 
 /* A row is MINIMAL by ruling R3: dot, name, and at most one small word. */
 .contact-row { display: flex; align-items: center; gap: var(--sp-3); border-radius: var(--radius-small); padding: var(--sp-3) var(--sp-4); margin: 0 var(--sp-2) var(--sp-1); cursor: default; }

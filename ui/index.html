@@ -169,8 +169,16 @@
           <button class="rail-btn tip" id="btn-contacts-add" data-tip="Add a contact" aria-label="Add a contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
         </div>
       </div>
-      <!-- I6': 0 / 1 / n. Hidden entirely at zero rather than rendering "0 invites". -->
-      <p id="contacts-hint" class="contacts-hint hidden"></p>
+      <!-- NA-0766 (`D-0043`) -- ITEM 1. The outstanding-count hint becomes NAVIGATION: a plain
+           blue text link, lowercase, never underlined, carrying NO count, in the position the
+           hint held. It reuses the shipped `a.rm.plain` text-link idiom rather than minting a
+           second one. ⚠ ALWAYS VISIBLE by ruling Q2 = (A): a navigation control that vanishes is
+           the clutter this lane removes, and an empty "Your invites" screen must stay reachable.
+           ⚠ CONSEQUENCE, NAMED RATHER THAN CARRIED SILENTLY: `contactsOutstanding` and the
+           `invite_list` call that feeds it are now DEAD. They are left in place because removing
+           them is outside the ordered edit set; nothing reads them, and no live coupling depends
+           on them. -->
+      <a class="rm plain" id="btn-contacts-review" role="button" tabindex="0">review invites</a>
       <div id="contacts-rows"></div>
       <p id="contacts-empty" class="empty-note hidden">No contacts yet. Use + to invite someone or enter a code.</p>
     </section>
@@ -441,63 +449,88 @@
     <div id="invite-mint">
       <div class="modal-head">
         <h2 id="invite-title">Invite someone</h2>
-        <!-- The slot counter is ALWAYS visible in BOTH states, so the cap can never ambush. -->
-        <button class="secondary" id="btn-invite-review">Review invites (<span id="invite-count">0</span> of 10) &rarr;</button>
-        <button class="rail-btn tip" id="btn-invite-x" data-tip="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <!-- NA-0766 (`D-0043`) -- ITEMS 2 and 5. The corner X and the slot-counter pill are BOTH
+             gone. Navigation lives in the Contacts pane now: "+" to create or enter, and the link
+             under the Contacts heading to review. ⚠ The pill CONTAINED a live count span and
+             the refresh wrote into that span; the write retires WITH the pill, because leaving it
+             would null-dereference and take the whole surface down (ruling sec 2(b)).
+             ⚠ THE RETIRED NAMES ARE DESCRIBED HERE AND DELIBERATELY NOT SPELLED. A comment that
+             RECORDS a removal re-plants the removed thing's needle, and a source-text scanner
+             cannot tell a comment from markup (`ENG-0235`). That hazard is this lane's own
+             ruling Q5, and it fired on the first draft of THIS block. -->
       </div>
 
-      <!-- ── before activation ── -->
-      <div id="invite-pre">
-        <span class="field-label" id="invite-label-caption">Who is this invite for? (optional &mdash; stays on this device)</span>
-        <input type="text" id="invite-label" class="full" autocomplete="off" spellcheck="false" placeholder="e.g. Dana" aria-labelledby="invite-label-caption">
-        <p class="hint">Your private note. It is never sent anywhere &mdash; it just reminds you who you meant this for.</p>
-        <div class="block"><button class="primary full" id="btn-invite-activate">Activate &amp; Copy</button></div>
+      <!-- ══ NA-0766 (`D-0043`) — ITEM 6: ONE WINDOW, NO TRANSFORM ═══════════════════════
+           The window renders its FINAL SHAPE from the moment it opens. The before/after pair of
+           containers is GONE and nothing is swapped: the code slot is present and empty before
+           activation, and activation writes into it. (Their ids are described, not spelled --
+           see the note in the modal head above.)
+
+           ⚠ THE PROPERTY IS ABOUT WHAT THE USER SEES (ruling Q4 = A), not merely about which
+           nodes exist. An inventory-only instrument cannot fail on "nothing appears", so `f_k`
+           compares the VISIBLE element set across activation and drives the slot count to the
+           cap, which is the one boundary where the old shape moved.
+
+           ⚠ BOUND, STATED RATHER THAN HIDDEN: item 6 governs the SUCCESSFUL activation. The
+           error banners and the copy-fallback note still surface on their failure paths, as they
+           always have — a failure that cannot show itself is a worse defect than a shape that
+           moves. `I4` therefore measures a successful mint. -->
+
+      <!-- ITEM 8 — the caption, with the local-only assurance called out in the ACCENT token.
+           ⚠ FOUR NON-BREAKING SPACES, taken from the blessed layout's own bytes: four literal
+           spaces collapse to one in HTML, so `&nbsp;` is the only form that RENDERS the drawn
+           gap. ITEM 9 — the private-note hint line beneath the field is DELETED: the
+           parenthetical says the same thing, in the place the eye already is. -->
+      <span class="field-label" id="invite-label-caption">Who is this invite for?&nbsp;&nbsp;&nbsp;&nbsp;<span class="field-note-accent">(stored only on this device)</span></span>
+      <input type="text" id="invite-label" class="full" autocomplete="off" spellcheck="false" placeholder="e.g. Dana" aria-labelledby="invite-label-caption">
+
+      <!-- The meta row sits ABOVE the code and names it: LEFT is "Invite for: <note>" when a note
+           was given, else plain "Invite code"; RIGHT carries the expiry. The row, the box and the
+           copy link travel as ONE island so the code reads as a single object.
+           ⚠ Both spans are present from open and only their TEXT changes on activation, so the
+           island satisfies item 6 without giving up the one-source-two-displays invariant. -->
+      <div class="code-island">
+        <div class="meta-line">
+          <span id="invite-meta-note">Invite code</span>
+          <span id="invite-meta-expiry"></span>
+        </div>
+        <!-- ITEM 7 — the slot is PRESENT AND EMPTY before activation, and says so in words. It
+             wears `.empty` until a code lands; that is a COLOUR change, not a layout one, which
+             is what lets the two states share one geometry. -->
+        <div class="code-box empty" id="invite-code" tabindex="0">Your invite code will appear here after you activate.</div>
+        <!-- ITEM 13 — UNCHANGED AND DELIBERATELY SO. The cycle (click → "copied" → revert →
+             reusable) was measured already shipped exactly as ordered; this lane's obligation is
+             to carry it UNBROKEN through the restructure, which is what `I5` pins. -->
+        <div class="copy-row">
+          <a class="rm plain" id="btn-invite-copy" role="button" tabindex="0">copy code</a>
+        </div>
+        <p class="hint hidden" id="invite-copy-note"></p>
+      </div>
+
+        <div class="callout" id="invite-warning"><strong>Only send this code to the person it&rsquo;s intended for&hellip;</strong> over a secure channel that you fully trust such as a text message, a call, or in person. It works only once, then dies. If unused, it expires on its own in <span id="invite-warn-days">3 days</span>.</div>
+
         <p id="invite-no-relay" class="hint hidden">Set a relay address in Settings &rarr; Relay before creating an invite.</p>
         <p id="invite-cap-full" class="hint hidden">You already have 10 invites waiting. Revoke one you no longer need, then create another.</p>
-        <div id="invite-error-mint" class="hidden">
-          <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
-          <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
-        </div>
+      <div id="invite-error-mint" class="hidden">
+        <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+        <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+      </div>
+      <div id="invite-error-post" class="hidden">
+        <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+        <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
       </div>
 
-      <!-- ── after activation, SAME view ── -->
-      <div id="invite-post" class="hidden">
-        <!-- v4: the meta row moves ABOVE the code. LEFT names what this is — "Invite for:
-             <note>" when a note was given, else plain "Invite code". RIGHT carries the expiry.
-             ⚠ The meta row, the box and the copy link travel as ONE island (`.code-island`)
-             with clear space above and below, so the code reads as a single object. -->
-        <div class="code-island">
-          <div class="meta-line">
-            <span id="invite-meta-note">Invite code</span>
-            <span id="invite-meta-expiry"></span>
-          </div>
-          <!-- ⚠ `.code-box` wraps and stays selectable. It is NOT the verification code's box,
-               whose nowrap + overflow:hidden pair produced NA-0753's silent clip — an invite
-               code is 133-154 characters, roughly twice as long. -->
-          <div class="code-box minted" id="invite-code" tabindex="0"></div>
-          <!-- One always-visible text link: BOTH the re-copy control and the recovery path when
-               the single-gesture copy could not copy. v4: PLAIN, never underlined; "copied"
-               renders green. An anchor, not a button element — the design system's tier rule has
-               no text-link category, and the tag is DESCRIBED rather than spelled because that
-               gate scans raw markup and does not skip comments. -->
-          <div class="copy-row">
-            <a class="rm plain" id="btn-invite-copy" role="button" tabindex="0">copy code</a>
-          </div>
-          <p class="hint hidden" id="invite-copy-note"></p>
-        </div>
-
-        <!-- ⚠ THE WARNING IS OPERATOR-AUTHORED AND VERBATIM. The leading clause renders bold.
-             The day figure comes from the SAME live invite value as the meta row above — one
-             source, two displays, so they cannot disagree. -->
-        <div class="callout" id="invite-warning"><strong>Only send this code to the person it&rsquo;s intended for&hellip;</strong> over a secure channel that you fully trust such as a text message, a call, or in person. It works only once, then dies. If unused, it expires on its own in <span id="invite-warn-days">3 days</span>.</div>
-        <!-- v4: "Cancel Invite" is REMOVED. The single kill mechanism is Revoke in the list —
-             one word, one place. Mid-mint regret is Review invites → Revoke: one extra click
-             for a rare case, recorded as chosen rather than lost. -->
-        <div id="invite-error-post" class="hidden">
-          <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
-          <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
-        </div>
-      </div>
+      <!-- ITEM 11 — Activate & Copy sits at the BOTTOM, directly above Close.
+           ⚠ IT IS THE LAST CHILD OF `#invite-mint`, NOT A MEMBER OF THE SHARED FOOTER, and that
+           is forced rather than chosen (ruling sec 2(a)): the footer is a SIBLING of both
+           `#invite-mint` and `#invite-list-view`, so an Activate placed there would also render
+           on "Your invites", which item 14 forbids. This arrangement is the only one satisfying
+           items 11 and 14 together — on the mint the user sees Activate directly above Close; on
+           the list `#invite-mint` is hidden and only Close renders. ONE Close element, no
+           duplication.
+           ITEM 10 — it ships DISABLED. A name is REQUIRED, the disabled control is the entire
+           enforcement, and there is no error text by design. -->
+      <div class="block"><button class="primary full" id="btn-invite-activate" disabled>Activate &amp; Copy</button></div>
     </div>
 
     <!-- ── THE LIST VIEW ─────────────────────────────────────────────── -->
@@ -507,7 +540,10 @@
           <h2>Your invites</h2>
           <p class="hint" id="invite-slots">0 of 10 slots used &mdash; codes expire on their own</p>
         </div>
-        <button class="secondary nowrap" id="btn-invite-back">&larr; New invite</button>
+        <!-- NA-0766 (`D-0043`) -- ITEM 14. The fresh-mint button is GONE from this head; this
+             screen is Close only. Minting again is Close then "+" in the Contacts pane --
+             deliberate rather than one click away, which is the same reasoning item 12 applies
+             inside the mint. (Its label is described, not spelled -- `ENG-0235`.) -->
       </div>
       <!-- ⚠ VISIBILITY RULE: LIVE rows and FAILED rows only, newest first. Revoked and Expired
            records DO NOT RENDER, ever. True vault deletion of dead records is the queued
@@ -527,7 +563,12 @@
          `btn-choose-create` hides `#redeem-overlay` before opening this one -- so Back has
          to close this overlay and re-open that one, which is not the same gesture as the
          code-entry view's Back. Measured before it was written. -->
-    <div class="block ctlrow"><button class="secondary full" id="btn-invite-close">Close</button><button class="secondary" id="btn-invite-back-chooser">Back</button></div>
+    <!-- NA-0766 (`D-0043`) -- ITEMS 3 and 4. Back is GONE and this footer is now the ONE
+         full-width Close serving BOTH `#invite-mint` and `#invite-list-view`, of which it is a
+         sibling. Returning to the chooser is Close then "+". ⚠ Escape and the scrim are UNTOUCHED
+         and still reach `closeInviteModal()`, which is what keeps Close and Escape from ever
+         being able to disagree. -->
+    <div class="block"><button class="secondary full" id="btn-invite-close">Close</button></div>
   </div>
 </div>
 
@@ -600,7 +641,7 @@
          verb, so the name is collected BEFORE Connect, not after. mockup-15's two-step order
          is superseded; see docs/mockups/mockup-15-add-contact.html's superseded-by note. -->
     <div id="redeem-form" class="hidden">
-      <div class="modal-head"><h2>Enter your invite code</h2><button class="rail-btn tip" id="btn-redeem-x" data-tip="Close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="modal-head"><h2>Enter your invite code</h2></div>
       <p class="muted">Paste the invite code they sent you, and choose what to call them. You&rsquo;ll connect through their relay.</p>
       <span class="field-label" id="redeem-code-caption">Invite code</span>
       <textarea id="redeem-code" class="full" autocomplete="off" spellcheck="false" placeholder="QSLI-1-&hellip;" aria-labelledby="redeem-code-caption"></textarea>
@@ -618,7 +659,14 @@
            and the scrim, neither of which is visible. Back returns to the chooser (one
            `redeemShow`, same overlay); the X above closes the flow, which is what Escape
            already did. -->
-      <div class="block ctlrow"><button id="btn-redeem-connect" class="primary" disabled>Connect</button><button id="btn-redeem-back" class="secondary">Back</button></div>
+      <!-- NA-0766 (`D-0043`) -- ITEM 15, AND IT IS LOAD-BEARING ON ITEMS 2 AND 3. Connect runs
+           FULL WIDTH with a full-width Close directly beneath it. ⚠ THE THREE LAND TOGETHER:
+           removing the X and the Back before this Close existed would have left the code-entry
+           screen with no visible exit at all. The brief's parenthetical is corrected in the
+           records -- the screen had no exit before NA-0765; since NA-0765 it had an X and a Back
+           but still no Close, and the Close is the cure. Close reuses `closeRedeemModal`, the one
+           dismissal Escape and the scrim already take. -->
+      <div class="block"><button id="btn-redeem-connect" class="primary full" disabled>Connect</button><button id="btn-redeem-close3" class="secondary full stacked">Close</button></div>
       <div id="redeem-error" class="hidden">
         <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
         <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
@@ -649,9 +697,12 @@
       <div class="modal-head"><h2>Couldn&rsquo;t make a secure connection</h2></div>
       <div class="callout warning">This code failed its security checks &mdash; that can mean a bug, or that someone tampered with the invite. Nothing was set up, and this code can no longer be used. Reach them another way and ask for a fresh invite.</div>
       <p class="hint" id="redeem-failed-detail"></p>
-      <div class="btnrow">
-        <button id="btn-redeem-copydetails" class="secondary">Copy details</button>
-        <button id="btn-redeem-close2" class="secondary">Close</button>
+      <!-- NA-0766 (`D-0043`) -- RULING Q1's ONE LINE. This view is otherwise OUT OF SCOPE and
+           its copy is untouched, but its foot takes the item-11 shape so the rule reads the same
+           on every invite surface: the action above, the full-width Close last. -->
+      <div class="block">
+        <button id="btn-redeem-copydetails" class="secondary full">Copy details</button>
+        <button id="btn-redeem-close2" class="secondary full stacked">Close</button>
       </div>
     </div>
 

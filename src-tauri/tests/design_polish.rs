@@ -1507,26 +1507,49 @@ fn invite_modal_copy_is_mockup_verbatim() {
         html_says(&html, "Activate &amp; Copy"),
         "the single-commit button"
     );
+    // ⚠ NA-0766 (`D-0043`) RE-AIM — ITEMS 8 and 9. The caption takes the blessed v9 form: the
+    // question, four NON-BREAKING spaces (four literal spaces collapse to one in HTML, so this
+    // is the only form that RENDERS the drawn gap), and the local-only assurance called out in
+    // the accent token. The separate private-note hint line is DELETED — the parenthetical says
+    // the same thing where the eye already is — so its pin retires with it rather than being
+    // re-aimed at nothing.
     assert!(
         html_says(
             &html,
-            "Who is this invite for? (optional &mdash; stays on this device)"
+            "Who is this invite for?&nbsp;&nbsp;&nbsp;&nbsp;<span class=\"field-note-accent\">(stored only on this device)</span>"
         ),
-        "the recipient-label caption, mockup-verbatim"
-    );
-    assert!(
-        html_says(
-            &html,
-            "Your private note. It is never sent anywhere &mdash; it just reminds you who you \
-             meant this for."
-        ),
-        "the label hint, mockup-verbatim"
+        "the recipient-label caption, layout-verbatim, with the assurance in the accent token"
     );
     assert!(html_says(&html, "Invite code"), "the code field label");
-    assert!(
-        html_says(&html, "Cancel Invite"),
-        "the ONLY post-activate action"
-    );
+    // ⚠⚠⚠ NA-0766 (`D-0043`), RULING Q5 = (B) — AN ASSERTION IS REMOVED HERE, AND IT IS NOT A
+    // WEAKENING. THIS COMMENT IS THE RECORD OF WHY, SO NO LATER READER CAN MISTAKE IT FOR A
+    // CONVENIENCE DELETION.
+    //
+    // What stood here asserted that the mid-mint cancel control's label was PRESENT and was
+    // "the ONLY post-activate action". v4 REMOVED that control. The assertion nevertheless went
+    // on passing for two lanes, because `html_says` collapses whitespace but does NOT strip HTML
+    // comments, and the label's only remaining occurrence in the markup was inside the comment
+    // that RECORDED THE REMOVAL. Proven both arms at NA-0766 STOP 1 and confirmed independently
+    // by the Director: raw index.html -> present (exactly one occurrence); comments stripped ->
+    // ABSENT (zero). Positive control: real markup survives stripping. Negative control: a string
+    // present nowhere is absent in both.
+    //
+    // Meanwhile `the_cancel_invite_control_is_gone_and_revoke_is_the_single_kill`, 700-odd lines
+    // below, asserted the EXACT OPPOSITE — that the control is gone — and also passed, because
+    // ITS needles are on the SHIPPED FORMS (a rendered text node, an id) which a comment cannot
+    // produce. Two green seals, contradicting each other, and the contradiction was invisible
+    // because one of them could no longer fail.
+    //
+    // Sec 8's "no test weakened, skipped or deleted" protects assertions that can CATCH
+    // something. This one could not: it had been unfalsifiable since v4. Deleting a disproven
+    // assertion while its true counterpart stands RAISES coverage rather than lowering it.
+    //
+    // THE GENERAL PROPERTY, which is worth more than the fix and is now itself sealed in
+    // `na0766_invite_flow.rs::na0766_a_comment_cannot_satisfy_a_copy_seal`:
+    //   A COMMENT THAT DOCUMENTS A REMOVAL RE-PLANTS THE REMOVED THING'S NEEDLE.
+    // Any seal built on bare-word presence can be held green by the explanation of its own
+    // subject's deletion. The cure is the one the sibling test already used — needle on the
+    // SHIPPED FORM, never the bare word.
     // ⚠ v2 retires "New code" and "Copy code" as BUTTONS: re-minting is a fresh activation and
     // copy-again is a glyph, whose own click is its own gesture. Pinned NEGATIVELY so a
     // re-introduction is a deliberate act, not a drift.
@@ -1667,9 +1690,22 @@ fn the_one_time_code_is_never_persisted_by_the_front_end() {
     let close_body = &module[close..];
     let close_end = close_body.find("\n}\n").expect("closeInviteModal ends");
     let close_body = &close_body[..close_end];
+    // ⚠ NA-0766 (`D-0043`) RE-AIM. The property is unchanged and the pin is STRONGER: the code
+    // box is no longer merely emptied, it is RESET to the item-7 empty state. A one-time code
+    // cannot survive a close either way, but now the seal also fails if the reset path stops
+    // being shared — which is the defect v3 had to fix once already at two call sites.
     assert!(
-        close_body.contains(r#"byId("invite-code").textContent = "";"#),
-        "closing the modal MUST empty the code box"
+        close_body.contains("inviteResetSlot();"),
+        "closing the modal MUST reset the code slot"
+    );
+    let reset = module
+        .find("function inviteResetSlot()")
+        .expect("the one reset path exists");
+    let reset_body = &module[reset..];
+    let reset_end = reset_body.find("\n}\n").expect("inviteResetSlot ends");
+    assert!(
+        reset_body[..reset_end].contains("box.textContent = INVITE_SLOT_EMPTY;"),
+        "and that reset REPLACES the code with the empty-slot sentence, so it cannot survive"
     );
     assert!(
         close_body.contains("inviteId = null;"),
@@ -1793,19 +1829,31 @@ fn create_is_disabled_when_no_relay_is_configured() {
     let end = body.find("\n}\n").expect("open ends");
     let body = &body[..end];
     assert!(
-        body.contains(r#"const noRelay = relayUrl === "";"#),
+        body.contains(r#"inviteNoRelay = relayUrl === "";"#),
         "the gate reads the empty string"
     );
     // ⚠ v2 gates on BOTH conditions: no relay, and the soft cap. The bank's cap-full state is
     // "Activate disabled with the TRUE message" — the message the operator never saw because
     // v1 routed the cap outcome through the wrong arm.
     assert!(
-        body.contains("const capFull = live >= INVITE_SOFT_CAP;"),
+        body.contains("inviteCapFull = live >= INVITE_SOFT_CAP;"),
         "the cap is part of the gate, not only an error arm"
     );
+    // ⚠⚠ NA-0766 (`D-0043`) RE-AIM, NOT A WEAKENING. The decision MOVED but did not soften: the
+    // two conditions this seal was born to pin are now two of FOUR causes in a single
+    // assignment, and the seal follows them there. It gained the name gate (item 10) and the
+    // one-invite-per-window latch (item 12), so this pin is STRICTLY STRONGER than the one it
+    // replaces — it now fails if any of four causes is dropped, where it used to fail on two.
+    // The Z6 precedent: the equality stays EXACT.
     assert!(
-        body.contains(r#"byId("btn-invite-activate").disabled = noRelay || capFull;"#),
-        "the gate DISABLES create"
+        body.contains("inviteSyncActivate();"),
+        "the gate routes through the ONE decision"
+    );
+    assert!(
+        js.contains(
+            r#"  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;"#
+        ),
+        "and that decision DISABLES create on all four causes"
     );
     assert!(
         body.contains(r#"invoke("relay_config_get")"#),
@@ -1902,9 +1950,22 @@ fn the_invite_code_box_wraps_and_is_selectable() {
         modal.contains(r#"class="code-box"#),
         "the code box carries .code-box"
     );
+    // ⚠ NA-0766 (`D-0043`) RE-AIM. Item 6 makes the slot ship PRESENT AND EMPTY, so the markup
+    // now carries `code-box empty` and the minted accent is applied at RUNTIME when a code
+    // actually lands. The property — a minted code wears its one-time accent class — is pinned
+    // where it now lives, in the mint path, rather than deleted.
     assert!(
-        modal.contains("code-box minted"),
-        "the minted code carries its one-time accent class"
+        modal.contains("code-box empty"),
+        "the slot ships in its empty state, present from the moment the window opens"
+    );
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"box.classList.add("minted");"#),
+        "and a landed code carries its one-time accent class"
+    );
+    assert!(
+        js.contains(r#"box.classList.remove("empty");"#),
+        "swapping the empty treatment off in the same act, so the two can never both apply"
     );
 }
 
@@ -2212,9 +2273,15 @@ fn entering_the_mint_fresh_always_clears_the_recipient_label() {
         body.contains(r#"byId("invite-label").value = "";"#),
         "entering the mint fresh MUST clear the recipient label"
     );
+    // ⚠ NA-0766 (`D-0043`) RE-AIM: the clear routes through the ONE reset path (item 7), so the
+    // markup's empty sentence and the code's reset cannot drift into two different states.
     assert!(
-        body.contains(r#"byId("invite-code").textContent = "";"#),
+        body.contains("inviteResetSlot();"),
         "and the one-time code, which must never survive into a new mint"
+    );
+    assert!(
+        body.contains("byId(\"invite-label\").readOnly = false;"),
+        "ITEM 12: and the field is UNLOCKED again, or a fresh mint would open read-only"
     );
 
     // BOTH entry paths route through it — the fix is structural, not a habit at two call sites.
@@ -2226,14 +2293,20 @@ fn entering_the_mint_fresh_always_clears_the_recipient_label() {
         open_body.contains("inviteEnterMintFresh();"),
         "opening the surface enters the mint fresh"
     );
-    let back = js
-        .find(r#"byId("btn-invite-back").addEventListener"#)
-        .expect("the back control exists");
-    let back_body = &js[back..back + 400];
-    assert!(
-        back_body.contains("inviteEnterMintFresh();"),
-        "⚠ THIS is the path the operator's flight caught: returning from the list MUST enter the \
-         mint fresh, or the previous label silently rides the next invite"
+    // ⚠⚠ NA-0766 (`D-0043`) RE-AIM, AND THE COUNT OF ENTRY PATHS DROPPED FROM TWO TO ONE.
+    // This seal was born because a typed label SILENTLY RODE EVERY LATER MINT: the field was
+    // cleared when the surface opened but NOT when the user came back to the mint from the list,
+    // so a second invite inherited the first one's note. That second path was the fresh-mint
+    // button in the list head, and item 14 RETIRES IT — the only way back to a fresh mint is now
+    // Close then "+", which is `openInviteModal` and therefore the path already pinned above.
+    // ⚠ THE DEFECT'S PREMISE STOPS BEING TRUE EXACTLY WHEN ITS CURE IS REMOVED, which is the
+    // NA-0765 `D-0036` shape. So the seal is re-aimed to the STRUCTURAL fact that makes the
+    // regression unreachable — exactly ONE caller of the fresh-entry function — rather than
+    // deleted, and it still fails if a second entry path is ever added without routing through it.
+    assert_eq!(
+        js.matches("inviteEnterMintFresh();").count(),
+        1,
+        "exactly ONE call site enters the mint fresh, so the two paths cannot drift apart again"
     );
 }
 
@@ -2374,13 +2447,26 @@ fn the_surface_widened_and_the_new_invite_button_is_one_line() {
         1,
         "ONE expression of the surface width, shared by pre-mint, post-mint and the list"
     );
+    // ⚠ ITS NAME IS NOW STALE AND IS DELIBERATELY LEFT SO. The test is not renamed, because a
+    // rename shows in `EXPECTED_TEST_INVENTORY.txt` as a REMOVAL plus an ADDITION, and a pin whose
+    // whole job is to catch a test disappearing should not be handed a false positive by a
+    // cosmetic edit. The repo already carries this precedent (`na0700_ipc_replay`'s
+    // `all_27_registered_commands_...`, whose set is 42): a stale NAME is REPORTED, not quietly
+    // fixed mid-lane. Reported in this lane's records.
+    // ⚠⚠ NA-0766 (`D-0043`) RE-AIM. Item 14 retires the list head's fresh-mint button, and its
+    // one-line rule retires WITH it — a rule whose only element is gone is DEAD CSS, the very
+    // artifact NA-0765 used to prove a blessed row had been styled but never built. The half of
+    // this seal that is about WIDTH is untouched above and still EXACT; the half that pinned a
+    // control this lane deleted is re-aimed to assert the retirement is COMPLETE on both sides.
+    let nowrap_rule = format!("button.{} {{ white-space: nowrap; }}", "nowrap");
     assert!(
-        css.contains("button.nowrap { white-space: nowrap; }"),
-        "one line, always"
+        !css.contains(nowrap_rule.as_str()),
+        "the retired button's rule went with the button, leaving no dead CSS behind"
     );
+    let retired = format!("id=\"btn-invite-{}\"", "back");
     assert!(
-        html.contains(r#"class="secondary nowrap" id="btn-invite-back""#),
-        "the New-invite button carries the tier AND the nowrap property"
+        !html.contains(retired.as_str()),
+        "and the button itself is gone from the list head — Close only"
     );
 }
 
@@ -3143,44 +3229,52 @@ fn na0765_the_chats_plus_is_retired_and_the_flow_still_has_two_entries() {
     );
 }
 
-/// **B4 — BOTH FLOWS HAVE A VISIBLE WAY OUT.**
+/// **B4, RE-AIMED BY NA-0766 (`D-0043`) — BOTH FLOWS STILL HAVE A VISIBLE WAY
+/// OUT, AND NOW IT IS THE SAME ONE ON EVERY SURFACE.**
 ///
-/// The code-entry view had NONE — not an X, not a Back, not a Close — so its only
-/// exits were Escape and the scrim, neither of which is on screen.
+/// NA-0765 gave the code-entry view its first visible exit — an X and a Back —
+/// because it had NONE and the only ways out were Escape and the scrim. The
+/// property that mattered was never "an X exists": it was **a visible exit that
+/// shares the overlay's one dismissal**. NA-0766 replaces the X and the Back
+/// with a single full-width Close on every invite surface, so the seal follows
+/// the property rather than the control that used to carry it.
 ///
-/// ⚠ MUST GO RED IF: either X stops sharing its overlay's ONE closer (which is what
-/// keeps X and Escape from ever disagreeing), or either Back disappears.
+/// ⚠ THIS SEAL WENT RED ON THIS LANE'S FIRST EDIT, AND THAT IS THE SEAL WORKING
+/// — its own heading said "MUST GO RED IF ... either Back disappears", and a
+/// Back disappeared. Re-aimed, never weakened: the count of exits per surface is
+/// still EXACT, so a surface losing its exit still fails, and so does one growing
+/// a second (the Z6 precedent).
 #[test]
 fn na0765_both_modal_flows_have_a_visible_way_out() {
     let html = ui_file("index.html");
     let js = ui_file("main.js");
+    // Every invite surface reaches a visible Close.
     for needle in [
-        r#"id="btn-redeem-x""#,
-        r#"id="btn-redeem-back""#,
-        r#"id="btn-invite-x""#,
-        r#"id="btn-invite-back-chooser""#,
+        r#"id="btn-invite-close""#,
+        r#"id="btn-choose-close""#,
+        r#"id="btn-redeem-close3""#,
     ] {
-        assert!(html.contains(needle), "the control ships: `{needle}`");
+        assert!(html.contains(needle), "the visible exit ships: `{needle}`");
+        assert_eq!(
+            html.matches(needle).count(),
+            1,
+            "exactly one of it: `{needle}`"
+        );
     }
-    // X IS Escape, structurally: same closer, so they cannot drift apart.
-    assert!(
-        js.contains(r#"byId("btn-redeem-x").addEventListener("click", closeRedeemModal);"#),
-        "the code-entry X reuses the one shipped dismissal, which is also Escape's"
-    );
-    assert!(
-        js.contains(r#"byId("btn-invite-x").addEventListener("click", () => closeInviteModal());"#),
-        "the invite X reuses that overlay's one dismissal, which is also Escape's"
-    );
-    // Back is a VIEW switch in one overlay and a CROSS-OVERLAY move in the other. The two
-    // are pinned separately because they are not the same gesture.
+    // And each reuses its overlay's ONE dismissal — the same function Escape and
+    // the scrim take — so the visible and invisible exits cannot drift apart.
     assert!(
         js.contains(
-            r#"byId("btn-redeem-back").addEventListener("click", () => redeemShow("choose-view"));"#
+            r#"byId("btn-invite-close").addEventListener("click", () => closeInviteModal());"#
         ),
-        "code-entry Back is one view switch inside its own overlay"
+        "the invite Close reuses that overlay's one dismissal, which is also Escape's"
     );
     assert!(
-        js.contains("byId(\"btn-invite-back-chooser\").addEventListener(\"click\", async () => {"),
-        "invite Back closes this overlay and re-opens the chooser's"
+        js.contains(r#"byId("btn-choose-close").addEventListener("click", closeRedeemModal);"#),
+        "the chooser Close reuses the redeem overlay's one dismissal"
+    );
+    assert!(
+        js.contains(r#"byId("btn-redeem-close3").addEventListener("click", closeRedeemModal);"#),
+        "and so does the code-entry Close — the view that had no exit at all before NA-0765"
     );
 }

@@ -3340,6 +3340,96 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     two-source ruling, amended in the open by this lane); `D-0037`/`D-0036` (the invite flows);
     `ENG-0226` (no fixture relay).
 
+- **ID:** D-0043
+  - **Status:** Accepted
+  - **Date:** 2026-08-27
+  - **Lane:** desktop **NA-0766 / THE INVITE-FLOW LANE**. Executing the Director's formalization
+    brief `BRIEF_invite_flow_20260827.md` (sha256
+    `1fad5848b74343be1d5200cd12da4b88e8199989f04c98751f85e469d04875f6`) and his build ruling
+    `RULING_NA0766_build_20260827.md` (sha256
+    `1323219622866141e095fa2eb3930eafecc9a0d20641d68151cc6cbc5698c8a9`), against blessed layout
+    authority `MOCKUP_laneC_invite_nav_v9_20260827.html` (sha256
+    `8eee371fae11be7d7d1be56c572c226434da2c770ab1ec981ae7a084097b1fe7`). All three banked 444 and
+    sha-VERIFIED against their own bytes BEFORE being read — all 64 digits compared mechanically,
+    with a negative control proving the comparator discriminates and the tamper proven to have
+    landed. Ruled from `STOP_NA0766_003_20260827T151315Z.md` (sha256
+    `07f72075e6e8feb46e620683523d27bc1951d63cf9b6d48995eeffd71c001a18`). Spine decision
+    **D-1407**. Base `15a673aa57d11a1b03acb24ad8a56ba15d56e9a8`, re-derived bare and unpiped at
+    the NAMED github remote. ⚠ These seats carry `origin` AND `github` both pointing at the real
+    GitHub URL — deliberately, because NA-0765's cure for the stale-mirror trap (removing
+    `origin`) made `infra_literal_scan.py::_repo_name()` fall back to the checkout's DIRECTORY
+    NAME and turned a REQUIRED gate red on an untouched tree. Two remotes at the true URL kill
+    both traps at once. That defect is filed as `ENG-0249`.
+  - ⛳⛳ **WHAT THIS BUYS: THE INVITE WINDOWS STOP BEING CLUTTERED AND START BEING HONEST.** Every
+    modal has exactly ONE exit and it is a full-width Close; navigation lives in the Contacts
+    pane rather than duplicated inside the modals; the Invite-someone window shows its final
+    shape from the moment it opens instead of transforming under the user; and **A NAME IS
+    REQUIRED**, which retires the unlabelled-invite gap AT ITS GUI SOURCE rather than tallying
+    it. No new capability, no protocol change, no relay change, no pin change.
+  - ⚠⚠ **THE ONE ITEM THAT WAS A REAL DEFECT RATHER THAN A TIDY-UP: ITEM 12.** The activate
+    handler set `disabled = true` and then awaited `inviteRefresh()`, which RE-ASSIGNED that flag
+    from the relay and cap alone — so with a relay configured and the cap unreached **the control
+    came back, and a second press minted a second invite and burned a second slot**. Measured at
+    STOP 1 and confirmed independently by the Director. Item 12 is therefore a slot-accounting
+    fix, not a cosmetic one, and `I6` asserts the latch survives a refresh — which is the exact
+    code path that undid it.
+  - ⚠ **ITEM 13 MEASURED ALREADY SHIPPED EXACTLY AS ORDERED and was NOT rebuilt** (2500 ms
+    revert, never disabled, timer cleared before re-arming). The lane's obligation was to carry
+    it UNBROKEN through item 6's restructure; it is pinned by `I5` for the first time, having
+    been unpinned until now. Item 4 was **already true for the chooser**. Reported, not rebuilt.
+  - ⚠ **THE BRIEF'S ITEM-15 PARENTHETICAL IS CORRECTED IN THE OPEN, as the ruling directs:** the
+    code-entry screen had no exit before **NA-0765**; since NA-0765 it had an X and a Back but
+    still **no Close**, and the Close is the cure. Items 2, 3 and 15 are LOAD-BEARING ON EACH
+    OTHER and landed together — removing the X and the Back before the Close existed would have
+    returned that screen to the trap NA-0765 found it in.
+  - ⚠⚠ **RULING Q5 — A DISPROVEN ASSERTION WAS REMOVED, AND IT IS NOT A WEAKENING.**
+    `design_polish.rs` asserted that the retired mid-mint cancel control's label was PRESENT and
+    was "the ONLY post-activate action". v4 removed that control. The assertion went on passing
+    for two lanes because `html_says` collapses whitespace but does NOT strip HTML comments, and
+    the label's only remaining occurrence was **inside the comment that recorded the removal** —
+    while its counterpart 700 lines below asserted the OPPOSITE and also passed, because ITS
+    needles were on the shipped forms. Two green seals contradicting each other, and the
+    contradiction invisible because one could no longer fail. Proven both arms (raw → present;
+    comments stripped → absent; positive control: real markup survives; negative control: a
+    string present nowhere is absent in both). **THE GENERAL PROPERTY, worth more than the fix:
+    A COMMENT THAT DOCUMENTS A REMOVAL RE-PLANTS THE REMOVED THING'S NEEDLE.** It is now sealed
+    in `na0766_a_comment_cannot_satisfy_a_copy_seal`. ⚠ It fired on THIS LANE'S OWN FIRST DRAFT —
+    a self-check found **ten** re-plantings written by the seat while documenting these very
+    removals, all corrected to describe rather than spell.
+  - ⚠ **CONSEQUENCE OF RULING Q2, NAMED RATHER THAN CARRIED SILENTLY:** the "review invites" link
+    is ALWAYS VISIBLE and carries no count, so `contactsOutstanding` and the `invite_list` call
+    that computes it are now **DEAD**. Both are LEFT IN PLACE — removing them is outside the
+    ordered edit set — and the deadness is stated in the source so the next reader does not
+    mistake dead code for live coupling, nor "discover" it as a defect. **Not filed**: it is a
+    consequence of a blessed change.
+  - ⚠ **A BOUND THE INSTRUMENTS COULD NOT REACH, STATED RATHER THAN PAPERED OVER.** Ruling Q4
+    ordered the cap suppression proven "with a can-fail arm at the tenth-invite boundary".
+    Reaching that boundary for real needs TEN live invites, hence a successful `invite_create`,
+    hence a relay — and the desktop harness has **no fixture relay** (`ENG-0226`, open). The
+    runtime arm therefore drives the adopt path with the cap latched and proves the window does
+    not move; the claim it CANNOT make — that no OTHER path re-shows the line — is sealed
+    STRUCTURALLY instead, by `na0766_the_cap_line_is_decided_once_at_open`, whose can-fail arm is
+    exactly the retired defect (the toggle put back into the refresh) and which fired on it.
+  - **Instruments.** `src-tauri/tests/na0766_invite_flow.rs` (8 structural seals: I1 one exit per
+    modal BY ELEMENT, I2 Escape/scrim keep their one closer, I7 the link, I8 the code-entry foot,
+    the single name-gate assignment, the retired before/after pair, the comment-cannot-satisfy
+    property, and the cap-decided-once seal). Running-app instruments live in
+    `f_k_invite_create` (I3 name required, I4 no-transform BY VISIBILITY, I5 the copy cycle, I6
+    the post-activation locks) and `f_l_invite_redeem` (I8), with `f_n_contacts_autoconnect`
+    re-aimed for I7. **Seven existing seals were RE-AIMED, never deleted**, each keeping its
+    exact equalities (the Z6 precedent); one of the seven was NOT predicted at STOP 1 and is
+    reported as a census miss.
+  - **Figures.** unit **181 → 189** passed / 0 failed / 15 ignored; gui-driver **14/14**,
+    183.37 s; inventory **196 → 204**, +8 / −0; `cargo fmt` clean; registered commands **43 →
+    43** (zero facade change — every verb this lane needs was already registered); product source
+    **3** files ⇒ **SR-15 NOT TRIGGERED**. **Ten Phase 0 controls, all ten fired at the row
+    predicted in writing beforehand**, every `ui/` control under the REBUILD BRACKET, every
+    restore cmp-identical.
+  - **Related:** spine `D-1407`; `D-0042`/`D-1406` (NA-0765, whose X and Back this lane
+    replaces); `D-0037`/`D-0036` (the invite flows); `ENG-0226` (no fixture relay); `ENG-0235`
+    (the self-falsifying-needle hazard, fired again here); `ENG-0249` (the scanner's folder-name
+    repo identity, filed by this lane).
+
 - **ID:** D-0042
   - **Status:** Accepted
   - **Date:** 2026-08-27
