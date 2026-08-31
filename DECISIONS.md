@@ -3527,3 +3527,34 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
     Chats "+" whose premise this lane retires with it); `D-0037` (the code-entry copy);
     `ENG-0247`, `ENG-0248` (filed by this lane); `ENG-0235` (the plant hazard, twice more);
     `ENG-0226` (no fixture relay).
+
+## D-0044 — NA-0768: THE SCREEN FOLLOWS THE STATE. The repaint gate reads a measured status change, not the verb's bool; and unlock repaints.
+
+- **Date/Lane:** 2026-08-31 · NA-0768 (`D-1409`) · desktop, display-only · Goals G4
+- **Ordered by:** `RULING_NA0768_012_20260831.md` §1, on the diagnosis sealed at `STOP_NA0768_012` (self-digest `484144f4…`), re-measured by the Director with zero discrepancies.
+
+**THE DEFECT, IN ONE SENTENCE.** The inviter's session completed and her screen did not follow: the contact row and the detail header kept reading "Connecting…" over a live session, and only a Chat → Contacts pane switch corrected them. Three AWS flights on build `63ece4f`.
+
+**IT WAS ONE GATE, NOT TWO DEFECTS.** The diagnosis found — and the Director re-measured — that two readings were false:
+- `refreshContacts()` does **not** render the list only. It re-reads `contact_list` and `connect_status` per row and calls **both** renderers (`ui/main.js:3301-3302`). The detail pane was stale because `refreshContacts()` was **never called**, not because it skipped the detail.
+- The unlock path is **not** a separate defect. `enterMain()` repainted contacts nowhere, but ended with `await relayScan({ source: "unlock" })` (`:783`) — the **same** handler the tick uses, reaching the **same** gate.
+
+⇒ Only `showContactsPane()` (`:832`) called `refreshContacts()` **unconditionally** (`:842`), which is exactly why a pane switch — and nothing else — fixed the screen.
+
+**WHY THE GATE COULD NEVER FIRE.** `recordScanOutcome` repainted only when `marks.finished > 0`, and `finished` counts `invite_finish` returning `true`. On the E4 completing path the fan-out consumes the peer's A2 and commits the session at `invite/mod.rs:1549`/`:1616` — and then, at `:1643`, finds no invite-RESP and returns **`Ok(false)` at `:1649`**. An inviter never has a RESP, so `Ok(true)` is unreachable for her. **The gate's input was dead on the exact path it existed to serve.**
+
+**THE CHANGE — seven functional lines in `ui/main.js`:**
+- `finishScanClass` re-reads `connect_status` for an attempted row AFTER the finish and increments `marks.changed` when the extracted `state` differs **by equality** from the value read before it.
+- `recordScanOutcome` repaints when `marks.finished > 0 || marks.changed > 0`.
+- `enterMain` calls `refreshContacts()` after its awaited unlock scan.
+- ⚠ **`attempted > 0` was REFUSED**: a profile carrying permanently-pending contacts would repaint every beat forever, which is the churn the gate exists to prevent.
+- ⚠ **No change to `refreshContacts`**: it already renders the detail. The fix makes it get *called*.
+
+**THE VERB'S RETURN IS NOT CHANGED HERE.** `Ok(false)` after a fan-out completion is a signal defect against callers, not a contract violation — the verb documents `invite_finish=none` as "the reply has not arrived yet". It is filed for the protocol repo with its own read; this lane stops at the repository boundary.
+
+**⚠ THE SECURITY CONSEQUENCE, ESCALATED AND ACCEPTED (`E4`).** The missed repaint suppressed the "compare verification codes with them before sharing anything sensitive" notice on the completing beat — so a user was connected and never shown the instruction to verify. The Director measured from the flight screenshots that the code itself stays visible in the detail pane, so the affordance existed and the **instruction** is what was lost. Severity LOW-to-MODERATE; this change restores it. Filed as its own `ENG` in the next protocol records act.
+
+**THE TEST, AND ITS CAN-FAIL PROOF.** `src-tauri/tests/na0768_repaint_on_status_change.rs` — three source pins: the scan reads `connect_status` twice and drives the counter from an equality comparison; the gate reads the change counter **and the narrow gate is gone** (a negative control, so the seal cannot pass on a file that kept both); unlock repaints **after** its scan. ⚠ Comments are stripped before every assertion and every needle is assembled at runtime — the fix's own comments name `marks.changed` a dozen times, and a seal satisfied by the explanation of the thing it checks is `ENG-0235`. **Shown RED on the pre-fix bytes (rc=101, 3/3 failing) and green after (rc=0, 3/3)**; a test is not evidence until it has been shown it can fail.
+
+- ⚠ **Claim boundary.** Display-only; zero protocol bytes; no `.github/**`; no pin change; no test weakened, skipped or deleted. **A source pin cannot prove the screen repaints** — only that the signal exists and the gate reads it. No scenario can complete a handshake without a fixture relay (`ENG-0226`, open), so **the acceptance is the operator's fourth flight**, not this suite. A scenario step driving the gate with a stubbed status change was judged feasible and deliberately NOT added: it duplicates the source pin at the cost of a monkey-patching pattern with no precedent, on the one job that has already flaked in this arc.
+- **References:** `D-1409` (the spine lane); `D-0043` (the surface these repairs land on); `RULING_NA0768_012`; `STOP_NA0768_012`; `ENG-0226` (no fixture relay); `ENG-0235` (the plant hazard).

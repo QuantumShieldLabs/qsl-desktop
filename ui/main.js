@@ -781,6 +781,11 @@ async function enterMain() {
   // unchanged — `relayScan` runs the same finish-scan class and still marks the redeem
   // slot for user-caused sources.
   await relayScan({ source: "unlock", at: Date.now() });
+  // ⚠ NA-0768 (RULING_012 §1(u)): the unlock scan reaches `recordScanOutcome` like any
+  //   other, so before this line an unlock repainted NOTHING unless that scan happened to
+  //   trip the gate. A session that completed while the app was locked therefore rendered
+  //   stale on the first screen the user sees. One call, once per unlock.
+  await refreshContacts();
 }
 // NA-0755 (D-0036): UN-STUBBED. This button now opens the real invite flow.
 //
@@ -2893,6 +2898,23 @@ async function finishScanClass(marks) {
       });
       marks.scanned += 1;
       if (done === true) marks.finished += 1;   // EQUALITY, never truthiness
+        // ⚠⚠ NA-0768 (D-1409, RULING_012 §1(a)): THE REPAINT SIGNAL, AND WHY IT IS NOT
+        //   `done`. On the E4 completing path the fan-out consumes the peer's A2 and
+        //   commits her session, then `invite_finish` returns Ok(FALSE) at
+        //   `invite/mod.rs:1649` -- because `Ok(true)` is reserved for the selected
+        //   invite-RESP path, which an inviter never has. So `finished` stays 0 while a
+        //   contact has genuinely gone live, `recordScanOutcome`'s gate never fires, and
+        //   the screen keeps saying "Connecting…" over a live session. Measured on three
+        //   AWS flights; diagnosed to file:line in STOP 012.
+        // ⇒ THE HONEST SIGNAL IS THE STATE ITSELF. Re-read this one alias and compare BY
+        //   EQUALITY with the value read at the top of this iteration.
+        // ⚠ Deliberately NOT `attempted > 0`: a profile carrying permanently-pending
+        //   contacts would then repaint every beat forever, which is the churn the gate
+        //   exists to prevent.
+        try {
+          const after = await invoke("connect_status", { peer: row.alias });
+          if (after.state !== st.state) marks.changed += 1;   // EQUALITY on the extracted value
+        } catch (_) { /* a status re-read must never break the scan it rides on */ }
     } catch (_) {
       // ⚠ A finish failure must NEVER break the surface it rides on. Unlock still completes
       // and the chooser still opens; the contact simply stays pending, which is the honest
@@ -3380,7 +3402,7 @@ let relayScanBusyRejects = 0;
 
 async function relayScanOnce(ev) {
   let marks = { why: ev.source, at: ev.at, scanned: 0, finished: 0, pending: 0,
-                attempted: 0, failed: 0, unlabelled: 0 };
+                attempted: 0, failed: 0, unlabelled: 0, changed: 0 };
   for (const cls of SCAN_CLASSES) marks = await cls(marks);
   recordScanOutcome(ev, marks);
   return marks;
@@ -3451,7 +3473,7 @@ function recordScanOutcome(ev, marks) {
   // every beat; re-rendering on none would leave an auto-created contact
   // invisible until the user clicked something, which is the whole point of
   // the tick.
-  if (marks.finished > 0) {
+  if (marks.finished > 0 || marks.changed > 0) {
     refreshContacts();
   }
 }
