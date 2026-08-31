@@ -41,13 +41,21 @@ fn strip_js_comments(src: &str) -> String {
     let (mut in_line, mut in_block) = (false, false);
     while i < n {
         if in_line {
-            if b[i] == b'\n' { in_line = false; out.push('\n'); }
+            if b[i] == b'\n' {
+                in_line = false;
+                out.push('\n');
+            }
         } else if in_block {
-            if b[i] == b'*' && i + 1 < n && b[i + 1] == b'/' { in_block = false; i += 1; }
+            if b[i] == b'*' && i + 1 < n && b[i + 1] == b'/' {
+                in_block = false;
+                i += 1;
+            }
         } else if b[i] == b'/' && i + 1 < n && b[i + 1] == b'/' {
-            in_line = true; i += 1;
+            in_line = true;
+            i += 1;
         } else if b[i] == b'/' && i + 1 < n && b[i + 1] == b'*' {
-            in_block = true; i += 1;
+            in_block = true;
+            i += 1;
         } else {
             out.push(b[i] as char);
         }
@@ -58,9 +66,13 @@ fn strip_js_comments(src: &str) -> String {
 
 /// The body of a named function, from its declaration to the next top-level `\n}`.
 fn fn_body<'a>(js: &'a str, decl: &str) -> &'a str {
-    let a = js.find(decl).unwrap_or_else(|| panic!("declaration not found: {decl}"));
+    let a = js
+        .find(decl)
+        .unwrap_or_else(|| panic!("declaration not found: {decl}"));
     let rest = &js[a..];
-    let b = rest.find("\n}").unwrap_or_else(|| panic!("no terminator after: {decl}"));
+    let b = rest
+        .find("\n}")
+        .unwrap_or_else(|| panic!("no terminator after: {decl}"));
     &rest[..b]
 }
 
@@ -119,11 +131,13 @@ fn na0768_r3_unlock_repaints_contacts_after_its_scan() {
     let body = fn_body(&js, &format!("async function enter{}()", "Main"));
     let scan = format!("relayScan({{ source: \"{}\"", "unlock");
     let repaint = format!("refresh{}()", "Contacts");
-    let a = body.find(scan.as_str()).expect("the unlock scan must still run");
-    let b = body
-        .find(repaint.as_str())
-        .expect("unlock must repaint contacts: a session that completed while locked renders \
-                 stale on the first screen the user sees");
+    let a = body
+        .find(scan.as_str())
+        .expect("the unlock scan must still run");
+    let b = body.find(repaint.as_str()).expect(
+        "unlock must repaint contacts: a session that completed while locked renders \
+                 stale on the first screen the user sees",
+    );
     assert!(
         b > a,
         "the repaint must follow the unlock scan, not precede it — before the scan it would \
