@@ -10,7 +10,17 @@ const tauriInvoke = (cmd, args) => window.__TAURI__.core.invoke(cmd, args);
 
 // Busy wrapper: the UI reflects core in-flight state (rule d).
 let pendingCalls = 0;
+// NA-0774 -- FIX (b): THE BUSY INDICATOR IS QUIET UNDER A TICK.
+// Depth counter, not a boolean, so an unbalanced entry can never wedge the
+// indicator off; `relayScanOnce` raises it in a try/finally (:relayScanOnce)
+// and nothing else touches it. Zero means "behave exactly as before", which is
+// the whole of the user-sourced contract.
+let tickQuietDepth = 0;
 function invoke(cmd, args) {
+  // A tick-sourced call does no indicator accounting AT ALL -- it neither shows
+  // the indicator nor decrements a counter it never incremented, so a user call
+  // already in flight keeps its own showing for its own full duration.
+  if (tickQuietDepth > 0) return tauriInvoke(cmd, args);
   pendingCalls += 1;
   byId("busy-indicator").classList.remove("hidden");
   return tauriInvoke(cmd, args).finally(() => {
@@ -927,19 +937,30 @@ for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
 }
 
 // ---- the Identity pane (existing identity_show surface ONLY) -------------
+// NA-0774 -- FIX (c) / E5: A THROWN `identity_show` AND AN ABSENT IDENTITY ARE
+// DIFFERENT FACTS AND NO LONGER SHARE A SCREEN. The catch below used to swallow
+// the error and fall into the `!rec` branch, which reveals `#identity-empty`:
+// "No identity exists yet -- finish setup to create one." A user who HAS an
+// identity was told they had none and invited to an action wrong for their
+// state. `readFailed` separates the two causes; the error copy names RETRY.
 async function refreshIdentityPane() {
   let rec = null;
+  let readFailed = false;
   try {
     rec = await invoke("identity_show");
-  } catch (_) { /* treated as absent below */ }
+  } catch (_) { readFailed = true; }
   const empty = byId("identity-empty");
+  const readError = byId("identity-read-error");
   const body = byId("identity-body");
   if (!rec) {
-    empty.classList.remove("hidden");
+    // Exactly one of the two absent-body states, never both, never neither.
+    empty.classList.toggle("hidden", readFailed);
+    readError.classList.toggle("hidden", !readFailed);
     body.classList.add("hidden");
     return;
   }
   empty.classList.add("hidden");
+  readError.classList.add("hidden");
   body.classList.remove("hidden");
   byId("settings-code").textContent = groupedCode(rec.verify_code);
   byId("settings-fp").textContent = rec.fingerprint;
@@ -3400,10 +3421,35 @@ let relayScanPending = null;
 let relayScanRerunCount = 0;
 let relayScanBusyRejects = 0;
 
+// NA-0774 -- FIX (b), THE SUPPRESSION POINT, AND WHY IT IS HERE AND NOT ROUND
+// `relayScan`. A scan's RERUN can carry a DIFFERENT source than the pass that
+// started it: `relayScan` stores the pending event and replays it through a
+// second `relayScanOnce(next)`, so a tick-started scan can rerun for a
+// user-sourced trigger and vice versa. A flag scoped to `relayScan` would
+// silence that user rerun. Scoped to the PASS, quietness follows `ev.source`,
+// which is the thing that actually decides it.
+// ⚠ WHY A SCOPED FLAG AND NOT AN ARGUMENT ON EVERY CALL. The sec 2(d)
+// enumeration is six commands (relay_config_get x2, contact_list, invite_list,
+// connect_status, invite_finish, invite_accept) reached through two scan
+// classes that receive `marks`, not `ev` -- threading the source to each call
+// means changing both class signatures and every call site, and MISSING ONE IS
+// SILENT. The flag covers every call reachable from the pass, including any
+// added later, at one edit point. That is the "scoped flag" the brief offers.
+// ⚠ STATED BOUND, NOT HIDDEN: `await` yields, so a user-sourced call made
+// DURING one of this pass's awaits is also suppressed. The window is one scan
+// pass. Eliminating it needs per-call context the platform does not give us
+// without threading the source; it is recorded as a known bound rather than
+// designed around.
 async function relayScanOnce(ev) {
   let marks = { why: ev.source, at: ev.at, scanned: 0, finished: 0, pending: 0,
                 attempted: 0, failed: 0, unlabelled: 0, changed: 0 };
-  for (const cls of SCAN_CLASSES) marks = await cls(marks);
+  const quiet = ev && ev.source === "tick";
+  if (quiet) tickQuietDepth += 1;
+  try {
+    for (const cls of SCAN_CLASSES) marks = await cls(marks);
+  } finally {
+    if (quiet) tickQuietDepth -= 1;
+  }
   recordScanOutcome(ev, marks);
   return marks;
 }

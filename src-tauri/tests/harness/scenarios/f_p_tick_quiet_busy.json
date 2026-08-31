@@ -1,0 +1,151 @@
+{
+ "scenario": "na0774_tick_quiet_busy",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "note",
+   "text": "NA-0774 FIX (b) -- THE BUSY INDICATOR IS QUIET UNDER A TICK. Brief sec 4. A MutationObserver counts every transition of #busy-indicator OUT of `hidden`; a tick-sourced relayScan must produce ZERO, and a user-sourced call must produce at least one in the SAME run, or the observer proves nothing."
+  },
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0774-lane-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0774-lane-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "Lane"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "PRECONDITION THE FIRST DRAFT LACKED, AND IT FAILED FOR EXACTLY THE REASON NA-0768 RECORDED. The observer install asserted the indicator was already hidden and measured 'NOT-HIDDEN-AT-START': reaching scr-main is not the same as scr-main having SETTLED. enterMain() keeps user-sourced calls in flight after poll_visible returns, and those calls legitimately show the indicator. REACHED IS NOT SETTLED. Wait on the ELEMENT'S STATE, never on wall-clock; on budget exhaustion op_poll_exec records a RED row carrying the last value seen, so a genuinely stuck indicator still fails here rather than being masked."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(document.getElementById('busy-indicator').classList.contains('hidden'));",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 25,
+   "label": "busy_indicator_settled_hidden"
+  },
+  {
+   "op": "exec",
+   "script": "var el=document.getElementById('busy-indicator');window.__na0774 = {unhides:0, done:false};window.__na0774.obs = new MutationObserver(function(){  if(!el.classList.contains('hidden')) window.__na0774.unhides += 1; });window.__na0774.obs.observe(el,{attributes:true,attributeFilter:['class']});return el.classList.contains('hidden') ? 'observing-hidden' : 'NOT-HIDDEN-AT-START';",
+   "expect": "observing-hidden"
+  },
+  {
+   "op": "note",
+   "text": "THE POSITIVE CONTROL RUNS FIRST, AND THE ORDER IS LOAD-BEARING. E3 requires the control to transition >= 1 in BOTH arms. The runner ABORTS AT THE FIRST FAILED ROW, so a control placed after the tick assertion would never execute in the RED arm and E3 could not be met at all. Running it first means both arms exercise it and only the tick assertion differs. It also earns its keep twice: without it a broken observer would report 'quiet' forever and the tick arm below would prove nothing. A user-sourced invoke must still show the indicator -- the operator's ruling is that suppression is for tick-sourced calls ONLY."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0774.unhides=0;window.__na0774.done2=false;invoke('app_info').then(function(){window.__na0774.done2=true;},function(){window.__na0774.done2=true;});return 'started';",
+   "expect": "started"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(window.__na0774.done2 === true);",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 25,
+   "label": "user_call_settled"
+  },
+  {
+   "op": "exec",
+   "script": "return window.__na0774.unhides >= 1 ? 'user-call-shows-indicator' : 'CONTROL FAILED: a user-sourced call produced NO transition, so the tick arm above proves nothing';",
+   "expect": "user-call-shows-indicator"
+  },
+  {
+   "op": "note",
+   "text": "Reset the counter so the tick arm measures only its own transitions, and wait for the control's own call to settle first so its hide does not land inside the tick window."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(document.getElementById('busy-indicator').classList.contains('hidden'));",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 25,
+   "label": "control_call_settled"
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0774.unhides=0;return 'reset';",
+   "expect": "reset"
+  },
+  {
+   "op": "note",
+   "text": "THE TICK ARM. relayScan is driven directly with source 'tick' rather than by waiting for a beat: the gate (main.js tickGateOpen) needs a configured relay and this harness has none, and a wall-clock wait would be a sleep. The SOURCE is what the mechanism keys on, and the source is what is set here. The scan is started and a flag is set on completion, then polled -- the driver's execute/sync would not await a returned promise."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0774.done=false;relayScan({source:'tick',at:Date.now()}).then(function(){window.__na0774.done=true;},function(){window.__na0774.done=true;});return 'started';",
+   "expect": "started"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(window.__na0774.done === true);",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 25,
+   "label": "tick_scan_settled"
+  },
+  {
+   "op": "exec",
+   "script": "return window.__na0774.unhides === 0 ? 'quiet' : ('UNHID '+window.__na0774.unhides+' time(s) under a tick');",
+   "expect": "quiet"
+  },
+  {
+   "op": "note",
+   "text": "And the indicator is back to hidden once the user call settles -- the pendingCalls accounting is untouched for user-sourced calls."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(document.getElementById('busy-indicator').classList.contains('hidden'));",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 15,
+   "label": "indicator_rehidden"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}

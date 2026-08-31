@@ -496,7 +496,7 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 }
 
 /* D.2: the list pane */
-.list-pane { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; }
+.list-pane { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .list-header { padding: var(--sp-3) var(--sp-x14) var(--sp-x10); display: flex; flex-direction: column; gap: var(--sp-2); }
 .list-header h2 { font-size: var(--fs-listhead); font-weight: var(--fw-mid); }
 .search {
@@ -506,6 +506,25 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 }
 .search svg { width: 14px; height: 14px; }
 .empty-note { color: var(--fg-muted); font-size: var(--fs-hint); padding: 0 var(--sp-x14); }
+/* NA-0774 -- FIX (a): THE CONTACTS LIST SCROLLS INSIDE ITS PANE.
+   Measured before the change, 30 rows in a 673px window: the rows container was
+   1410px tall with scrollHeight == clientHeight (no clipping, it simply grew),
+   and `.list-pane` itself was 1496px -- more than twice the window -- so every
+   row below the fold was unreachable and no scrollbar existed to reach it.
+   ⚠ TWO RULES, NOT ONE, AND THE SECOND IS NOT OPTIONAL -- MEASURED, NOT ASSUMED.
+   The brief asked for one rule. `overflow-y` on the rows container ALONE was
+   driven and measured: the declaration applied (computed overflow-y went
+   `visible` -> `auto`) and the defect was UNCHANGED (rows 1410px, pane 1496px,
+   scrollHeight == clientHeight still). The reason is the flex/grid-child hazard
+   the brief itself names: `.list-pane` is a GRID ITEM of `.main-layout` and a
+   grid item's default `min-height: auto` refuses to shrink below its content,
+   so the pane grew and handed the rows container a 1410px box to "scroll" in.
+   `min-height: 0` on the pane is what bounds it to its grid row; only then does
+   the container's own `min-height: 0` + `overflow-y` have anything to bite on.
+   With both: rows client 556px, pane 642px <= 673px window, scrollHeight >
+   clientHeight. The header is a sibling ABOVE this container, so it never
+   scrolls and never leaves the viewport. */
+#contacts-rows { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 /* D.2: the welcome content pane */
 .content-pane { display: flex; min-width: 0; }

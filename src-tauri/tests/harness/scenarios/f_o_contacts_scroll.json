@@ -1,0 +1,121 @@
+{
+ "scenario": "na0774_contacts_scroll",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "note",
+   "text": "NA-0774 FIX (a) -- THE CONTACTS LIST SCROLLS INSIDE ITS PANE. Brief sec 3. Rows are INJECTED rather than seeded through the app, and the brief requires saying which: there is no relay in this harness and no UI path that mints 30 contacts, so the rows are built directly in #contacts-rows with the same class and shape renderContactsList() produces (main.js:2997-3009). The CSS under test is layout, and layout does not care how a row got there."
+  },
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0774-lane-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0774-lane-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "Lane"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-contacts",
+   "prop": "className",
+   "expect": "list-pane",
+   "poll": 10
+  },
+  {
+   "op": "note",
+   "text": "Record the window height BEFORE the rows exist. Assertion (3) compares against this."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0774_h0 = window.innerHeight; return String(window.__na0774_h0);"
+  },
+  {
+   "op": "exec",
+   "script": "var h=document.getElementById('contacts-rows');h.innerHTML='';for(var i=0;i<30;i++){var d=document.createElement('div');d.className='contact-row';d.dataset.alias='seed'+i;var s=document.createElement('span');s.className='contact-dot';var n=document.createElement('span');n.className='contact-name';n.textContent='Contact '+i;d.append(s,n);h.appendChild(d);}return String(h.children.length);",
+   "expect": "30"
+  },
+  {
+   "op": "note",
+   "text": "ASSERTION (2), the brief's, and THE ONE THAT DISCRIMINATES: the rows container clips and scrolls. Measured RED before the fix at 1410 == 1410."
+  },
+  {
+   "op": "exec",
+   "script": "var h=document.getElementById('contacts-rows');return h.scrollHeight > h.clientHeight ? 'scrolls' : ('NO-SCROLL scroll='+h.scrollHeight+' client='+h.clientHeight);",
+   "expect": "scrolls"
+  },
+  {
+   "op": "note",
+   "text": "ASSERTION (4), ADDED BY THIS LANE AND NOT IN THE BRIEF, because it names the defect a user actually meets: the PANE must fit inside the window. Measured RED before the fix at 1496 in a 673px window, which put every row below the fold out of reach with no scrollbar to reach it."
+  },
+  {
+   "op": "exec",
+   "script": "var p=document.getElementById('pane-contacts');return p.clientHeight <= window.innerHeight ? 'fits' : ('OVERFLOWS pane='+p.clientHeight+' win='+window.innerHeight);",
+   "expect": "fits"
+  },
+  {
+   "op": "note",
+   "text": "ASSERTION (1), the brief's. \u26a0 RECORDED LIMIT: this one measured TRUE in the RED state too (headTop 17, headBottom 41) because the pane grows DOWNWARD from the top and the header sits above the growth. It is asserted because the brief asks for it and it must not REGRESS, but it does not carry the red arm."
+  },
+  {
+   "op": "exec",
+   "script": "var r=document.querySelector('#pane-contacts .list-header h2').getBoundingClientRect();return (r.top>=0 && r.bottom<=window.innerHeight) ? 'in-view' : ('OFF-SCREEN top='+Math.round(r.top)+' bottom='+Math.round(r.bottom));",
+   "expect": "in-view"
+  },
+  {
+   "op": "note",
+   "text": "ASSERTION (3), the brief's. \u26a0 SAME LIMIT: the window is not resized on scr-main, so this held in the red state too. Asserted as a no-regression guard, not as the discriminator."
+  },
+  {
+   "op": "exec",
+   "script": "return window.innerHeight === window.__na0774_h0 ? 'unchanged' : ('CHANGED from '+window.__na0774_h0+' to '+window.innerHeight);",
+   "expect": "unchanged"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}
