@@ -230,6 +230,14 @@
       <div id="pane-identity" class="pane">
         <h2>Identity</h2>
         <div id="identity-empty" class="hint hidden">No identity exists yet — finish setup to create one.</div>
+        <!-- NA-0774 (E5) -- DISTINCT ERRORS FOR DISTINCT CAUSES. `#identity-empty` above says
+             an identity does NOT EXIST. Before this lane, a THROWN `identity_show` reached that
+             same line, so a transient failure told a user who HAS an identity that they have
+             none, and invited them to "finish setup" -- an action that is wrong for their
+             actual state. This element carries the other cause, and its copy names RETRY,
+             never setup. Both are `hidden` by default; `refreshIdentityPane` reveals exactly
+             one of the three states (error, absent, body). -->
+        <div id="identity-read-error" class="hint hidden">Couldn't read your identity. Try again.</div>
         <p class="muted">Who you are on this device.</p>
         <!-- R-2: THREE sections at --sp-6, hairlines BETWEEN them only.
              `.pane-sect` is a NEW class that mirrors the Server pane's

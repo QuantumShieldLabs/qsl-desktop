@@ -332,3 +332,39 @@ fn na0763_gui_m_liveness_tick() {
 fn na0764_gui_n_contacts_autoconnect() {
     run_scenario("f_n_contacts_autoconnect");
 }
+
+// NA-0774 (`D-0045`) -- FIX (a): the contacts list scrolls inside its pane. The
+// defect was measured in the running app before the rule existed: 30 rows made
+// `#contacts-rows` 1410px tall with `scrollHeight == clientHeight` -- no
+// clipping, it simply grew -- and `.list-pane` 1496px inside a 673px window, so
+// every row below the fold was unreachable with no scrollbar to reach it.
+//
+// ⚠ CLAIM BOUNDARY, and it is the honest one. Two of the brief's three
+// assertions do NOT discriminate at this window size and are asserted as
+// no-regression guards rather than as the proof: the heading was already in
+// view in the red state (the pane grows downward, the header sits above it),
+// and the window is not resized on `scr-main`. The arm that carries the red is
+// `scrollHeight > clientHeight`, joined by this lane's added assertion that the
+// PANE fits the window -- which is the defect a user actually meets.
+#[test]
+#[ignore]
+fn na0774_gui_o_contacts_scroll() {
+    run_scenario("f_o_contacts_scroll");
+}
+
+// NA-0774 (`D-0045`) -- FIX (b): the busy indicator is quiet under a tick. A
+// MutationObserver counts transitions of `#busy-indicator` out of `hidden`; a
+// tick-sourced `relayScan` must produce ZERO and a user-sourced call must
+// produce at least one IN THE SAME RUN. The positive control is not optional:
+// without it a broken observer reports "quiet" forever and the tick arm proves
+// nothing.
+//
+// ⚠ CLAIM BOUNDARY: `relayScan` is driven directly with `source: "tick"` rather
+// than by waiting for a real beat. The gate needs a configured relay and this
+// harness has none, and waiting on wall-clock would be a sleep. What the
+// mechanism keys on is the SOURCE, and the source is what this drives.
+#[test]
+#[ignore]
+fn na0774_gui_p_tick_quiet_busy() {
+    run_scenario("f_p_tick_quiet_busy");
+}
