@@ -96,6 +96,18 @@
    "text": "NA-0753 (R377 section 3): STRENGTHENED, not weakened. The on-screen form became six 5-digit groups (v2 item 2), so the raw-shape needle /^[0-9]{30}$/ is replaced by TWO assertions that together pin strictly more: the GROUP shape, and the 30-digit payload recovered by stripping whitespace. Old shape: 30 bare digits. New shape: 48291 07365 51482 90173 66204 18859. The raw value itself stays pinned by the Rust value tests, untouched."
   },
   {
+   "op": "note",
+   "text": "NA-0768 (RULING_013 §3): THE PRECONDITION THIS FLOW NEVER HAD. `#settings-code` is written at ui/main.js:944 inside `async refreshIdentityPane()` (:930), only AFTER `await invoke(\"identity_show\")` at :933 resolves. The note above says the shape assertions run \"AFTER the settings identity pane is reached\" -- but REACHED is not POPULATED: the pane is navigated to synchronously while the IPC is still in flight, so on a slow runner the element is still empty and every regex below measures false. Observed on PR #47's CI run (gui-driver FAIL, 13/14). The cure waits on the ELEMENT'S STATE, never on wall-clock."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(document.getElementById('settings-code').textContent.replace(/\\s+/g,'').length === 30);",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 25,
+   "label": "settings_code_populated"
+  },
+  {
    "op": "exec",
    "script": "return /^[0-9]{5}( [0-9]{5}){5}$/.test(document.getElementById('settings-code').textContent.replace(/\\s+/g, ' ').trim());",
    "expect": true

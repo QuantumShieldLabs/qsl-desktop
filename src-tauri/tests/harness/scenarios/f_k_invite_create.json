@@ -699,17 +699,17 @@
   },
   {
    "op": "exec",
-   "script": "document.getElementById('invite-label').value='   ';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;document.getElementById('invite-label').value='   ';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
    "expect": "disabled"
   },
   {
    "op": "exec",
-   "script": "document.getElementById('invite-label').value='\\t \\n ';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;document.getElementById('invite-label').value='\\t \\n ';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
    "expect": "disabled"
   },
   {
    "op": "exec",
-   "script": "document.getElementById('invite-label').value='Dana';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;document.getElementById('invite-label').value='Dana';inviteSyncActivate();return document.getElementById('btn-invite-activate').disabled?'disabled':'enabled';",
    "expect": "enabled"
   },
   {
