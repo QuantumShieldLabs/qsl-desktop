@@ -16,8 +16,15 @@ use std::sync::Mutex;
 
 static SERIAL: Mutex<()> = Mutex::new(());
 
+/// ⚠ `QSC_CONFIG_DIR` MUST BE POINTED AT THE FIXTURE, and this is not decoration: qsc
+/// resolves its store from that env, so without it `unlock_guarded` operates on some
+/// OTHER directory and any assertion about this one passes no matter what the code does.
+/// An earlier version of this file omitted it and the ordering arm was VACUOUS -- its
+/// red control did not fire. The house pattern is the same three lines used by
+/// na0700_ipc_replay.rs:194, na0751_gateway_surface.rs:98 and na0754_persist_boundary.rs:128.
 fn seeded_store(dir: &std::path::Path) {
     fs::create_dir_all(paths::qsc_config_dir(dir)).unwrap();
+    std::env::set_var("QSC_CONFIG_DIR", paths::qsc_config_dir(dir));
     fs::write(paths::vault_file(dir), b"not a real vault, but present").unwrap();
     settings::save(dir, &settings::AppSettings::default()).unwrap();
 }
@@ -122,8 +129,39 @@ fn the_migration_removes_the_five_frozen_names_and_never_follows_a_link() {
     }
     assert!(treasure.exists(), "THE MIGRATION FOLLOWED A SYMLINK and deleted outside the data dir");
     assert!(outside.path().exists(), "the link's TARGET DIRECTORY was destroyed");
+    // ⚠ WHAT THIS ARM DOES AND DOES NOT PROVE, measured rather than assumed: swapping
+    // `symlink_metadata` for `metadata` does NOT change the outcome, because
+    // `std::fs::remove_dir_all` on a symlink already returns Ok, removes the LINK and
+    // leaves the TARGET intact (driven directly in a standalone probe). So std is the
+    // primary refusal here and `symlink_metadata` is EXPLICIT INTENT rather than the
+    // sole guard. This arm therefore pins the OUTCOME; the arm below shows it can still
+    // catch an implementation that genuinely follows.
     assert!(paths::qsc_config_dir(d.path()).exists(), "the migration touched qsc/");
     assert!(paths::settings_file(d.path()).exists(), "the migration touched settings.json");
+}
+
+/// The companion to the arm above: it proves the OUTCOME assertions are not vacuous by
+/// showing they catch a deliberately link-following deletion. Without this, "the target
+/// survived" would be indistinguishable from "nothing tried to delete it".
+#[test]
+fn the_outcome_assertions_catch_an_implementation_that_follows_links() {
+    let _g = SERIAL.lock().unwrap_or_else(|p| p.into_inner());
+    let d = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+    let treasure = outside.path().join("must-survive");
+    fs::write(&treasure, b"x").unwrap();
+    std::os::unix::fs::symlink(outside.path(), d.path().join("storage")).unwrap();
+
+    // a FOLLOWING deletion, written the way a careless implementation would
+    let p = d.path().join("storage");
+    if let Ok(real) = fs::canonicalize(&p) {
+        let _ = fs::remove_dir_all(real);
+    }
+
+    assert!(
+        !treasure.exists(),
+        "the control did not follow the link, so the outcome assertions above prove nothing"
+    );
 }
 
 /// 3.6 A3 + A5 -- the marker, the sweep, and THE MISSED-MARKER WITNESS. All in one test
