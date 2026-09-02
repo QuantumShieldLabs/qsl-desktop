@@ -3558,3 +3558,87 @@ DECISIONS.md (registration: D-1279; bootstrap: D-1280).
 
 - ⚠ **Claim boundary.** Display-only; zero protocol bytes; no `.github/**`; no pin change; no test weakened, skipped or deleted. **A source pin cannot prove the screen repaints** — only that the signal exists and the gate reads it. No scenario can complete a handshake without a fixture relay (`ENG-0226`, open), so **the acceptance is the operator's fourth flight**, not this suite. A scenario step driving the gate with a stubbed status change was judged feasible and deliberately NOT added: it duplicates the source pin at the cost of a monkey-patching pattern with no precedent, on the one job that has already flaked in this arc.
 - **References:** `D-1409` (the spine lane); `D-0043` (the surface these repairs land on); `RULING_NA0768_012`; `STOP_NA0768_012`; `ENG-0226` (no fixture relay); `ENG-0235` (the plant hazard).
+
+## D-0045 — RESERVED BY CLAIM (NA-0774, PR #50). No record was written; this reservation exists so id derivation cannot see a false gap.
+
+- **Date/Lane:** 2026-09-02 · reservation recorded by NA-0776 (`D-0046`) · records-only
+- **Ordered by:** `RULING_NA0776_013_d0045_gap_20260902.md` §2
+
+**RESERVED BY CLAIM (NA-0774, PR #50).** The id was used in the PR title and in three
+shipped comments; no record was written. Reservation recorded by NA-0776 so that id
+derivation sees it; the substantive record is OWED to a successor micro-item and is NOT
+authored here.
+
+⚠ **MEASURED, NOT INFERRED**, at desktop main `83019356`: `D-0045` had **zero
+declarations** in this file and appeared only as three MENTIONS —
+`src-tauri/tests/gui_driver.rs:336`, `:355`, and
+`src-tauri/tests/na0774_identity_error_state.rs:1` — while `NA-0774` occurred **zero**
+times in this file and PR #50's file list contains no `DECISIONS.md`. Reusing the id
+would re-point those three citations at a different lane's decision, which is a worse
+lie than a gap; so it is reserved rather than reclaimed, and no decision is invented
+here.
+
+## D-0046 — NA-0776: THE DESKTOP TRIO. Three filed defects repaired, the pane-heading class cured as a class, settings.json sealed at 0600, and the WebKit residue relocated instead of swept.
+
+- **Date/Lane:** 2026-09-02 · NA-0776 · desktop · Goals G4
+- **Ordered by:** `KICKOFF_NA0776_desktop_trio_20260901.md` and rulings
+  `RULING_NA0776_001`…`013`, on the spec sealed at `STOP_NA0776_002` (self-digest
+  `69ad632b…`) as amended by `SPEC_3_6_v3_1_relocation_20260902.md` (`e477a9f9…`), after
+  a full SR-15 cold read and a targeted second read.
+
+**WHAT SHIPPED.** `ENG-0274` the declined-frame notice · `ENG-0275` build identity in
+`app_info` · `ENG-0276` external-wipe detection · the pane-heading class · settings.json
+at 0600 · the WebKit residue relocated under `<app-data>/webview` · and two evidence
+gates (the scenario orphan gate; the replay-exclusion pin).
+
+**THE OPERATOR'S HEADING RULING (T1–T4), which supersedes an earlier Director choice.**
+The unified container top padding is `--sp-3` (12px) on BOTH columns — the list panes'
+existing value, the level the operator named ("that appears to be where Contacts is") —
+NOT `--sp-4`. The shared `.pane-head-row` takes a `min-height` from a new **34px**
+token applied to ALL panes, Settings included. Every `h2` then lands at
+12 + (34−25)/2 = **16.5px**. Acceptance covers all **eight** `h2` sites, navigating the
+three hidden Settings panes, and adds the operator's own anchor: every `h2`'s vertical
+centre equals the **rail top button's** centre within **≤ 0.5px inclusive** — inclusive
+because T3's own figure sits exactly on 0.5, and an exclusive bound would fail a
+conforming build.
+
+**A NEW TOKEN FAMILY, recorded as a precedent for the next author.** `--sz-head-row: 34px`
+is a **SIZE** token, not a spacing one: it is consumed by `min-height`, which
+`spacing_only_from_scale_tokens` does not cover, so **no pin enforces it** and the driver
+assertion is the enforcement. Honest naming for a non-spacing value.
+
+**THE RESTART DEVIATION, ACCEPTED AT `RULING_NA0776_009`.** Cure (B)'s restart is issued
+by the CALLER (a new `restart_app` command at the sites that previously called
+`window.location.reload()`), because putting `app.restart()` inside `erase_all` /
+`destroy_vault` makes them uninvokable by the NA-0700 replay harness — which this lane
+may not weaken. **The durable half stays Rust-side and unconditional:** each of the three
+wipe paths sets the wipe marker itself, so the webview deletion happens at the next
+bootstrap even if no restart is ever issued. The two halves fail independently, which is
+why the missed-marker witness is its own arm.
+
+**THE ARMED PATH WAS THE DANGEROUS ONE.** Measured: erase and destroy both reloaded;
+the armed wipe did not, and "Start over" called `route()` — so a new vault was created
+**inside the same process**. That is `ENG-0276`'s own reproduction, reachable through the
+shipped UI with no external tampering, on the one path the spec had not covered.
+
+**TWO PINS RE-SITED, NOT WEAKENED.** Retiring the `windows` block in `tauri.conf.json`
+(required so `.data_directory` reaches the direct setter) would have left
+`design_system.rs`'s title pin AND `design_round3.rs`'s F1 pin asserting over properties
+that are no longer there — pins that CANNOT FAIL, which is worse than no pin. Both assert
+the same literals at the new source site, each red-armed by mutating the literal, each
+with a new arm asserting the property has not reappeared where it could disagree.
+
+⚠ **`SPEC_3_6_v3_1`'s title line reads "3.6-v3" BY RULING** (`RULING_NA0776_008`
+confirmations §3): the filename and §0 carry the version, and a re-cut would rotate shas
+for zero information. Not a slip.
+
+- ⚠ **Claim boundary.** The driver arms are ADVISORY at this base — `gui-driver` is not in
+  the required set — and a red arm at landing time is a STOP for the Director, never
+  merged past. The residue measurement is n=1 on Linux/WebKitGTK; `data_directory` is
+  documented UNSUPPORTED on macOS/iOS, where `dataStoreIdentifier` is the platform's
+  answer. Geometry is measured at one window size. `ENG-0276`'s cure covers a VANISHED
+  store, never a REPLACED one, and NARROWS its TOCTOU rather than closing it.
+- **References:** `D-0045` (reserved above); `D-0044`, `D-0043` (the surfaces these land
+  on); `ENG-0274`/`0275`/`0276`; `ENG-0121` (both limbs stay open); `ENG-0127` (the
+  test-seam env class, which the marker-injection seam joins); `ENG-0048` / `NA-0697` and
+  `na0753_armed_wipe_boundary` (both sealed listing pins, both untouched and green).
