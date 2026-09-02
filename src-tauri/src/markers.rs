@@ -30,10 +30,10 @@ pub fn classify(line: &str) -> Option<&'static str> {
         rest.split_whitespace().next().unwrap_or("").to_string()
     } else if line.starts_with('{') {
         match serde_json::from_str::<serde_json::Value>(line) {
-            Ok(v) => match v.get("event").and_then(|e| e.as_str()) {
-                Some(e) => e.to_string(),
-                None => return None,
-            },
+            Ok(v) => {
+                let e = v.get("event").and_then(|e| e.as_str())?;
+                e.to_string()
+            }
             Err(_) => return None,
         }
     } else {
