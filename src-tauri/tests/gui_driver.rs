@@ -408,3 +408,13 @@ fn na0776_gui_r_declined_notice() {
 fn na0776_gui_s_webview_relocated() {
     run_scenario("f_s_webview_relocated");
 }
+
+/// NA-0776 (`ENG-0275`, RULING_015) -- THE BUILD IDENTITY IS VISIBLE. The Rust arms prove
+/// the DTO equals HEAD; this proves the OPERATOR CAN READ IT. It compares the rendered
+/// About line against the DTO's OWN value returned by IPC -- not a shape match -- using
+/// the f_h precedent for calling `__TAURI__.core.invoke` from a scenario.
+#[test]
+#[ignore]
+fn na0776_gui_t_build_identity_visible() {
+    run_scenario("f_t_build_identity");
+}

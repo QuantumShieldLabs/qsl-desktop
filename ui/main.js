@@ -925,7 +925,16 @@ async function openSettings(pane) {
   await refreshVaultPane();
   await refreshServerPane();
   const info = await invoke("app_info");
-  byId("about-name").textContent = `${info.display_name} (qsl-desktop ${info.version})`;
+  // NA-0776 (`ENG-0275`, RULING_015 sec 1): SHOW WHICH BUILD THIS IS. The DTO field
+  // alone did not deliver the filing -- "a flight cannot state which build it flew" --
+  // because a flight is the operator looking at the screen. The SHORT commit goes on
+  // this line, the dynamic version-bearing one; `about-text` is left alone because it
+  // carries the claim-discipline sentence. MEASURED before choosing: NEITHER About line
+  // is pinned by any test.
+  const buildShort =
+    info.build_commit === "unknown" ? "unknown" : info.build_commit.slice(0, 8);
+  byId("about-name").textContent =
+    `${info.display_name} (qsl-desktop ${info.version}, build ${buildShort})`;
   // Slice B (D609 R4): the "no network connections" clause is retired — the app
   // now reaches a relay — but the surviving TRUE clause STAYS: no
   // security-assurance claims. Only the network clause changed.
