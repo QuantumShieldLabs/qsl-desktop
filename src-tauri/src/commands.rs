@@ -464,10 +464,7 @@ pub fn restart_app<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
 }
 
 #[tauri::command]
-pub async fn erase_all(
-    st: State<'_, AppState>,
-    confirm_phrase: String,
-) -> Result<(), String> {
+pub async fn erase_all(st: State<'_, AppState>, confirm_phrase: String) -> Result<(), String> {
     if confirm_phrase != ERASE_CONFIRM_PHRASE {
         return Err("confirm_phrase_mismatch".into());
     }

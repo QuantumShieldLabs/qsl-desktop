@@ -7,8 +7,8 @@
 //! unconditionally (lib.rs:28) and v1 is Linux-only (D-A / L9), so a gate would assert a
 //! portability property the tree does not have.
 
-use qsl_desktop_app::settings::{self, AppSettings};
 use qsl_desktop_app::paths;
+use qsl_desktop_app::settings::{self, AppSettings};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
@@ -30,7 +30,10 @@ fn saved_settings_file_is_0600() {
         mode_of(&f)
     );
     // and the staging sibling is gone on the success path
-    assert!(!f.with_extension("json.tmp").exists(), "a .tmp survived a successful save");
+    assert!(
+        !f.with_extension("json.tmp").exists(),
+        "a .tmp survived a successful save"
+    );
 }
 
 /// A2 -- an EXISTING 664 profile is remediated. This is the half that decides whether
@@ -46,8 +49,15 @@ fn existing_664_profile_is_tightened_on_the_load_path() {
 
     let s = settings::load(dir.path());
 
-    assert_eq!(mode_of(&f), 0o600, "load did not tighten an existing 664 file");
-    assert_eq!(s.autolock_minutes, 20, "remediation must not disturb the CONTENT");
+    assert_eq!(
+        mode_of(&f),
+        0o600,
+        "load did not tighten an existing 664 file"
+    );
+    assert_eq!(
+        s.autolock_minutes, 20,
+        "remediation must not disturb the CONTENT"
+    );
 }
 
 /// A2b -- idempotent: a file already at 600 is left alone and still reads.
@@ -72,7 +82,11 @@ fn tighten_no_ops_cleanly_when_the_file_is_absent() {
     assert!(!f.exists(), "tighten CREATED a file that was absent");
     // and the same through the launch-path caller shape
     let s = settings::load(dir.path());
-    assert_eq!(s, AppSettings::default(), "an absent file must read as defaults");
+    assert_eq!(
+        s,
+        AppSettings::default(),
+        "an absent file must read as defaults"
+    );
     assert!(!f.exists(), "load CREATED a settings file");
 }
 
@@ -94,10 +108,16 @@ fn tmp_residue_on_a_failed_rename_is_0600() {
     fs::write(f.join("occupant"), b"x").unwrap();
 
     let r = settings::save(dir.path(), &AppSettings::default());
-    assert!(r.is_err(), "the rename was expected to fail; the arm proves nothing if it succeeded");
+    assert!(
+        r.is_err(),
+        "the rename was expected to fail; the arm proves nothing if it succeeded"
+    );
 
     let tmp = f.with_extension("json.tmp");
-    assert!(tmp.exists(), "no .tmp residue: the failure did not land where this arm needs it");
+    assert!(
+        tmp.exists(),
+        "no .tmp residue: the failure did not land where this arm needs it"
+    );
     assert_eq!(
         mode_of(&tmp),
         0o600,

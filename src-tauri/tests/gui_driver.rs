@@ -395,7 +395,10 @@ fn na0776_gui_q_heading_alignment() {
 fn na0776_gui_r_declined_notice() {
     run_scenario_with_env(
         "f_r_declined_notice",
-        &[("QSLD_INJECT_MARKER", "QSC_MARK/1 event=invite_finish_hs_unconsumed candidates=2")],
+        &[(
+            "QSLD_INJECT_MARKER",
+            "QSC_MARK/1 event=invite_finish_hs_unconsumed candidates=2",
+        )],
     );
 }
 

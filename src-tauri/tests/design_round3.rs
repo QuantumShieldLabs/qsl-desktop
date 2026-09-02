@@ -443,7 +443,10 @@ fn window_modes_and_menu_visibility() {
     // title pin only; this second pin over the same retired block was found by running
     // the full suite, which is exactly what the full suite is for.
     let lib = manifest_file("src/lib.rs");
-    assert!(lib.contains(".visible(false)"), "F1 hidden launch, at its new site in lib.rs");
+    assert!(
+        lib.contains(".visible(false)"),
+        "F1 hidden launch, at its new site in lib.rs"
+    );
     assert!(
         lib.contains("inner_size(360.0, 585.0)"),
         "F1 compact initial size — round 4a's reading width and wizard-step-1 height, at \

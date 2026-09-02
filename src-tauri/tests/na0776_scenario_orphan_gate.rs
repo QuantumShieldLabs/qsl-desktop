@@ -16,7 +16,10 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf()
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .to_path_buf()
 }
 
 fn scenario_files() -> BTreeSet<String> {
@@ -77,8 +80,15 @@ fn every_scenario_is_dispatched_and_every_dispatch_has_a_scenario() {
         "DANGLING DISPATCH -- gui_driver.rs runs scenario(s) with no JSON file, which \
          fails only when that test is actually executed: {dangling:?}"
     );
-    assert_eq!(files, calls, "the two sets must be equal, not merely non-empty");
+    assert_eq!(
+        files, calls,
+        "the two sets must be equal, not merely non-empty"
+    );
     // non-vacuity: an empty directory would satisfy set equality trivially
-    assert!(files.len() >= 17, "only {} scenarios found -- the gate may be looking in the \
-        wrong place, which would make its equality vacuous", files.len());
+    assert!(
+        files.len() >= 17,
+        "only {} scenarios found -- the gate may be looking in the \
+        wrong place, which would make its equality vacuous",
+        files.len()
+    );
 }

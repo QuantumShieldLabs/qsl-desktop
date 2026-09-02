@@ -38,17 +38,29 @@ fn store_vanished_fires_only_on_a_regression() {
     seeded_store(d.path());
 
     app::reset_believed_state();
-    assert!(!app::store_vanished(d.path()), "no belief must never fire the guard");
+    assert!(
+        !app::store_vanished(d.path()),
+        "no belief must never fire the guard"
+    );
 
     app::record_believed_state(LaunchState::S2);
-    assert!(!app::store_vanished(d.path()), "a store that is still there must not fire");
+    assert!(
+        !app::store_vanished(d.path()),
+        "a store that is still there must not fire"
+    );
 
     // the external wipe: nothing the app did
     fs::remove_dir_all(paths::qsc_config_dir(d.path())).unwrap();
-    assert!(app::store_vanished(d.path()), "a believed store that VANISHED must fire");
+    assert!(
+        app::store_vanished(d.path()),
+        "a believed store that VANISHED must fire"
+    );
 
     app::record_believed_state(LaunchState::S0);
-    assert!(!app::store_vanished(d.path()), "believing S0 already is not a regression");
+    assert!(
+        !app::store_vanished(d.path()),
+        "believing S0 already is not a regression"
+    );
     app::reset_believed_state();
 }
 
@@ -64,12 +76,19 @@ fn the_unlock_door_refuses_without_re_creating_the_store() {
     seeded_store(d.path());
     app::record_believed_state(LaunchState::S2);
     fs::remove_dir_all(paths::qsc_config_dir(d.path())).unwrap();
-    assert!(!paths::qsc_config_dir(d.path()).exists(), "fixture: the store must be gone");
+    assert!(
+        !paths::qsc_config_dir(d.path()).exists(),
+        "fixture: the store must be gone"
+    );
 
     let r = commands::unlock_attempt_impl(d.path(), "whatever");
 
     match r {
-        Err(e) => assert_eq!(e, app::STORE_VANISHED, "the door failed closed with the wrong reason"),
+        Err(e) => assert_eq!(
+            e,
+            app::STORE_VANISHED,
+            "the door failed closed with the wrong reason"
+        ),
         Ok(_) => panic!("the unlock door did NOT fail closed on a vanished store"),
     }
     assert!(
@@ -127,8 +146,14 @@ fn the_migration_removes_the_five_frozen_names_and_never_follows_a_link() {
             "the migration left {n} behind"
         );
     }
-    assert!(treasure.exists(), "THE MIGRATION FOLLOWED A SYMLINK and deleted outside the data dir");
-    assert!(outside.path().exists(), "the link's TARGET DIRECTORY was destroyed");
+    assert!(
+        treasure.exists(),
+        "THE MIGRATION FOLLOWED A SYMLINK and deleted outside the data dir"
+    );
+    assert!(
+        outside.path().exists(),
+        "the link's TARGET DIRECTORY was destroyed"
+    );
     // ⚠ WHAT THIS ARM DOES AND DOES NOT PROVE, measured rather than assumed: swapping
     // `symlink_metadata` for `metadata` does NOT change the outcome, because
     // `std::fs::remove_dir_all` on a symlink already returns Ok, removes the LINK and
@@ -136,8 +161,14 @@ fn the_migration_removes_the_five_frozen_names_and_never_follows_a_link() {
     // primary refusal here and `symlink_metadata` is EXPLICIT INTENT rather than the
     // sole guard. This arm therefore pins the OUTCOME; the arm below shows it can still
     // catch an implementation that genuinely follows.
-    assert!(paths::qsc_config_dir(d.path()).exists(), "the migration touched qsc/");
-    assert!(paths::settings_file(d.path()).exists(), "the migration touched settings.json");
+    assert!(
+        paths::qsc_config_dir(d.path()).exists(),
+        "the migration touched qsc/"
+    );
+    assert!(
+        paths::settings_file(d.path()).exists(),
+        "the migration touched settings.json"
+    );
 }
 
 /// The companion to the arm above: it proves the OUTCOME assertions are not vacuous by
@@ -185,17 +216,28 @@ fn the_marker_gates_the_sweep_and_its_absence_is_witnessed() {
     fs::create_dir_all(wv.join("CacheStorage")).unwrap();
     assert!(!app::webview_wipe_pending(), "fixture: no marker yet");
     app::sweep_webview_if_pending(d.path());
-    assert!(wv.exists(), "the sweep ran WITHOUT a marker -- it is not gated");
+    assert!(
+        wv.exists(),
+        "the sweep ran WITHOUT a marker -- it is not gated"
+    );
 
     // A3 -- with the marker set (as every wipe path sets it), the next bootstrap deletes
     // the directory and clears the marker.
     app::mark_webview_wipe_pending();
     assert!(app::webview_wipe_pending(), "the marker was not set");
-    assert!(rt.path().join("qsl-desktop.webview-wipe-pending").exists(),
-        "the marker is not the FILE the ruling requires -- an env marker dies with the process");
+    assert!(
+        rt.path().join("qsl-desktop.webview-wipe-pending").exists(),
+        "the marker is not the FILE the ruling requires -- an env marker dies with the process"
+    );
     app::sweep_webview_if_pending(d.path());
-    assert!(!wv.exists(), "the webview directory survived a marked sweep");
-    assert!(!app::webview_wipe_pending(), "the marker was not cleared after success");
+    assert!(
+        !wv.exists(),
+        "the webview directory survived a marked sweep"
+    );
+    assert!(
+        !app::webview_wipe_pending(),
+        "the marker was not cleared after success"
+    );
 
     // idempotent: a second sweep with no marker is a no-op and does not panic
     app::sweep_webview_if_pending(d.path());
@@ -203,7 +245,10 @@ fn the_marker_gates_the_sweep_and_its_absence_is_witnessed() {
     // and a marker with NOTHING to delete still clears (nothing left to remove)
     app::mark_webview_wipe_pending();
     app::sweep_webview_if_pending(d.path());
-    assert!(!app::webview_wipe_pending(), "a no-op deletion must still clear the marker");
+    assert!(
+        !app::webview_wipe_pending(),
+        "a no-op deletion must still clear the marker"
+    );
     std::env::remove_var("XDG_RUNTIME_DIR");
 }
 
@@ -221,7 +266,10 @@ fn every_wipe_path_sets_the_marker_rust_side() {
     settings::save(d.path(), &settings::AppSettings::default()).unwrap();
     app::reset_believed_state();
     let _ = commands::erase_all_impl(d.path());
-    assert!(app::webview_wipe_pending(), "erase_all did not set the marker");
+    assert!(
+        app::webview_wipe_pending(),
+        "erase_all did not set the marker"
+    );
 
     std::env::remove_var("XDG_RUNTIME_DIR");
 }

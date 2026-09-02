@@ -19,7 +19,10 @@ fn build_commit_is_40_hex_or_exactly_unknown() {
         is_40_hex(v) || v == "unknown",
         "build_commit is {v:?} -- neither a 40-hex commit nor the literal \"unknown\""
     );
-    assert!(!v.is_empty(), "build_commit is empty: an absent value must read \"unknown\"");
+    assert!(
+        !v.is_empty(),
+        "build_commit is empty: an absent value must read \"unknown\""
+    );
 }
 
 /// A2 -- THE STALE-STAMP ARM. The stamp must equal the commit this tree is on. If
@@ -33,13 +36,17 @@ fn stamped_commit_equals_head() {
         // No git here: the contract is then that the field says "unknown", and A1
         // already pins the shape. Stated rather than skipped silently.
         _ => {
-            assert_eq!(app_info().build_commit, "unknown",
-                "git is unavailable, so the stamp must be \"unknown\"");
+            assert_eq!(
+                app_info().build_commit,
+                "unknown",
+                "git is unavailable, so the stamp must be \"unknown\""
+            );
             return;
         }
     };
     assert_eq!(
-        app_info().build_commit, head,
+        app_info().build_commit,
+        head,
         "STALE STAMP: the binary reports a different commit than the tree is on"
     );
 }
@@ -55,10 +62,16 @@ fn an_absent_stamp_reads_unknown() {
 /// or garbage value from reaching a flight record as if it were a commit.
 #[test]
 fn a_malformed_stamp_reads_unknown() {
-    for bad in ["", "HEAD", "0123456789", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-                "0123456789012345678901234567890123456789a"] {
+    for bad in [
+        "",
+        "HEAD",
+        "0123456789",
+        "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        "0123456789012345678901234567890123456789a",
+    ] {
         assert_eq!(
-            build_commit_or_unknown(Some(bad)), "unknown",
+            build_commit_or_unknown(Some(bad)),
+            "unknown",
             "a malformed stamp {bad:?} was accepted as a commit"
         );
     }
@@ -78,9 +91,20 @@ fn a_malformed_stamp_reads_unknown() {
 fn no_dirty_flag_and_no_build_timestamp_on_the_dto() {
     let v = serde_json::to_value(app_info()).unwrap();
     let obj = v.as_object().expect("AppInfoDto serializes as an object");
-    for absent in ["dirty", "build_dirty", "build_utc", "build_time", "built_at"] {
-        assert!(!obj.contains_key(absent),
-            "AppInfoDto carries {absent:?}: MAJOR-6 ruled it out as believed-and-wrong");
+    for absent in [
+        "dirty",
+        "build_dirty",
+        "build_utc",
+        "build_time",
+        "built_at",
+    ] {
+        assert!(
+            !obj.contains_key(absent),
+            "AppInfoDto carries {absent:?}: MAJOR-6 ruled it out as believed-and-wrong"
+        );
     }
-    assert!(obj.contains_key("build_commit"), "build_commit is missing from the DTO");
+    assert!(
+        obj.contains_key("build_commit"),
+        "build_commit is missing from the DTO"
+    );
 }

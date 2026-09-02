@@ -28,12 +28,19 @@ fn main() {
 /// `.git` is a FILE containing `gitdir:`, so `../.git/HEAD` is not a path at all
 /// (cold read MAJOR-6). This house works in exactly such clones.
 fn git_path(arg: &str) -> Option<String> {
-    let out = Command::new("git").args(["rev-parse", "--git-path", arg]).output().ok()?;
+    let out = Command::new("git")
+        .args(["rev-parse", "--git-path", arg])
+        .output()
+        .ok()?;
     if !out.status.success() {
         return None;
     }
     let p = String::from_utf8(out.stdout).ok()?.trim().to_string();
-    if p.is_empty() { None } else { Some(p) }
+    if p.is_empty() {
+        None
+    } else {
+        Some(p)
+    }
 }
 
 fn stamp_build_commit() {

@@ -29,17 +29,32 @@ fn real_line(format: &str, event: &str) -> String {
 #[test]
 fn classifier_reads_real_lines_from_both_format_arms() {
     let plain = real_line("plain", KIND);
-    assert!(plain.starts_with("QSC_MARK/1 event="), "not the plain form: {plain}");
-    assert_eq!(classify(&plain), Some(KIND), "plain arm not classified: {plain}");
+    assert!(
+        plain.starts_with("QSC_MARK/1 event="),
+        "not the plain form: {plain}"
+    );
+    assert_eq!(
+        classify(&plain),
+        Some(KIND),
+        "plain arm not classified: {plain}"
+    );
 
     let jsonl = real_line("jsonl", KIND);
     assert!(jsonl.starts_with('{'), "not the jsonl form: {jsonl}");
-    assert_eq!(classify(&jsonl), Some(KIND), "jsonl arm not classified: {jsonl}");
+    assert_eq!(
+        classify(&jsonl),
+        Some(KIND),
+        "jsonl arm not classified: {jsonl}"
+    );
 
     // and a non-whitelisted event, through the real formatter, in both forms
     for f in ["plain", "jsonl"] {
         let other = real_line(f, "relay_ack");
-        assert_eq!(classify(&other), None, "a non-whitelisted marker classified: {other}");
+        assert_eq!(
+            classify(&other),
+            None,
+            "a non-whitelisted marker classified: {other}"
+        );
     }
     std::env::set_var("QSC_MARK_FORMAT", "plain");
 }
@@ -74,7 +89,7 @@ fn classify_returns_only_whitelisted_kinds_for_any_input() {
         format!("QSC_MARK/1 event={KIND}EXTRA candidates=1"),
         format!("QSC_MARK/1 event=x{KIND} candidates=1"),
         format!("{{\"v\":1,\"event\":\"{KIND}EXTRA\"}}"),
-        format!("{{\"v\":1,\"event\":\"relay_ack\",\"kv\":{{\"peer\":\"secret-looking\"}}}}"),
+        "{\"v\":1,\"event\":\"relay_ack\",\"kv\":{\"peer\":\"secret-looking\"}}".to_string(),
     ];
     for i in inputs {
         match classify(&i) {
@@ -87,7 +102,10 @@ fn classify_returns_only_whitelisted_kinds_for_any_input() {
     }
     // and the near-misses specifically must be REJECTED, not merely non-leaky
     assert_eq!(classify(&format!("QSC_MARK/1 event={KIND}EXTRA c=1")), None);
-    assert_eq!(classify(&format!("{{\"v\":1,\"event\":\"{KIND}EXTRA\"}}")), None);
+    assert_eq!(
+        classify(&format!("{{\"v\":1,\"event\":\"{KIND}EXTRA\"}}")),
+        None
+    );
 }
 
 /// MAJOR-2 -- the count is MONOTONIC and immune to the ring buffer's eviction. Read off
@@ -99,8 +117,15 @@ fn count_is_exact_under_eviction() {
         b.push(format!("QSC_MARK/1 event={KIND} candidates=1"));
     }
     let (buffered, _dropped) = b.stats();
-    assert_eq!(buffered, 3, "fixture must actually evict, or this arm proves nothing");
-    assert_eq!(b.notices(), vec![(KIND, 5)], "the tally followed the buffer, not the truth");
+    assert_eq!(
+        buffered, 3,
+        "fixture must actually evict, or this arm proves nothing"
+    );
+    assert_eq!(
+        b.notices(),
+        vec![(KIND, 5)],
+        "the tally followed the buffer, not the truth"
+    );
 }
 
 /// MINOR-11 -- dismiss is a Rust-side WATERMARK: it hides what has been seen, and a NEW
@@ -116,10 +141,17 @@ fn dismiss_watermarks_and_later_arrivals_reappear() {
     b.dismiss(KIND);
     assert!(b.notices().is_empty(), "dismiss did not clear the surface");
     b.push(format!("QSC_MARK/1 event={KIND} candidates=1"));
-    assert_eq!(b.notices(), vec![(KIND, 1)], "a NEW arrival must resurface the notice");
+    assert_eq!(
+        b.notices(),
+        vec![(KIND, 1)],
+        "a NEW arrival must resurface the notice"
+    );
     // marker_stats' meaning is untouched by the UI gesture: nothing was consumed
     let (buffered, _) = b.stats();
-    assert_eq!(buffered, 4, "dismiss consumed buffer entries -- marker_stats would drift");
+    assert_eq!(
+        buffered, 4,
+        "dismiss consumed buffer entries -- marker_stats would drift"
+    );
 }
 
 #[test]
@@ -128,7 +160,11 @@ fn dismiss_ignores_kinds_outside_the_whitelist() {
     b.push(format!("QSC_MARK/1 event={KIND} candidates=1"));
     b.dismiss("relay_ack");
     b.dismiss("");
-    assert_eq!(b.notices(), vec![(KIND, 1)], "an unrelated dismiss altered the surface");
+    assert_eq!(
+        b.notices(),
+        vec![(KIND, 1)],
+        "an unrelated dismiss altered the surface"
+    );
 }
 
 /// BLOCKER-4 / NOTE-4 -- the DTO is {kind, count}. The two time fields were specified in
@@ -138,7 +174,11 @@ fn dismiss_ignores_kinds_outside_the_whitelist() {
 /// named timestamp would pass, and adding one is a ruling, not a slip this can catch.
 #[test]
 fn the_dto_is_kind_and_count_only() {
-    let v = serde_json::to_value(NoticeDto { kind: KIND, count: 3 }).unwrap();
+    let v = serde_json::to_value(NoticeDto {
+        kind: KIND,
+        count: 3,
+    })
+    .unwrap();
     let obj = v.as_object().expect("NoticeDto serializes as an object");
     let mut keys: Vec<_> = obj.keys().map(String::as_str).collect();
     keys.sort();

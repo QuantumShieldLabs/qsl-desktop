@@ -117,8 +117,10 @@ fn the_replay_exclusion_is_the_frozen_baseline() {
         .filter_map(|l| {
             let t = l.trim().trim_end_matches(',');
             let t = t.strip_prefix("commands::").unwrap_or(t);
-            (!t.is_empty() && t.chars().all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()))
-                .then(|| t.to_string())
+            (!t.is_empty()
+                && t.chars()
+                    .all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()))
+            .then(|| t.to_string())
         })
         .collect();
     assert!(
@@ -132,8 +134,15 @@ fn the_replay_exclusion_is_the_frozen_baseline() {
     // prose above cannot count as coverage, and with the two constant blocks removed so
     // the pin's own expected values cannot count either.
     let me = std::fs::read_to_string(root.join("tests/na0700_ipc_replay.rs")).expect("self");
-    let me: String = me.lines().filter(|l| !l.trim_start().starts_with("//")).collect::<Vec<_>>().join("\n");
-    let body = match (me.find("const INHERITED"), me.find("let root = std::path::PathBuf")) {
+    let me: String = me
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let body = match (
+        me.find("const INHERITED"),
+        me.find("let root = std::path::PathBuf"),
+    ) {
         (Some(a), Some(b)) if b > a => format!("{}{}", &me[..a], &me[b..]),
         _ => me.clone(),
     };
@@ -143,14 +152,18 @@ fn the_replay_exclusion_is_the_frozen_baseline() {
         .cloned()
         .collect();
 
-    let mut expected: Vec<String> =
-        INHERITED.iter().chain(BY_RULING).map(|s| s.to_string()).collect();
+    let mut expected: Vec<String> = INHERITED
+        .iter()
+        .chain(BY_RULING)
+        .map(|s| s.to_string())
+        .collect();
     expected.sort();
     let mut actual: Vec<String> = registered.difference(&invoked).cloned().collect();
     actual.sort();
 
     assert_eq!(
-        actual, expected,
+        actual,
+        expected,
         "THE REPLAY EXCLUSION SET MOVED. Seventeen commands are expected to be \
          un-replayed ({} inherited at base 83019356 + restart_app by ruling). A LONGER \
          list means a command was added and not replayed; a SHORTER one means coverage \
@@ -266,11 +279,22 @@ fn all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes() {
     // `kind` key. Empty here is the honest state: no marker has been drained on the
     // mock runtime, so the surface has nothing to show.
     let notices = ok(&wv, "notice_list", Value::Null);
-    assert!(notices.as_array().is_some(), "notice_list must return an array");
+    assert!(
+        notices.as_array().is_some(),
+        "notice_list must return an array"
+    );
     assert_eq!(notices.as_array().unwrap().len(), 0);
-    ok(&wv, "notice_dismiss", json!({"kind": "invite_finish_hs_unconsumed"}));
+    ok(
+        &wv,
+        "notice_dismiss",
+        json!({"kind": "invite_finish_hs_unconsumed"}),
+    );
     // a kind outside the whitelist is accepted and ignored, never an IPC error
-    ok(&wv, "notice_dismiss", json!({"kind": "not_a_whitelisted_kind"}));
+    ok(
+        &wv,
+        "notice_dismiss",
+        json!({"kind": "not_a_whitelisted_kind"}),
+    );
 
     // identity written, settings.json absent → s1; writing settings → s2.
     assert_eq!(ok(&wv, "launch_state", Value::Null), json!("s1"));
