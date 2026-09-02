@@ -61,6 +61,21 @@ fn tighten_is_idempotent() {
     assert_eq!(mode_of(&f), 0o600, "a second tighten changed the mode");
 }
 
+/// RULING confirmation (3): the bootstrap chmod must NO-OP CLEANLY on an ABSENT
+/// settings.json -- a post-wipe start has none, and bootstrap runs on every launch.
+#[test]
+fn tighten_no_ops_cleanly_when_the_file_is_absent() {
+    let dir = tempfile::tempdir().unwrap();
+    let f = paths::settings_file(dir.path());
+    assert!(!f.exists(), "fixture must start with no settings.json");
+    settings::tighten_mode(&f); // must not panic, must not create anything
+    assert!(!f.exists(), "tighten CREATED a file that was absent");
+    // and the same through the launch-path caller shape
+    let s = settings::load(dir.path());
+    assert_eq!(s, AppSettings::default(), "an absent file must read as defaults");
+    assert!(!f.exists(), "load CREATED a settings file");
+}
+
 /// A3 -- THE FAILURE-PATH ARM, and it drives a real failure rather than the success
 /// path. v1's version asserted the tmp was absent after a SUCCESSFUL save, where it is
 /// always renamed away: it passed trivially and said nothing (MAJOR-10, 3.2).

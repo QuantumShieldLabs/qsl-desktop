@@ -138,6 +138,11 @@ pub struct AppInfoDto {
     pub display_name: &'static str,
     pub version: &'static str,
     pub slice: &'static str,
+    /// NA-0776 (`ENG-0275`, spec v2 3.4): WHICH BUILD THIS IS, so a flight can say.
+    /// Either a 40-hex commit or the literal "unknown" -- never empty, never invented.
+    /// `dirty` and a build timestamp are deliberately ABSENT; see build.rs for why a
+    /// field that is believed and can be wrong is worse than an absent one.
+    pub build_commit: &'static str,
     /// NA-0763 (`D-0040`, ruling `R4`) — THE TEST-ONLY TEMPO SEAM, and the
     /// reason it lives HERE rather than on `AppSettings`.
     ///
@@ -454,12 +459,26 @@ pub fn core_busy(st: State<'_, AppState>) -> bool {
     st.gw.busy()
 }
 
+/// NA-0776 (3.4): the stamp's acceptance rule, PURE so the "unknown" branch is
+/// drivable without a second build -- the `parse_tick_override` precedent
+/// (settings.rs). `env!` could not be used at all here: it is a COMPILE ERROR on an
+/// absent variable, so the red arm the spec names would not exist (cold read MAJOR-10).
+/// A malformed stamp degrades to "unknown" rather than shipping garbage a reader would
+/// believe.
+pub fn build_commit_or_unknown(stamped: Option<&'static str>) -> &'static str {
+    match stamped {
+        Some(s) if s.len() == 40 && s.chars().all(|c| c.is_ascii_hexdigit()) => s,
+        _ => "unknown",
+    }
+}
+
 #[tauri::command]
 pub fn app_info() -> AppInfoDto {
     AppInfoDto {
         display_name: APP_DISPLAY_NAME,
         version: env!("CARGO_PKG_VERSION"),
         slice: "B (relay connectivity: point the app at a relay and test the connection)",
+        build_commit: build_commit_or_unknown(option_env!("QSLD_BUILD_COMMIT")),
         tick_override_ms: settings::tick_override_from_env(),
     }
 }
