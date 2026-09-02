@@ -433,15 +433,27 @@ fn window_modes_and_menu_visibility() {
     }
     // F1: the sanctioned windows[0] amendment — hidden launch at the
     // compact initial size.
-    let conf = manifest_file("tauri.conf.json");
-    assert!(conf.contains(r#""visible": false"#), "F1 hidden launch");
+    // NA-0776 (spec 3.6-v3.1 sec 3): THESE THREE ARE RE-SITED, NOT WEAKENED, for the
+    // same reason and by the same rule as the title pin in design_system.rs. The
+    // `windows` block in tauri.conf.json is retired -- the window is built in lib.rs so
+    // `.data_directory()` reaches the direct setter -- so a pin still asserting over the
+    // config file would assert over properties that are no longer there: a pin that
+    // CANNOT FAIL, which is worse than no pin.
+    // ⚠ THE SPEC NAMED ONE PIN AND THERE WERE TWO. v3.1 sec 3 named design_system.rs's
+    // title pin only; this second pin over the same retired block was found by running
+    // the full suite, which is exactly what the full suite is for.
+    let lib = manifest_file("src/lib.rs");
+    assert!(lib.contains(".visible(false)"), "F1 hidden launch, at its new site in lib.rs");
     assert!(
-        conf.contains(r#""width": 360"#),
-        "F1 compact initial width — round 4a: the reading width"
+        lib.contains("inner_size(360.0, 585.0)"),
+        "F1 compact initial size — round 4a's reading width and wizard-step-1 height, at \
+         their new site in lib.rs"
     );
+    let conf = manifest_file("tauri.conf.json");
     assert!(
-        conf.contains(r#""height": 585"#),
-        "F1 compact initial height — round 4a: the wizard-step-1 literal"
+        !conf.contains(r#""visible":"#) && !conf.contains(r#""width":"#),
+        "the retired windows block reappeared in tauri.conf.json: these properties now \
+         have two sources and they can disagree"
     );
     // Finding 1: the creation-time 800x600 floor is REMOVED. Left in place it
     // would silently re-impose itself over every content-driven width and
