@@ -307,6 +307,12 @@ pub fn bootstrap(data_dir: &Path) -> Result<(), String> {
     qsc::output::init_output_policy(false);
     qsc::output::set_marker_routing(qsc::output::MarkerRouting::InApp);
     qsc::output::install_panic_redaction_hook();
+    // NA-0776 (3.2 / MAJOR-5): the launch-path half of the 0600 remediation. `load` is
+    // NOT a launch path -- measured: its only callers are settings_get, settings_set,
+    // relay_config_get and relay_config_set, none of which runs at startup -- so the
+    // spec's "at launch" is satisfied HERE, and `load` keeps its own call as defence
+    // in depth. Idempotent and quiet.
+    settings::tighten_mode(&paths::settings_file(data_dir));
     Ok(())
 }
 
