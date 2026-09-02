@@ -69,6 +69,11 @@ fn a_malformed_stamp_reads_unknown() {
 
 /// The two fields MAJOR-6 argued out of existence stay out: a reader must not find a
 /// `dirty` or build-time field on the DTO and believe it.
+///
+/// ⚠ BOUNDARY, so nobody over-reads this green: it is a TRIPWIRE over the five
+/// argued-out NAMES, not a universal ban on future fields. A differently-named
+/// timestamp would pass it. Adding one remains a design decision for a ruling -- this
+/// arm cannot catch that, and is not claimed to.
 #[test]
 fn no_dirty_flag_and_no_build_timestamp_on_the_dto() {
     let v = serde_json::to_value(app_info()).unwrap();

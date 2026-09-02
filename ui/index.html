@@ -139,8 +139,8 @@
       <button class="rail-btn tip" id="btn-settings" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </nav>
     <section class="list-pane">
-      <div class="list-header">
-        <div class="list-head-row">
+      <div class="list-header pane-header">
+        <div class="pane-head-row">
           <h2>Chats</h2>
           <!-- NA-0765 (`D-0042`): THE CHATS "+" IS RETIRED. Adding people is a CONTACTS act,
                so the entry lives on the Contacts pane ("+", `#btn-contacts-add`) and on the
@@ -161,8 +161,8 @@
          ⚠ Rows are MINIMAL by ruling R3: name + dot + at most one small word. Everything else
          the mockup shows lives in the DETAIL pane, where there is room for it. -->
     <section class="list-pane hidden" id="pane-contacts">
-      <div class="list-header">
-        <div class="list-head-row">
+      <div class="list-header pane-header">
+        <div class="pane-head-row">
           <h2>Contacts</h2>
           <!-- The bare "+" of the mockup. It opens the EXISTING chooser — the same flow the
                welcome button uses — so this lane adds an entry point, not a second flow. -->
@@ -228,7 +228,7 @@
     </aside>
     <main class="settings-pane">
       <div id="pane-identity" class="pane">
-        <h2>Identity</h2>
+        <div class="pane-header"><div class="pane-head-row"><h2>Identity</h2></div></div>
         <div id="identity-empty" class="hint hidden">No identity exists yet — finish setup to create one.</div>
         <!-- NA-0774 (E5) -- DISTINCT ERRORS FOR DISTINCT CAUSES. `#identity-empty` above says
              an identity does NOT EXIST. Before this lane, a THROWN `identity_show` reached that
@@ -282,7 +282,7 @@
         </div>
       </div>
       <div id="pane-server" class="pane hidden">
-        <h2>Relay</h2>
+        <div class="pane-header"><div class="pane-head-row"><h2>Relay</h2></div></div>
         <p class="muted">Assume the relay is hostile — this app already does. It's built so a compromised relay still learns almost nothing: your messages are sealed before they leave your device, your name and your contacts' names never exist on it, and delivery runs on anonymous codes. The most it can ever see is that sealed traffic is flowing.</p>
         <!-- D610 R-D1: THREE sections, hairlines BETWEEN them only (two total).
              `.srv-sect + .srv-sect` draws the rule, so the count follows the
@@ -362,7 +362,7 @@
         </div>
       </div>
       <div id="pane-vault" class="pane hidden">
-        <h2>Vault and Security</h2>
+        <div class="pane-header"><div class="pane-head-row"><h2>Vault and Security</h2></div></div>
         <p class="muted">How this vault defends itself.</p>
         <div id="attempts-alert" class="alert-amber hidden"><span id="attempts-alert-text"></span><button id="btn-attempts-dismiss" class="secondary">Dismiss</button></div>
         <!-- R-10: FOUR sections at --sp-6, hairlines between them only. -->
@@ -429,9 +429,9 @@
           </div>
         </div>
       </div>
-      <div id="pane-appearance" class="pane hidden"><h2>Appearance</h2><p class="muted">Not yet — coming in a later update.</p></div>
-      <div id="pane-notifications" class="pane hidden"><h2>Notifications</h2><p class="muted">Not yet — coming in a later update.</p></div>
-      <div id="pane-about" class="pane hidden"><h2>About</h2><p id="about-name" class="sect-status"></p><p id="about-text" class="hint"></p></div>
+      <div id="pane-appearance" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>Appearance</h2></div></div><p class="muted">Not yet — coming in a later update.</p></div>
+      <div id="pane-notifications" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>Notifications</h2></div></div><p class="muted">Not yet — coming in a later update.</p></div>
+      <div id="pane-about" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>About</h2></div></div><p id="about-name" class="sect-status"></p><p id="about-text" class="hint"></p></div>
     </main>
   </div>
 </section>
