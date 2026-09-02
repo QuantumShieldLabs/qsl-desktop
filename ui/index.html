@@ -232,7 +232,12 @@
       <button class="rail-btn tip active" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </nav>
     <aside class="settings-rail">
-      <header>Settings</header>
+      <!-- NA-0776 (RULING_016): THE SETTINGS LIST-COLUMN HEADING JOINS THE UNIFIED SET.
+           It is not an h2, so the eight-h2 census never saw it and f_q could not have
+           caught it — the operator's flight did. The span carries the text so the arm
+           can measure the TEXT box against the other headings' h2 boxes; the header
+           itself is the row. -->
+      <header class="pane-head-row"><span>Settings</span></header>
       <button data-pane="identity" class="cat active">Identity</button>
       <button data-pane="server" class="cat">Relay</button>
       <button data-pane="vault" class="cat">Vault and Security</button>
