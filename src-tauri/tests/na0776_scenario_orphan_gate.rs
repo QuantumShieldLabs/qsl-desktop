@@ -36,12 +36,23 @@ fn dispatched_names() -> BTreeSet<String> {
     let src = std::fs::read_to_string(repo_root().join("src-tauri/tests/gui_driver.rs"))
         .expect("gui_driver.rs");
     let mut out = BTreeSet::new();
-    for (marker, _) in [("run_scenario(\"", 0), ("run_scenario_with_env(\"", 0)] {
+    // ⚠ WHITESPACE-TOLERANT BY NECESSITY, and this was found by the gate reddening on a
+    // correct tree: `run_scenario_with_env` is often written multi-line, with the name on
+    // the line AFTER the paren. A needle demanding `("` immediately adjacent misses those
+    // and reports a FALSE ORPHAN -- the same class of too-narrow instrument this gate
+    // exists to catch, met in the gate itself.
+    for marker in ["run_scenario", "run_scenario_with_env"] {
         let mut rest = src.as_str();
         while let Some(i) = rest.find(marker) {
             rest = &rest[i + marker.len()..];
-            if let Some(end) = rest.find('"') {
-                out.insert(rest[..end].to_string());
+            let after = rest.trim_start();
+            if let Some(inner) = after.strip_prefix('(') {
+                let inner = inner.trim_start();
+                if let Some(q) = inner.strip_prefix('"') {
+                    if let Some(end) = q.find('"') {
+                        out.insert(q[..end].to_string());
+                    }
+                }
             }
         }
     }

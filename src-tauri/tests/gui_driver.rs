@@ -385,3 +385,26 @@ fn na0774_gui_p_tick_quiet_busy() {
 fn na0776_gui_q_heading_alignment() {
     run_scenario("f_q_heading_alignment");
 }
+
+/// NA-0776 (3.3) -- the declined-frame notice through the REAL surface. The marker is
+/// injected by the test-only `QSLD_INJECT_MARKER` seam (the QSLD_TICK_MS precedent),
+/// which is not reachable from the front end. Also asserts NA-0752's two-source footer
+/// is still a `<footer id="status-line">` and untouched by the new element.
+#[test]
+#[ignore]
+fn na0776_gui_r_declined_notice() {
+    run_scenario_with_env(
+        "f_r_declined_notice",
+        &[("QSLD_INJECT_MARKER", "QSC_MARK/1 event=invite_finish_hs_unconsumed candidates=2")],
+    );
+}
+
+/// NA-0776 (3.6) A1 -- the relocation in the SHIPPED layout: the five WebKit names live
+/// under `<app-data>/webview` and none at the data-dir root. Under the harness
+/// QSLD_DATA_DIR is set, and the relocation follows it -- which is the point of deriving
+/// the path from the app's own resolver rather than from a raw XDG join.
+#[test]
+#[ignore]
+fn na0776_gui_s_webview_relocated() {
+    run_scenario("f_s_webview_relocated");
+}
