@@ -43,6 +43,26 @@ pub fn vault_file(data_dir: &Path) -> PathBuf {
     qsc_config_dir(data_dir).join(QSC_VAULT_FILE_NAME)
 }
 
+/// NA-0776 (spec 3.6-v3.1) -- THE WEBVIEW'S OWN DIRECTORY. Derived from the app's OWN
+/// resolver, not from a raw XDG join: under `QSLD_DATA_DIR` redirection the app dir and
+/// the webview dir then MOVE TOGETHER, which cures the divergence class in the product
+/// rather than only guarding it in the arms (RULING_007 sec 2).
+pub fn webview_dir(data_dir: &Path) -> PathBuf {
+    data_dir.join("webview")
+}
+
+/// The FIVE FROZEN NAMES WebKitGTK wrote at the OLD location, measured at STOP 001
+/// carry N5 and re-measured by both probes. NAMED AS NAME-BASED and justified as such:
+/// a frozen historical set for a ONE-TIME migration, not an ongoing sync, so the
+/// stale-silently objection does not attach.
+pub const LEGACY_WEBVIEW_NAMES: &[&str] = &[
+    "CacheStorage",
+    "hsts-storage.sqlite",
+    "mediakeys",
+    "storage",
+    "WebKitCache",
+];
+
 pub fn settings_file(data_dir: &Path) -> PathBuf {
     data_dir.join("settings.json")
 }

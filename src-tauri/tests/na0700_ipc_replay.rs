@@ -1,9 +1,15 @@
 //! NA-0700 (D634 A2-FINAL item 9 / D-0025) — the IPC replay harness.
 //!
-//! Every registered command is invoked through tauri's REAL IPC ingestion on
-//! the mock runtime — real serde arg decoding, real camelCase→snake_case
-//! mapping, real State injection — with the arg-key sets HARVESTED from the 31
-//! `main.js` call sites and replayed literally (SR-20: the consumer's real
+//! A MAJORITY of registered commands -- 29 of 46 at NA-0776's base 83019356 -- are
+//! invoked through tauri's REAL IPC ingestion on the mock runtime — real serde arg
+//! decoding, real camelCase→snake_case mapping, real State injection — with the
+//! arg-key sets HARVESTED from the `main.js` call sites and replayed literally
+//! ⚠ THIS LINE ONCE READ "Every registered command", which was honest at 27 commands
+//! and became FALSE as the surface grew to 46 (NA-0776 / RULING_010 R11). The exact
+//! boundary is not prose: `the_replay_exclusion_is_the_frozen_baseline` below pins the
+//! seventeen names that are NOT replayed, so the gap is a checked fact rather than a
+//! claim. ⚠ The test NAME's "27" is a KNOWN STALE COUNT, deferred by ruling to the
+//! successor coverage lane where the rename rides the real replay work. (SR-20: the consumer's real
 //! emission, including `confirmPhrase`, `autolockMinutes`, `selfAlias`,
 //! `contentHeight`). DTO wire shapes are pinned as serialized — the `kind`
 //! strings the FE string-matches on.
@@ -60,6 +66,98 @@ fn ok(wv: &MockWebview, cmd: &str, args: Value) -> Value {
         Ok(v) => v,
         Err(e) => panic!("command `{cmd}` rejected at the IPC boundary: {e}"),
     }
+}
+
+/// NA-0776 (RULING_010 R10) -- THE REPLAY EXCLUSION, PINNED AS A SET EQUALITY.
+///
+/// SET EQUALITY OVER SEVENTEEN NAMES, never a count: a count would let membership
+/// rotate silently. RED ON BOTH POLARITIES, and the shrinkage direction is DESIRED:
+///   - an EIGHTEENTH unreplayed command reds this (the original purpose: a new command
+///     cannot be added and left un-replayed without someone noticing);
+///   - REPLAYING one of the sixteen ALSO reds this, until the list is updated -- which
+///     turns a coverage change in EITHER direction into a visible, deliberate act.
+///
+/// Sixteen are INHERITED at base 83019356 -- they were never replayed, and the gap is
+/// weighted to the contact and invite surfaces. Replaying them needs vault-state
+/// fixtures and is outside this lane; it is FILED via the promotion as a desktop
+/// coverage finding for a successor lane. `restart_app` is excluded BY RULING
+/// (RULING_009): it calls `AppHandle::restart()`, which on the mock runtime is
+/// `not implemented` and takes the test process down, so no in-process harness can
+/// drive it.
+#[test]
+fn the_replay_exclusion_is_the_frozen_baseline() {
+    /// INHERITED at base 83019356 -- not replayed before this lane, and not by it.
+    const INHERITED: &[&str] = &[
+        "connect_status",
+        "contact_list",
+        "contact_request_accept",
+        "contact_request_block",
+        "contact_request_ignore",
+        "contact_requests",
+        "contact_set_display_name",
+        "home_dir",
+        "invite_accept",
+        "invite_clear",
+        "invite_create",
+        "invite_finish",
+        "invite_list",
+        "invite_redeem",
+        "invite_revoke",
+        "relay_probe",
+    ];
+    /// Excluded BY RULING (RULING_009 sec 1): terminates the process.
+    const BY_RULING: &[&str] = &["restart_app"];
+
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let lib = std::fs::read_to_string(root.join("src/lib.rs")).expect("lib.rs");
+    let block = &lib[lib.find("generate_handler!").expect("handler list")..];
+    let block = &block[..block.find("])").expect("handler list end")];
+    let registered: std::collections::BTreeSet<String> = block
+        .lines()
+        .filter_map(|l| {
+            let t = l.trim().trim_end_matches(',');
+            let t = t.strip_prefix("commands::").unwrap_or(t);
+            (!t.is_empty() && t.chars().all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()))
+                .then(|| t.to_string())
+        })
+        .collect();
+    assert!(
+        registered.len() >= 40,
+        "only {} commands parsed from the handler list -- the needle drifted from its \
+         shape, which would make this pin vacuous",
+        registered.len()
+    );
+
+    // The invoked set, read from THIS file's own source with comments stripped so the
+    // prose above cannot count as coverage, and with the two constant blocks removed so
+    // the pin's own expected values cannot count either.
+    let me = std::fs::read_to_string(root.join("tests/na0700_ipc_replay.rs")).expect("self");
+    let me: String = me.lines().filter(|l| !l.trim_start().starts_with("//")).collect::<Vec<_>>().join("\n");
+    let body = match (me.find("const INHERITED"), me.find("let root = std::path::PathBuf")) {
+        (Some(a), Some(b)) if b > a => format!("{}{}", &me[..a], &me[b..]),
+        _ => me.clone(),
+    };
+    let invoked: std::collections::BTreeSet<String> = registered
+        .iter()
+        .filter(|c| body.contains(&format!("\"{c}\"")))
+        .cloned()
+        .collect();
+
+    let mut expected: Vec<String> =
+        INHERITED.iter().chain(BY_RULING).map(|s| s.to_string()).collect();
+    expected.sort();
+    let mut actual: Vec<String> = registered.difference(&invoked).cloned().collect();
+    actual.sort();
+
+    assert_eq!(
+        actual, expected,
+        "THE REPLAY EXCLUSION SET MOVED. Seventeen commands are expected to be \
+         un-replayed ({} inherited at base 83019356 + restart_app by ruling). A LONGER \
+         list means a command was added and not replayed; a SHORTER one means coverage \
+         GREW and this pin must be updated to record it -- both are deliberate acts, \
+         which is why both red.",
+        INHERITED.len()
+    );
 }
 
 #[test]
@@ -162,6 +260,17 @@ fn all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes() {
         "identity emissions should have been drained into the marker buffer, got {ms}"
     );
     assert_eq!(ok(&wv, "core_busy", Value::Null), json!(false));
+
+    // NA-0776 (3.3): the notice surface joins the replayed set. `notice_list` takes no
+    // args and returns an ARRAY of {kind, count}; `notice_dismiss` takes the FE's own
+    // `kind` key. Empty here is the honest state: no marker has been drained on the
+    // mock runtime, so the surface has nothing to show.
+    let notices = ok(&wv, "notice_list", Value::Null);
+    assert!(notices.as_array().is_some(), "notice_list must return an array");
+    assert_eq!(notices.as_array().unwrap().len(), 0);
+    ok(&wv, "notice_dismiss", json!({"kind": "invite_finish_hs_unconsumed"}));
+    // a kind outside the whitelist is accepted and ignored, never an IPC error
+    ok(&wv, "notice_dismiss", json!({"kind": "not_a_whitelisted_kind"}));
 
     // identity written, settings.json absent → s1; writing settings → s2.
     assert_eq!(ok(&wv, "launch_state", Value::Null), json!("s1"));

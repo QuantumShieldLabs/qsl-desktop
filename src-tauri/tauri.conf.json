@@ -7,15 +7,7 @@
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "title": "QuantumShield Chat",
-        "label": "main",
-        "visible": false,
-        "width": 360,
-        "height": 585
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'"
     }

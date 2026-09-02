@@ -625,7 +625,19 @@ byId("btn-erase").addEventListener("click", () => {
       // Item 13 (F2): completion performs a FULL webview state reset — the
       // document reloads, so no typed value and no in-memory state survives
       // into the next session. Boot lands in S0 via route().
-      window.location.reload();
+      // NA-0776 (3.6-v3.1 cure B): RESTART, not reload. reload() does not reset the
+      // WebContext -- it lives for the process -- so the webview directory cannot be
+      // deleted under it, and module-scope state survives.
+      try {
+        await invoke("restart_app");
+      } catch (_) {
+        // TRIGGER: the restart command itself failed to dispatch (IPC rejected, or the
+        // runtime refused). Falling back to a reload keeps the user out of a wiped
+        // surface. ⚠ THE FALLBACK DOES NOT WEAKEN THE CURE: the wipe already set the
+        // marker RUST-SIDE, so the webview directory is deleted at the next bootstrap
+        // whether this reload or a later manual start gets there first.
+        window.location.reload();
+      }
     } catch (e) {
       eraseCountdownAbort();
       setEraseError(plainError(e, {
@@ -636,7 +648,15 @@ byId("btn-erase").addEventListener("click", () => {
 });
 byId("btn-erase-countdown-cancel").addEventListener("click", () => eraseCountdownAbort());
 byId("btn-erase-cancel").addEventListener("click", () => showUnlockScreen(unlockNext));
-byId("btn-wiped-restart").addEventListener("click", () => route());
+// NA-0776 (3.6-v3.1 sec 5): "Start over" RESTARTS THE PROCESS. It used to call
+  // route(), which walks to the wizard INSIDE THE LIVE PROCESS -- so a new vault was
+  // created in a process still holding the wiped session's in-memory state, which is
+  // ENG-0276's own reproduction reachable through the shipped UI. The restart also lets
+  // bootstrap delete the webview directory, which cannot be done while the WebContext
+  // is alive.
+  byId("btn-wiped-restart").addEventListener("click", async () => {
+    try { await invoke("restart_app"); } catch (_) { route(); }
+  });
 
 // ---- main window ----------------------------------------------------------
 
@@ -1149,7 +1169,19 @@ byId("btn-destroy").addEventListener("click", async () => {
     // state reset. The reloaded document boots into S0; the typed
     // passphrase, the phrase, the ceremony expansion, and every in-memory
     // value (alias, alert counters) die with this document.
-    window.location.reload();
+    // NA-0776 (3.6-v3.1 cure B): RESTART, not reload -- same reasoning as the erase
+    // path. The marker is already set Rust-side, so the webview deletion happens at the
+    // next bootstrap even if this call fails.
+    try {
+        await invoke("restart_app");
+      } catch (_) {
+        // TRIGGER: the restart command itself failed to dispatch (IPC rejected, or the
+        // runtime refused). Falling back to a reload keeps the user out of a wiped
+        // surface. ⚠ THE FALLBACK DOES NOT WEAKEN THE CURE: the wipe already set the
+        // marker RUST-SIDE, so the webview directory is deleted at the next bootstrap
+        // whether this reload or a later manual start gets there first.
+        window.location.reload();
+      }
   } catch (e) {
     err.textContent = destroyErrorText(e); // R-17: `vault_locked` here = wrong passphrase
   }

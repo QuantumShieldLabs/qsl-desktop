@@ -44,30 +44,50 @@ fn classifier_reads_real_lines_from_both_format_arms() {
     std::env::set_var("QSC_MARK_FORMAT", "plain");
 }
 
-/// A2 / R5 -- the whitelist is POSITIVE and the classifier cannot return input text.
-/// The returned &'static str is the whitelist's OWN entry: proven by pointer identity,
-/// so no slice of the line can ever reach the UI even by mistake.
+/// A2 / R5 -- THE WHITELIST IS POSITIVE, stated as the property that is actually
+/// enforceable: for ANY input, `classify` returns either None or a member of
+/// NOTICE_KINDS. No marker text that is not a whitelisted kind can reach the UI.
+///
+/// ⚠ HOW THIS ARM GOT HERE, recorded rather than tidied away. It first asserted POINTER
+/// EQUALITY against the test crate's own `NOTICE_KINDS` -- wrong, because a `const` is
+/// inlined per use site and the two crates need not share an address. The replacement
+/// asserted the returned pointer lay outside the input line's address range; a control
+/// (a classifier returning `Box::leak` of the input) did NOT fail it, because a COPY
+/// leaks content without sharing an address. That control proved the arm VACUOUS, so the
+/// address check was deleted rather than kept as a green that meant nothing. The
+/// property below is about CONTENT, which is what privacy actually turns on, and its
+/// control fires (see the report).
 #[test]
-fn the_returned_kind_is_the_whitelists_own_static_and_never_input_text() {
+fn classify_returns_only_whitelisted_kinds_for_any_input() {
     let line = format!("QSC_MARK/1 event={KIND} candidates=7");
-    let got = classify(&line).expect("whitelisted kind must classify");
-    assert_eq!(got, KIND);
-    assert!(NOTICE_KINDS.contains(&got), "the returned kind is not a whitelist member");
-    // The property is "NOT A SLICE OF THE INPUT". Address-range containment tests that
-    // directly.
-    // ⚠ An earlier version of this arm asserted pointer EQUALITY against the test
-    // crate's own `NOTICE_KINDS`. That was the INSTRUMENT being wrong, not the code:
-    // `NOTICE_KINDS` is a `const`, so it is inlined per use site and the test crate's
-    // copy need not share an address with the library's. Recorded rather than quietly
-    // rewritten.
-    let (lo, hi) = (line.as_ptr() as usize, line.as_ptr() as usize + line.len());
-    let got_at = got.as_ptr() as usize;
-    assert!(got_at < lo || got_at >= hi,
-        "the classifier returned a slice of the INPUT line -- raw marker text could reach the UI");
-    for junk in ["", "not a marker", "QSC_MARK/1 event=", "{", "{\"event\":123}",
-                 "QSC_MARK/1 event=some_other_kind x=1"] {
-        assert_eq!(classify(junk), None, "junk classified: {junk:?}");
+    assert_eq!(classify(&line), Some(KIND));
+
+    // Adversarial inputs, including near-misses that share a prefix with a whitelisted
+    // kind: every one must be rejected, and anything accepted must be a whitelist member.
+    let inputs = [
+        String::new(),
+        "not a marker".to_string(),
+        "QSC_MARK/1 event=".to_string(),
+        "{".to_string(),
+        "{\"event\":123}".to_string(),
+        "QSC_MARK/1 event=some_other_kind x=1".to_string(),
+        format!("QSC_MARK/1 event={KIND}EXTRA candidates=1"),
+        format!("QSC_MARK/1 event=x{KIND} candidates=1"),
+        format!("{{\"v\":1,\"event\":\"{KIND}EXTRA\"}}"),
+        format!("{{\"v\":1,\"event\":\"relay_ack\",\"kv\":{{\"peer\":\"secret-looking\"}}}}"),
+    ];
+    for i in inputs {
+        match classify(&i) {
+            None => {}
+            Some(k) => assert!(
+                NOTICE_KINDS.contains(&k),
+                "classify accepted {i:?} and returned {k:?}, which is NOT a whitelist member"
+            ),
+        }
     }
+    // and the near-misses specifically must be REJECTED, not merely non-leaky
+    assert_eq!(classify(&format!("QSC_MARK/1 event={KIND}EXTRA c=1")), None);
+    assert_eq!(classify(&format!("{{\"v\":1,\"event\":\"{KIND}EXTRA\"}}")), None);
 }
 
 /// MAJOR-2 -- the count is MONOTONIC and immune to the ring buffer's eviction. Read off

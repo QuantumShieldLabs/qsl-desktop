@@ -299,7 +299,99 @@ fn ui_surface_changed<R: tauri::Runtime>(
 /// policy is the redacting default (set-once in qsc, R2 — chosen deliberately
 /// here); marker routing is InApp so no marker ever prints to a stdout
 /// nobody reads.
+/// NA-0776 (3.6-v3.1 sec 4) -- THE WIPE MARKER'S NAME under $XDG_RUNTIME_DIR.
+pub const WIPE_MARKER_NAME: &str = "qsl-desktop.webview-wipe-pending";
+/// The FALLBACK carrier, used ONLY when XDG_RUNTIME_DIR is unset. Its residual is
+/// stated in the spec: under the fallback, ANY crash mid-delete loses the re-fire.
+pub const WIPE_MARKER_ENV: &str = "QSLD_WEBVIEW_WIPE_PENDING";
+
+/// The marker path, or None when XDG_RUNTIME_DIR is unset (the fallback's trigger).
+pub fn wipe_marker_path() -> Option<PathBuf> {
+    std::env::var_os("XDG_RUNTIME_DIR").map(|d| PathBuf::from(d).join(WIPE_MARKER_NAME))
+}
+
+/// Set IMMEDIATELY after a wipe returns success and BEFORE the restart. A FILE, not an
+/// env var: an env marker dies with the process, so a crash inside the bootstrap delete
+/// would lose it and the next MANUAL start would skip the re-fire silently, leaving
+/// PRE-WIPE webview data after a wipe (RULING_008 sec 2).
+pub fn mark_webview_wipe_pending() {
+    match wipe_marker_path() {
+        Some(p) => {
+            let _ = fs::write(&p, b"");
+        }
+        None => std::env::set_var(WIPE_MARKER_ENV, "1"),
+    }
+}
+
+pub fn webview_wipe_pending() -> bool {
+    if let Some(p) = wipe_marker_path() {
+        if p.exists() {
+            return true;
+        }
+    }
+    std::env::var_os(WIPE_MARKER_ENV).is_some()
+}
+
+fn clear_webview_wipe_pending() {
+    if let Some(p) = wipe_marker_path() {
+        let _ = fs::remove_file(&p);
+    }
+    std::env::remove_var(WIPE_MARKER_ENV);
+}
+
+/// The deletion itself. Runs at BOOTSTRAP, which is the only point in the process where
+/// no webview exists: `run()` calls `bootstrap` before `configure_builder(...).setup()`,
+/// and the window -- hence the WebContext -- is built inside that setup. Deleting under
+/// a live WebContext is refused: WebKitGTK holds open handles and recreates directories
+/// on the next write, and `window.location.reload()` does not reset it.
+///
+/// ⚠ THE MARKER IS CLEARED ONLY AFTER THE DELETION RETURNS SUCCESS. An I/O failure
+/// LEAVES IT SET, so the deletion re-fires on any later start -- an interrupted delete
+/// completes rather than being silently skipped. A missing directory counts as success:
+/// there is nothing left to remove.
+pub fn sweep_webview_if_pending(data_dir: &Path) {
+    if !webview_wipe_pending() {
+        return;
+    }
+    let wv = paths::webview_dir(data_dir);
+    match fs::remove_dir_all(&wv) {
+        Ok(()) => clear_webview_wipe_pending(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => clear_webview_wipe_pending(),
+        Err(_) => { /* leave the marker SET: it re-fires on the next start */ }
+    }
+}
+
+/// NA-0776 (3.6-v3.1 sec 6) -- the ONE-TIME installed-base migration. Removes the five
+/// frozen names from the OLD location so a profile created before the cure is not left
+/// exactly as broken as before it.
+/// ⚠ `symlink_metadata`, never `metadata`: a symlink is removed AS A LINK and never
+/// followed, so a link planted at one of these names cannot make this delete something
+/// outside the data dir.
+/// ⚠ It is written to run on EVERY start and to ACT once: after the relocation nothing
+/// recreates those names at the old location, so the second start finds nothing. The
+/// cost is five `symlink_metadata` calls; the benefit is no "have I migrated" flag to
+/// go wrong.
+pub fn migrate_legacy_webview_residue(data_dir: &Path) {
+    for name in paths::LEGACY_WEBVIEW_NAMES {
+        let p = data_dir.join(name);
+        match fs::symlink_metadata(&p) {
+            Ok(md) if md.is_dir() => {
+                let _ = fs::remove_dir_all(&p);
+            }
+            Ok(_) => {
+                let _ = fs::remove_file(&p);
+            }
+            Err(_) => {}
+        }
+    }
+}
+
 pub fn bootstrap(data_dir: &Path) -> Result<(), String> {
+    // NA-0776 (3.6-v3.1): SWEEP FIRST, then the migration, then everything else -- the
+    // internal order is ruled, so the two bootstrap residents cannot interleave wrongly.
+    // Both run BEFORE any webview exists and before the settings chmod at the end.
+    sweep_webview_if_pending(data_dir);
+    migrate_legacy_webview_residue(data_dir);
     create_private_dir(data_dir)?;
     let qsc_dir = paths::qsc_config_dir(data_dir);
     create_private_dir(&qsc_dir)?;
@@ -361,6 +453,7 @@ pub fn configure_builder<R: tauri::Runtime>(
             commands::marker_stats,
             commands::notice_list,
             commands::notice_dismiss,
+            commands::restart_app,
             commands::core_busy,
             commands::app_info,
             // slice B (D609 GATE 2): server connectivity — thin forwarders onto
@@ -406,6 +499,9 @@ pub fn configure_builder<R: tauri::Runtime>(
 pub fn run() {
     let data_dir = paths::app_data_dir().expect("app data dir unresolvable");
     bootstrap(&data_dir).expect("bootstrap failed");
+    // NA-0776 (3.6-v3.1 sec 1): the webview's own directory, from the app's OWN
+    // resolver -- so QSLD_DATA_DIR redirection moves both together.
+    let webview_dir = paths::webview_dir(&data_dir);
     let app_state = AppState {
         data_dir,
         gw: CoreGateway::default(),
@@ -414,7 +510,26 @@ pub fn run() {
     // sets QSLD_INJECT_MARKER; never reachable from the front end.
     app_state.gw.markers.inject_from_env();
     configure_builder(tauri::Builder::default(), app_state)
-        .setup(|app| {
+        .setup(move |app| {
+            // ===== NA-0776 (3.6-v3.1 sec 2): THE MAIN WINDOW IS BUILT HERE =====
+            // NOT from tauri.conf.json's `windows` block, which is retired. Only this
+            // route reaches `.data_directory()`'s DIRECT setter
+            // (webview_window.rs:1024-1025); the from_config path resolves the value
+            // into a LOCAL COPY that the attribute conversion drops, so the config
+            // route is dead by construction at these pins -- traced by the targeted
+            // read and confirmed by the ordered two-arm probe (WITH the setter: all
+            // five WebKit names under webview/ and none at the default; WITHOUT: the
+            // default landing, no webview/ at all).
+            // EVERY config property is mirrored, re-read from tauri.conf.json AT THE
+            // EDIT and named here so a dropped one is visible in review:
+            //   label "main" · title "QuantumShield Chat" · visible false
+            //   width 360 · height 585
+            tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::default())
+                .title("QuantumShield Chat")
+                .inner_size(360.0, 585.0)
+                .visible(false)
+                .data_directory(webview_dir.clone())
+                .build()?;
             // Item 15 (D597): the native menu — the pinned tauri 2 core
             // menu API only; WORKING entries only, nothing unbuilt.
             let settings_item = MenuItemBuilder::with_id("qsl-settings", "Settings")

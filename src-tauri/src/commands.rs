@@ -287,6 +287,15 @@ pub fn unlock_attempt_impl(data_dir: &Path, passphrase: &str) -> Result<UnlockDt
                             fs::remove_file(&p).map_err(|e| e.to_string())?;
                         }
                     }
+                    // NA-0776 (3.6-v3.1 sec 5): THE ARMED PATH IS THE ONE THAT MATTERS.
+                    // It is the only wipe that never reloads (main.js:541), and its
+                    // "Start over" control historically called route(), so a NEW VAULT
+                    // WAS CREATED INSIDE THE SAME PROCESS -- ENG-0276's own
+                    // reproduction, reachable through the shipped UI. The marker is set
+                    // here; the restart happens when the user leaves this screen, which
+                    // is the point where continuation would otherwise occur, and which
+                    // preserves the ceremony's message instead of yanking it away.
+                    crate::mark_webview_wipe_pending();
                     Ok(UnlockDto::Wiped)
                 }
             }
@@ -408,11 +417,40 @@ pub fn destroy_vault_impl(data_dir: &Path, passphrase: &str) -> Result<(), Strin
             fs::remove_file(&p).map_err(|e| e.to_string())?;
         }
     }
+    // NA-0776 (3.6-v3.1 sec 4): the wipe succeeded, so mark the webview directory for
+    // deletion at the NEXT bootstrap -- the only point with no WebContext alive.
+    crate::mark_webview_wipe_pending();
     Ok(())
 }
 
+/// NA-0776 (3.6-v3.1 sec 4/5) -- the explicit restart. A PROCESS restart, not
+/// `window.location.reload()`: the reload does not reset the WebContext, which lives
+/// for the process, and it leaves every module-scope value in the front end intact.
+/// This is cure (B), and it is what makes the bootstrap deletion sound.
+///
+/// ⚠ WHY THE RESTART IS ITS OWN COMMAND RATHER THAN THE TAIL OF EACH WIPE. Putting
+/// `app.restart()` inside `erase_all`/`destroy_vault` makes those commands terminate
+/// the process, so the NA-0700 IPC replay harness -- whose whole purpose is to invoke
+/// EVERY registered command through real IPC -- can no longer invoke them: the mock
+/// runtime's `restart` is `not implemented` and the harness dies. Weakening that
+/// harness to accommodate a cure is not available (the kickoff forbids it), so the
+/// restart is issued by the CALLER, at exactly the site that calls
+/// `window.location.reload()` today.
+/// THE DURABLE HALF IS STILL RUST-SIDE AND UNCONDITIONAL: each wipe sets the marker
+/// itself, so the webview deletion happens at the next bootstrap even if a restart is
+/// never issued. The restart breaks process continuity; the marker guarantees the
+/// deletion. They fail independently, which is why A5 (the missed-marker witness) is a
+/// separate arm.
 #[tauri::command]
-pub async fn erase_all(st: State<'_, AppState>, confirm_phrase: String) -> Result<(), String> {
+pub fn restart_app<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    app.restart();
+}
+
+#[tauri::command]
+pub async fn erase_all(
+    st: State<'_, AppState>,
+    confirm_phrase: String,
+) -> Result<(), String> {
     if confirm_phrase != ERASE_CONFIRM_PHRASE {
         return Err("confirm_phrase_mismatch".into());
     }
@@ -444,6 +482,8 @@ pub fn erase_all_impl(data_dir: &Path) -> Result<(), String> {
     if sf.exists() {
         fs::remove_file(&sf).map_err(|e| e.to_string())?;
     }
+    // NA-0776 (3.6-v3.1 sec 4): mark the webview directory for the next bootstrap.
+    crate::mark_webview_wipe_pending();
     crate::create_private_dir(&qsc_dir)?;
     Ok(())
 }
