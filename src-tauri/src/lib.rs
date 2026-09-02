@@ -386,6 +386,56 @@ pub fn migrate_legacy_webview_residue(data_dir: &Path) {
     }
 }
 
+/// NA-0776 (spec v2 3.5) -- WHAT THIS PROCESS BELIEVES ABOUT THE STORE.
+///
+/// A process-scoped static rather than an `AppState` field, for two reasons: the belief
+/// IS per-process (the same scope qsc uses for `PROCESS_PASSPHRASE`), and a new struct
+/// field would force edits to three unrelated test construction sites for a value none
+/// of them cares about.
+///
+/// THE OPERAND IS THE LAUNCH-STATE REGRESSION: a process that believed S1/S2 and now
+/// resolves S0 has detected a wipe it did not perform, with ZERO new bytes on disk. The
+/// two candidates the cold read refused are not used -- a desktop-written identity token
+/// lands inside BOTH sealed listing-equality pins, and inode/dev is probabilistic
+/// (inodes are recycled) and non-portable.
+/// ⚠ NARROWED TO VANISHED. `store.meta` is a byte-identical constant on every store
+/// forever, so a REPLACED store is not distinguishable by any operand available here;
+/// the promotion's ENG-0276 amendment records that case as NOT COVERED.
+static BELIEVED_STATE: std::sync::OnceLock<Mutex<Option<state::LaunchState>>> =
+    std::sync::OnceLock::new();
+
+fn believed_cell() -> &'static Mutex<Option<state::LaunchState>> {
+    BELIEVED_STATE.get_or_init(|| Mutex::new(None))
+}
+
+/// Recorded when `launch_state` reports -- the only place the app forms a belief.
+pub fn record_believed_state(s: state::LaunchState) {
+    *believed_cell().lock().unwrap_or_else(|p| p.into_inner()) = Some(s);
+}
+
+pub fn believed_state() -> Option<state::LaunchState> {
+    *believed_cell().lock().unwrap_or_else(|p| p.into_inner())
+}
+
+/// Test-only in practice: nothing in the product clears a belief.
+pub fn reset_believed_state() {
+    *believed_cell().lock().unwrap_or_else(|p| p.into_inner()) = None;
+}
+
+/// TRUE when this process believed it had a store and the store is now gone.
+/// ⚠ TOCTOU, STATED: this NARROWS the hazard and never closes it. The check is separated
+/// from the act it guards by a window an external wipe can still land in.
+pub fn store_vanished(data_dir: &Path) -> bool {
+    matches!(
+        believed_state(),
+        Some(state::LaunchState::S1) | Some(state::LaunchState::S2)
+    ) && state::resolve_launch_state(data_dir) == state::LaunchState::S0
+}
+
+/// The refusal both doors return. FAILS CLOSED: the app refuses and requires a
+/// relaunch; there is no silent in-place recovery.
+pub const STORE_VANISHED: &str = "store_vanished_relaunch_required";
+
 pub fn bootstrap(data_dir: &Path) -> Result<(), String> {
     // NA-0776 (3.6-v3.1): SWEEP FIRST, then the migration, then everything else -- the
     // internal order is ruled, so the two bootstrap residents cannot interleave wrongly.

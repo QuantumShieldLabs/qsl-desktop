@@ -172,6 +172,8 @@ fn identity_dto(rec: &qsc::identity::IdentityPublicRecord) -> IdentityDto {
 pub async fn launch_state(st: State<'_, AppState>) -> Result<String, String> {
     let data = st.data_dir.clone();
     let s = st.gw.call(move || resolve_launch_state(&data)).await;
+    // NA-0776 (3.5): this is the only place the app forms a belief about the store.
+    crate::record_believed_state(s);
     Ok(s.as_str().to_string())
 }
 
@@ -191,6 +193,12 @@ pub async fn vault_create(
     }
     if passphrase != confirm {
         return Err("mismatch".into());
+    }
+    // NA-0776 (3.5) DOOR 1 -- external-wipe detection, FAILING CLOSED. A process that
+    // believed it had a store and now resolves S0 was wiped from outside; creating a
+    // vault inside it is exactly ENG-0276's shape. Refuse and require a relaunch.
+    if crate::store_vanished(&st.data_dir) {
+        return Err(crate::STORE_VANISHED.into());
     }
     st.gw
         .call(move || -> Result<(), String> {
@@ -246,6 +254,15 @@ pub async fn unlock_attempt(
 /// NA-0705 (D640 A2.2): the unlock decision as a plain function, mirroring
 /// `destroy_vault_impl` — the seam the QSCV01 refusal instrument drives.
 pub fn unlock_attempt_impl(data_dir: &Path, passphrase: &str) -> Result<UnlockDto, String> {
+    // NA-0776 (3.5) DOOR 2 -- and the ORDER is load-bearing, ruled at RULING_005 R8.
+    // This runs BEFORE `unlock_guarded`, because that path WRITES: it reaches
+    // `protection_state_load`, whose second line is `ensure_store_layout`, which
+    // re-materialises `qsc/` and `store.meta` and takes a lock on a FRESH `.qsc.lock`
+    // inode. A check placed after it would interrogate a store the check itself had
+    // just re-created -- and would feed the very inode hazard MAJOR-12 filed.
+    if crate::store_vanished(data_dir) {
+        return Err(crate::STORE_VANISHED.to_string());
+    }
     {
         // ⚠ DOOR 1. The pre-flight GATES the guard — it does not interpret its result.
         // Reaching `unlock_guarded` with a QSCV01 envelope is what burns an attempt and,
