@@ -4,6 +4,8 @@
 use crate::paths::settings_file;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::Write;
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::Path;
 
 pub const AUTOLOCK_DEFAULT_MINUTES: u32 = 60;
@@ -89,6 +91,12 @@ impl Default for AppSettings {
 
 pub fn load(data_dir: &Path) -> AppSettings {
     let path = settings_file(data_dir);
+    // NA-0776 (3.2 / MAJOR-5): remediate a profile created before the 0600 cure.
+    // Nothing else forces the save that would tighten it -- the only two non-test
+    // callers of `save` are `settings_set` and `relay_config_set`, and neither runs at
+    // launch -- so a user who never edits their alias, autolock or relay URL would keep
+    // a 664 file indefinitely. Also called from `bootstrap`, which IS a launch path.
+    tighten_mode(&path);
     match fs::read(&path) {
         Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
         Err(_) => AppSettings::default(),
@@ -99,9 +107,39 @@ pub fn save(data_dir: &Path, s: &AppSettings) -> Result<(), String> {
     let path = settings_file(data_dir);
     let tmp = path.with_extension("json.tmp");
     let bytes = serde_json::to_vec_pretty(s).map_err(|e| e.to_string())?;
-    fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
+    // NA-0776 (3.2 / MAJOR-5): the tmp is CREATED at 0600 and the bytes are written
+    // into a file that was never group- or world-readable. `fs::write` creates at the
+    // umask and puts the CONTENT in before any chmod could run -- a short window that
+    // contains the data. `rename` carries the tmp's mode, so the destination is 600
+    // with no window of its own and no chmod-after.
+    // A stale tmp from an interrupted save is removed first: `create_new` would
+    // otherwise wedge every future save on a leftover file.
+    if tmp.exists() {
+        fs::remove_file(&tmp).map_err(|e| e.to_string())?;
+    }
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&tmp)
+        .map_err(|e| e.to_string())?;
+    f.write_all(&bytes).map_err(|e| e.to_string())?;
+    drop(f);
     fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// NA-0776 (3.2 / MAJOR-5): tighten an existing settings file to 0600, in place.
+/// Idempotent, and deliberately QUIET: a failure to tighten must never stop the app
+/// from reading a file it can otherwise read. No cfg(unix) gate -- the crate imports
+/// `PermissionsExt` unconditionally at lib.rs:28 and v1 is Linux-only (D-A / L9), so a
+/// gate here would assert a portability property the tree does not have (MAJOR-4).
+pub fn tighten_mode(path: &Path) {
+    if let Ok(md) = fs::metadata(path) {
+        if md.permissions().mode() & 0o777 != 0o600 {
+            let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+        }
+    }
 }
 
 /// The env name of the test-only tempo seam. Deliberately the `QSLD_` family

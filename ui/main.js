@@ -625,7 +625,19 @@ byId("btn-erase").addEventListener("click", () => {
       // Item 13 (F2): completion performs a FULL webview state reset — the
       // document reloads, so no typed value and no in-memory state survives
       // into the next session. Boot lands in S0 via route().
-      window.location.reload();
+      // NA-0776 (3.6-v3.1 cure B): RESTART, not reload. reload() does not reset the
+      // WebContext -- it lives for the process -- so the webview directory cannot be
+      // deleted under it, and module-scope state survives.
+      try {
+        await invoke("restart_app");
+      } catch (_) {
+        // TRIGGER: the restart command itself failed to dispatch (IPC rejected, or the
+        // runtime refused). Falling back to a reload keeps the user out of a wiped
+        // surface. ⚠ THE FALLBACK DOES NOT WEAKEN THE CURE: the wipe already set the
+        // marker RUST-SIDE, so the webview directory is deleted at the next bootstrap
+        // whether this reload or a later manual start gets there first.
+        window.location.reload();
+      }
     } catch (e) {
       eraseCountdownAbort();
       setEraseError(plainError(e, {
@@ -636,7 +648,15 @@ byId("btn-erase").addEventListener("click", () => {
 });
 byId("btn-erase-countdown-cancel").addEventListener("click", () => eraseCountdownAbort());
 byId("btn-erase-cancel").addEventListener("click", () => showUnlockScreen(unlockNext));
-byId("btn-wiped-restart").addEventListener("click", () => route());
+// NA-0776 (3.6-v3.1 sec 5): "Start over" RESTARTS THE PROCESS. It used to call
+  // route(), which walks to the wizard INSIDE THE LIVE PROCESS -- so a new vault was
+  // created in a process still holding the wiped session's in-memory state, which is
+  // ENG-0276's own reproduction reachable through the shipped UI. The restart also lets
+  // bootstrap delete the webview directory, which cannot be done while the WebContext
+  // is alive.
+  byId("btn-wiped-restart").addEventListener("click", async () => {
+    try { await invoke("restart_app"); } catch (_) { route(); }
+  });
 
 // ---- main window ----------------------------------------------------------
 
@@ -753,6 +773,7 @@ function isPlainReason(reason) {
 
 async function enterMain() {
   show("scr-main");
+  refreshNotices();   // NA-0776 3.3: initial paint; not awaited, never blocking
   // Slice B (D609 R4) kept: the footer reflects the ACTUAL relay config, never
   // a "future update" claim. NA-0752 adds the desk's answer beside it.
   //
@@ -904,7 +925,16 @@ async function openSettings(pane) {
   await refreshVaultPane();
   await refreshServerPane();
   const info = await invoke("app_info");
-  byId("about-name").textContent = `${info.display_name} (qsl-desktop ${info.version})`;
+  // NA-0776 (`ENG-0275`, RULING_015 sec 1): SHOW WHICH BUILD THIS IS. The DTO field
+  // alone did not deliver the filing -- "a flight cannot state which build it flew" --
+  // because a flight is the operator looking at the screen. The SHORT commit goes on
+  // this line, the dynamic version-bearing one; `about-text` is left alone because it
+  // carries the claim-discipline sentence. MEASURED before choosing: NEITHER About line
+  // is pinned by any test.
+  const buildShort =
+    info.build_commit === "unknown" ? "unknown" : info.build_commit.slice(0, 8);
+  byId("about-name").textContent =
+    `${info.display_name} (qsl-desktop ${info.version}, build ${buildShort})`;
   // Slice B (D609 R4): the "no network connections" clause is retired — the app
   // now reaches a relay — but the surviving TRUE clause STAYS: no
   // security-assurance claims. Only the network clause changed.
@@ -1148,7 +1178,19 @@ byId("btn-destroy").addEventListener("click", async () => {
     // state reset. The reloaded document boots into S0; the typed
     // passphrase, the phrase, the ceremony expansion, and every in-memory
     // value (alias, alert counters) die with this document.
-    window.location.reload();
+    // NA-0776 (3.6-v3.1 cure B): RESTART, not reload -- same reasoning as the erase
+    // path. The marker is already set Rust-side, so the webview deletion happens at the
+    // next bootstrap even if this call fails.
+    try {
+        await invoke("restart_app");
+      } catch (_) {
+        // TRIGGER: the restart command itself failed to dispatch (IPC rejected, or the
+        // runtime refused). Falling back to a reload keeps the user out of a wiped
+        // surface. ⚠ THE FALLBACK DOES NOT WEAKEN THE CURE: the wipe already set the
+        // marker RUST-SIDE, so the webview directory is deleted at the next bootstrap
+        // whether this reload or a later manual start gets there first.
+        window.location.reload();
+      }
   } catch (e) {
     err.textContent = destroyErrorText(e); // R-17: `vault_locked` here = wrong passphrase
   }
@@ -2003,6 +2045,48 @@ function renderTickStatus() {
 }
 
 // The tick's OWN observable counter (R6). Never touches `#redeem-overlay`.
+// ---- NA-0776 (`ENG-0274`, spec v2 3.3): the declined-frame notice ----------
+// The copy map is ALSO a whitelist: a kind with no entry here renders nothing, so the
+// Rust allowlist and the UI agree by construction rather than by discipline. The DTO
+// carries `{kind, count}` only -- no timestamps (BLOCKER-4 / NOTE-4).
+const NOTICE_COPY = {
+  invite_finish_hs_unconsumed: "A connection attempt was declined",
+};
+
+// ⚠ NO TIMER. This is called from places that ALREADY complete an invoke -- the scan
+// pass and entering main -- because the app's tick was deliberately quieted by
+// ENG-0271 and a polled notice would re-introduce exactly the periodic loop that cure
+// removed (cold read MINOR-12).
+async function refreshNotices() {
+  const el = byId("notice-line");
+  if (!el) return;
+  let rows = [];
+  try {
+    rows = await invoke("notice_list");
+  } catch (_) {
+    return; // fail-quiet: a notice must never be the reason something else breaks
+  }
+  const shown = (rows || []).filter((r) => NOTICE_COPY[r.kind]);
+  if (shown.length === 0) {
+    el.className = "status-line-quiet hidden";
+    delete el.dataset.noticeKind;
+    return;
+  }
+  const r = shown[0];
+  setStatusLine(el, "neutral", NOTICE_COPY[r.kind] + (r.count > 1 ? " (" + r.count + ")" : ""));
+  el.dataset.noticeKind = r.kind;
+  el.dataset.noticeCount = String(r.count);
+}
+
+byId("btn-notice-dismiss").addEventListener("click", async () => {
+  const kind = byId("notice-line").dataset.noticeKind;
+  if (!kind) return;
+  try {
+    await invoke("notice_dismiss", { kind });
+  } catch (_) { /* fail-quiet, as above */ }
+  await refreshNotices();
+});
+
 function tickMark() {
   const el = byId("tick-status");
   if (!el) return;
@@ -3447,6 +3531,13 @@ async function relayScanOnce(ev) {
   if (quiet) tickQuietDepth += 1;
   try {
     for (const cls of SCAN_CLASSES) marks = await cls(marks);
+    // NA-0776 (3.3): the notice refresh piggybacks on this pass -- no new timer. ⚠ IT
+    // MUST SIT INSIDE THE QUIET SCOPE. Placed after the `finally` below, its `invoke`
+    // runs with `tickQuietDepth` back at zero and the busy indicator flashes on every
+    // tick -- which is ENG-0271's cure undone. Caught by f_p_tick_quiet_busy, the arm
+    // that exists for exactly this, and it is the reason MINOR-12 warned about a notice
+    // refresh riding the tick at all.
+    await refreshNotices();
   } finally {
     if (quiet) tickQuietDepth -= 1;
   }

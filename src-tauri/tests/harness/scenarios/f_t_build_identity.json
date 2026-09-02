@@ -1,0 +1,78 @@
+{
+ "scenario": "na0776_gui_t_build_identity_visible",
+ "destructive": true,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0776-ft-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0776-ft-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FT"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-settings"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
+   "op": "click",
+   "sel": "button[data-pane=\"about\"]"
+  },
+  {
+   "op": "note",
+   "text": "the rendered About line must contain the DTO's OWN commit prefix -- not a shape match"
+  },
+  {
+   "op": "poll_exec",
+   "expect": "OK",
+   "script": "return window.__TAURI__.core.invoke('app_info').then(function(i){var t=document.getElementById('about-name').textContent;var c=i.build_commit;var want=(c==='unknown')?'unknown':c.slice(0,8);return t.indexOf(want)>=0?'OK':('MISMATCH about=\"'+t+'\" want='+want);});",
+   "poll": 10
+  },
+  {
+   "op": "poll_exec",
+   "expect": "OK",
+   "script": "return window.__TAURI__.core.invoke('app_info').then(function(i){var c=i.build_commit;return (c==='unknown'||/^[0-9a-f]{40}$/.test(c))?'OK':('BAD DTO VALUE '+c);});",
+   "poll": 10
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}

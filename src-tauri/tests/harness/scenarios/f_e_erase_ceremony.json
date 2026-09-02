@@ -109,7 +109,7 @@
   {
    "op": "read_text",
    "sel": "#erase-form .muted",
-   "literal": "Permanently erases this vault and this app's settings from this computer — this cannot be undone."
+   "literal": "Permanently erases this vault and this app's settings from this computer \u2014 this cannot be undone."
   },
   {
    "op": "read_text",
@@ -236,6 +236,30 @@
   {
    "op": "note",
    "text": "residue per A1.3: qsc/ EXISTS-and-EMPTY (create_private_dir :310 after remove_dir_all :304), settings.json ABSENT (:308); the .tmp row is destroy-scoped and rides the successor; the profile dir itself remains"
+  },
+  {
+   "op": "note",
+   "text": "NA-0776 (R12): the erase commit now RESTARTS the process (cure B), so the wizard-at-S0 assertion is observed after a relaunch rather than in a session the restart destroyed."
+  },
+  {
+   "op": "teardown"
+  },
+  {
+   "op": "launch"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-vault"
+  },
+  {
+   "op": "dir_exists_empty",
+   "path": "qsld-data/qsc",
+   "poll": 10
+  },
+  {
+   "op": "file_absent",
+   "path": "qsld-data/settings.json",
+   "poll": 10
   },
   {
    "op": "teardown"

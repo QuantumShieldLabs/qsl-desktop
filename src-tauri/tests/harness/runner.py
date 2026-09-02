@@ -483,7 +483,16 @@ class Runner:
                     polls += 1
                 self.step("countdown_polled", ">=2 distinct polled values, never slept-past",
                           "seen=%s polls=%d" % (seen, polls), len(seen) >= 2)
-                self.op_poll_screen("scr-wizard-vault", "screen")
+                # NA-0776 (RULING_011 R12): THE TRAILING WIZARD POLL MOVED OUT OF THIS OP.
+                # It read `self.op_poll_screen("scr-wizard-vault", "screen")` and observed
+                # the wizard IN THE SAME WebDriver session, which was correct while the
+                # erase commit ended in `window.location.reload()`. Cure B replaces that
+                # reload with a PROCESS RESTART, which destroys the session, so the
+                # embedded observable became FALSE -- an op that can no longer see what it
+                # asserts. The ASSERTION is not dropped: f_e now performs it after a
+                # teardown+launch, which proves S0 is reached across a REAL restart -- a
+                # stronger claim than the reload version made. One consumer (f_e), so the
+                # relocation is complete by construction.
             elif op == "note":
                 self.note("SCENARIO-NOTE: " + st["text"])
             else:

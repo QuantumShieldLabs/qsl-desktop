@@ -1,0 +1,87 @@
+{
+ "scenario": "na0776_gui_r_declined_notice",
+ "destructive": true,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0776-gui-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0776-gui-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FR"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "the seam injected one whitelisted marker at launch (QSLD_INJECT_MARKER)"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#notice-line",
+   "prop": "className",
+   "expect": "status-line-quiet",
+   "poll": 10
+  },
+  {
+   "op": "read_text",
+   "sel": "#notice-line .status-text",
+   "literal": "A connection attempt was declined"
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('#notice-line').dataset.noticeKind || 'NONE';",
+   "expect": "invite_finish_hs_unconsumed"
+  },
+  {
+   "op": "exec",
+   "script": "var f=document.getElementById('status-line');return f&&f.tagName==='FOOTER'?'footer-intact':'MISSING';",
+   "expect": "footer-intact"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-notice-dismiss"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#notice-line",
+   "prop": "className",
+   "expect": "status-line-quiet hidden",
+   "poll": 10
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}

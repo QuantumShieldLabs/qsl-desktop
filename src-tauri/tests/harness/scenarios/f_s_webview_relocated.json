@@ -1,0 +1,84 @@
+{
+ "scenario": "na0776_gui_s_webview_relocated",
+ "destructive": true,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0776-gui-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0776-gui-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FS"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "A1: the five WebKit names live under <app-data>/webview, none at the root"
+  },
+  {
+   "op": "file_present",
+   "path": "qsld-data/webview",
+   "poll": 10
+  },
+  {
+   "op": "file_absent",
+   "path": "qsld-data/CacheStorage",
+   "poll": 5
+  },
+  {
+   "op": "file_absent",
+   "path": "qsld-data/WebKitCache",
+   "poll": 5
+  },
+  {
+   "op": "file_absent",
+   "path": "qsld-data/hsts-storage.sqlite",
+   "poll": 5
+  },
+  {
+   "op": "file_absent",
+   "path": "qsld-data/storage",
+   "poll": 5
+  },
+  {
+   "op": "file_absent",
+   "path": "qsld-data/mediakeys",
+   "poll": 5
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}

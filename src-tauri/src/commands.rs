@@ -138,6 +138,11 @@ pub struct AppInfoDto {
     pub display_name: &'static str,
     pub version: &'static str,
     pub slice: &'static str,
+    /// NA-0776 (`ENG-0275`, spec v2 3.4): WHICH BUILD THIS IS, so a flight can say.
+    /// Either a 40-hex commit or the literal "unknown" -- never empty, never invented.
+    /// `dirty` and a build timestamp are deliberately ABSENT; see build.rs for why a
+    /// field that is believed and can be wrong is worse than an absent one.
+    pub build_commit: &'static str,
     /// NA-0763 (`D-0040`, ruling `R4`) — THE TEST-ONLY TEMPO SEAM, and the
     /// reason it lives HERE rather than on `AppSettings`.
     ///
@@ -167,6 +172,8 @@ fn identity_dto(rec: &qsc::identity::IdentityPublicRecord) -> IdentityDto {
 pub async fn launch_state(st: State<'_, AppState>) -> Result<String, String> {
     let data = st.data_dir.clone();
     let s = st.gw.call(move || resolve_launch_state(&data)).await;
+    // NA-0776 (3.5): this is the only place the app forms a belief about the store.
+    crate::record_believed_state(s);
     Ok(s.as_str().to_string())
 }
 
@@ -186,6 +193,12 @@ pub async fn vault_create(
     }
     if passphrase != confirm {
         return Err("mismatch".into());
+    }
+    // NA-0776 (3.5) DOOR 1 -- external-wipe detection, FAILING CLOSED. A process that
+    // believed it had a store and now resolves S0 was wiped from outside; creating a
+    // vault inside it is exactly ENG-0276's shape. Refuse and require a relaunch.
+    if crate::store_vanished(&st.data_dir) {
+        return Err(crate::STORE_VANISHED.into());
     }
     st.gw
         .call(move || -> Result<(), String> {
@@ -241,6 +254,15 @@ pub async fn unlock_attempt(
 /// NA-0705 (D640 A2.2): the unlock decision as a plain function, mirroring
 /// `destroy_vault_impl` — the seam the QSCV01 refusal instrument drives.
 pub fn unlock_attempt_impl(data_dir: &Path, passphrase: &str) -> Result<UnlockDto, String> {
+    // NA-0776 (3.5) DOOR 2 -- and the ORDER is load-bearing, ruled at RULING_005 R8.
+    // This runs BEFORE `unlock_guarded`, because that path WRITES: it reaches
+    // `protection_state_load`, whose second line is `ensure_store_layout`, which
+    // re-materialises `qsc/` and `store.meta` and takes a lock on a FRESH `.qsc.lock`
+    // inode. A check placed after it would interrogate a store the check itself had
+    // just re-created -- and would feed the very inode hazard MAJOR-12 filed.
+    if crate::store_vanished(data_dir) {
+        return Err(crate::STORE_VANISHED.to_string());
+    }
     {
         // ⚠ DOOR 1. The pre-flight GATES the guard — it does not interpret its result.
         // Reaching `unlock_guarded` with a QSCV01 envelope is what burns an attempt and,
@@ -282,6 +304,15 @@ pub fn unlock_attempt_impl(data_dir: &Path, passphrase: &str) -> Result<UnlockDt
                             fs::remove_file(&p).map_err(|e| e.to_string())?;
                         }
                     }
+                    // NA-0776 (3.6-v3.1 sec 5): THE ARMED PATH IS THE ONE THAT MATTERS.
+                    // It is the only wipe that never reloads (main.js:541), and its
+                    // "Start over" control historically called route(), so a NEW VAULT
+                    // WAS CREATED INSIDE THE SAME PROCESS -- ENG-0276's own
+                    // reproduction, reachable through the shipped UI. The marker is set
+                    // here; the restart happens when the user leaves this screen, which
+                    // is the point where continuation would otherwise occur, and which
+                    // preserves the ceremony's message instead of yanking it away.
+                    crate::mark_webview_wipe_pending();
                     Ok(UnlockDto::Wiped)
                 }
             }
@@ -403,7 +434,33 @@ pub fn destroy_vault_impl(data_dir: &Path, passphrase: &str) -> Result<(), Strin
             fs::remove_file(&p).map_err(|e| e.to_string())?;
         }
     }
+    // NA-0776 (3.6-v3.1 sec 4): the wipe succeeded, so mark the webview directory for
+    // deletion at the NEXT bootstrap -- the only point with no WebContext alive.
+    crate::mark_webview_wipe_pending();
     Ok(())
+}
+
+/// NA-0776 (3.6-v3.1 sec 4/5) -- the explicit restart. A PROCESS restart, not
+/// `window.location.reload()`: the reload does not reset the WebContext, which lives
+/// for the process, and it leaves every module-scope value in the front end intact.
+/// This is cure (B), and it is what makes the bootstrap deletion sound.
+///
+/// ⚠ WHY THE RESTART IS ITS OWN COMMAND RATHER THAN THE TAIL OF EACH WIPE. Putting
+/// `app.restart()` inside `erase_all`/`destroy_vault` makes those commands terminate
+/// the process, so the NA-0700 IPC replay harness -- whose whole purpose is to invoke
+/// EVERY registered command through real IPC -- can no longer invoke them: the mock
+/// runtime's `restart` is `not implemented` and the harness dies. Weakening that
+/// harness to accommodate a cure is not available (the kickoff forbids it), so the
+/// restart is issued by the CALLER, at exactly the site that calls
+/// `window.location.reload()` today.
+/// THE DURABLE HALF IS STILL RUST-SIDE AND UNCONDITIONAL: each wipe sets the marker
+/// itself, so the webview deletion happens at the next bootstrap even if a restart is
+/// never issued. The restart breaks process continuity; the marker guarantees the
+/// deletion. They fail independently, which is why A5 (the missed-marker witness) is a
+/// separate arm.
+#[tauri::command]
+pub fn restart_app<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    app.restart();
 }
 
 #[tauri::command]
@@ -439,8 +496,48 @@ pub fn erase_all_impl(data_dir: &Path) -> Result<(), String> {
     if sf.exists() {
         fs::remove_file(&sf).map_err(|e| e.to_string())?;
     }
+    // NA-0776 (3.6-v3.1 sec 4): mark the webview directory for the next bootstrap.
+    crate::mark_webview_wipe_pending();
     crate::create_private_dir(&qsc_dir)?;
     Ok(())
+}
+
+/// NA-0776 (spec v2 3.3 / `ENG-0274`) -- the declined-frame notice's DTO.
+/// `{ kind, count }` and nothing else. `first_seen_ms`/`last_seen_ms` were specified in
+/// v1 and REMOVED: they have no source in `MarkerBuffer` (cold read BLOCKER-4) and,
+/// independently, per-attempt timing metadata is a deliberate acquisition this house
+/// declines to make as a side effect of a DTO shape (NOTE-4) -- whoever can see the
+/// window would learn when connection attempts happened, in a tool whose emitting lane
+/// deliberately stripped every other correlator.
+#[derive(serde::Serialize)]
+pub struct NoticeDto {
+    /// Always a member of `markers::NOTICE_KINDS` -- the classifier's return type makes
+    /// that structural, not a convention.
+    pub kind: &'static str,
+    /// The UNDISMISSED count: monotonic total minus this kind's dismiss watermark.
+    pub count: u64,
+}
+
+/// The notice surface. A plain sync command, like `marker_stats`: it reads an in-memory
+/// buffer and must not queue behind core calls on the serial gateway.
+/// ⚠ It returns a CLASSIFICATION, never a marker line. There is no route from here to
+/// raw marker text.
+#[tauri::command]
+pub fn notice_list(st: State<'_, AppState>) -> Vec<NoticeDto> {
+    st.gw
+        .markers
+        .notices()
+        .into_iter()
+        .map(|(kind, count)| NoticeDto { kind, count })
+        .collect()
+}
+
+/// Dismiss one kind. Rust-side watermark, so it SURVIVES the `window.location.reload()`
+/// that erase and destroy both perform (cold read MINOR-11). A kind outside the
+/// whitelist is ignored.
+#[tauri::command]
+pub fn notice_dismiss(st: State<'_, AppState>, kind: String) {
+    st.gw.markers.dismiss(&kind);
 }
 
 #[tauri::command]
@@ -454,12 +551,26 @@ pub fn core_busy(st: State<'_, AppState>) -> bool {
     st.gw.busy()
 }
 
+/// NA-0776 (3.4): the stamp's acceptance rule, PURE so the "unknown" branch is
+/// drivable without a second build -- the `parse_tick_override` precedent
+/// (settings.rs). `env!` could not be used at all here: it is a COMPILE ERROR on an
+/// absent variable, so the red arm the spec names would not exist (cold read MAJOR-10).
+/// A malformed stamp degrades to "unknown" rather than shipping garbage a reader would
+/// believe.
+pub fn build_commit_or_unknown(stamped: Option<&'static str>) -> &'static str {
+    match stamped {
+        Some(s) if s.len() == 40 && s.chars().all(|c| c.is_ascii_hexdigit()) => s,
+        _ => "unknown",
+    }
+}
+
 #[tauri::command]
 pub fn app_info() -> AppInfoDto {
     AppInfoDto {
         display_name: APP_DISPLAY_NAME,
         version: env!("CARGO_PKG_VERSION"),
         slice: "B (relay connectivity: point the app at a relay and test the connection)",
+        build_commit: build_commit_or_unknown(option_env!("QSLD_BUILD_COMMIT")),
         tick_override_ms: settings::tick_override_from_env(),
     }
 }

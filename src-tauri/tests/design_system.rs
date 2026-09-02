@@ -39,9 +39,21 @@ fn split_root_block(css: &str) -> (String, String) {
 #[test]
 fn display_name_and_identifier_binding() {
     let conf = manifest_file("tauri.conf.json");
+    // NA-0776 (3.6-v3.1 sec 3): THE TITLE ASSERTION IS RE-SITED, NOT WEAKENED. The
+    // `windows` block in tauri.conf.json is retired -- the window is built in lib.rs so
+    // `.data_directory()` reaches the direct setter -- so a pin that kept asserting
+    // over the config file would be asserting over a property that is no longer there:
+    // a pin that CANNOT FAIL, which is worse than no pin. The SAME literal is asserted
+    // at the SAME binding, at the new source site.
+    let lib_rs = manifest_file("src/lib.rs");
     assert!(
-        conf.contains(r#""title": "QuantumShield Chat""#),
-        "window title must be QuantumShield Chat"
+        lib_rs.contains(r#".title("QuantumShield Chat")"#),
+        "window title must be QuantumShield Chat, at its new site in src/lib.rs"
+    );
+    assert!(
+        !conf.contains(r#""title":"#),
+        "the retired windows block reappeared in tauri.conf.json: the title now has two \
+         sources and they can disagree"
     );
     assert!(
         conf.contains(r#""identifier": "org.quantumshieldlabs.qsldesktop""#),

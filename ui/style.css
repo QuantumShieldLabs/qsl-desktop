@@ -84,6 +84,12 @@
   --sp-5: 24px;
   --sp-6: 32px;
   /* spec-§2/appendix-annotated component spacing (explicit pixels) */
+  /* NA-0776 (3.1): the shared pane head-row height. A SIZE token, not a spacing
+     one: it is consumed by min-height, which spacing_only_from_scale_tokens
+     does not cover (cold read MINOR-3), so no pin enforces it and the driver
+     assertion is the enforcement. 34px is .rail-btn's height, which is what
+     governs the Contacts row today. */
+  --sz-head-row: 34px;
   --sp-x6: 6px;
   --sp-x7: 7px;
   --sp-x10: 10px;
@@ -497,8 +503,19 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 
 /* D.2: the list pane */
 .list-pane { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* NA-0776 (3.1): ONE header structure across all eight h2 sites --
+   .pane-header > .pane-head-row > h2 [+ optional trailing action], with an optional
+   secondary row (the Chats search) BELOW the fixed-height row so it cannot move the
+   heading. The list panes keep .list-header as well: f_o_contacts_scroll.json:105
+   selects through it. */
+.pane-header { display: flex; flex-direction: column; gap: var(--sp-2); }
 .list-header { padding: var(--sp-3) var(--sp-x14) var(--sp-x10); display: flex; flex-direction: column; gap: var(--sp-2); }
-.list-header h2 { font-size: var(--fs-listhead); font-weight: var(--fw-mid); }
+/* NA-0776 (RULING_016): ONE type rule for every list-column and detail-pane heading.
+   `.settings-rail header` is listed HERE rather than carrying its own copy of the
+   values, so the two can never drift apart again -- which is exactly how it was left
+   behind at 16px/500 when the h2s moved to 17px/600. */
+.pane-head-row h2,
+.settings-rail header { font-size: var(--fs-title); font-weight: var(--fw-title); }
 .search {
   background: var(--bg-raised); border-radius: var(--radius-small);
   padding: var(--sp-x6) var(--sp-x10); display: flex; align-items: center;
@@ -553,7 +570,7 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 .settings-layout { flex: 1; display: grid; grid-template-columns: 52px 160px 1fr; min-height: 0; }
 .settings-rail { background: var(--bg-inset); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: var(--sp-3) 0; }
 .settings-rail header {
-  font-size: var(--fs-listhead); font-weight: var(--fw-mid);
+  /* type comes from the shared rule above -- deliberately NOT repeated here */
   padding: 0 var(--sp-x14); margin: 0 0 var(--sp-x10) 0;
 }
 .settings-rail .cat {
@@ -566,7 +583,11 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
   box-shadow: inset 2px 0 0 0 var(--accent-fill);
 }
 .settings-rail .cat.dim { color: var(--fg-muted); }
-.settings-pane { flex: 1; overflow-y: auto; padding: var(--sp-4) var(--sp-x20); }
+/* NA-0776 (3.1 / operator RBANK T1): the top padding is unified at --sp-3 on BOTH
+   columns -- the list panes' value, the level the operator named ('that appears to be
+   where Contacts is'). This SUPERSEDES RULING_003 B-1's --sp-4 choice. Bottom stays
+   --sp-4: T1 rules the TOP only. */
+.settings-pane { flex: 1; overflow-y: auto; padding: var(--sp-3) var(--sp-x20) var(--sp-4); }
 .pane { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 560px; }
 .pane h2 { font-size: var(--fs-title); font-weight: var(--fw-title); }
 .pane h3 { font-size: var(--fs-section); font-weight: var(--fw-section); margin: var(--sp-3) 0 0 0; color: var(--fg); }
@@ -667,7 +688,12 @@ a.rm:hover { color: var(--fg); }
 /* The "+" entry needs `Chats` and the button on ONE line; `.list-header` is a
    COLUMN flex (:465) and stays that way, so the row is a wrapper inside it
    rather than a change to the header's own axis. */
-.list-head-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+/* NA-0776 (3.1): min-height is a FLOOR, and that is the point. It does not remove
+   the trailing button's coupling on Contacts (34px already exceeds the 25px h2); it
+   EXTENDS the same governed height to the panes that lack a button, so every heading
+   centres on the same band. Spec v1 said the coupling was 'removed'; that was wrong
+   and the cold read caught it (BLOCKER-1a). */
+.pane-head-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-height: var(--sz-head-row); }
 
 /* The backdrop. `position: fixed` (not the mockup's `absolute`) because the
    mockup draws inside a phone frame and this is the real window. */

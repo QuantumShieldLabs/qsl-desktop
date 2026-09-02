@@ -1,0 +1,140 @@
+{
+ "scenario": "na0776_gui_q_heading_alignment",
+ "destructive": true,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "note",
+   "text": "NA-0776 (RULING_016): THE SITE SET IS DEFINED BY ROLE, NOT BY ELEMENT TYPE -- the list-column heading of EACH screen (Chats, Contacts, Settings) plus the six detail-pane h2s. The Settings list-column heading is a <header>, not an h2, which is exactly how the earlier eight-h2 census missed it and why only the operator's flight caught it."
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0776-fq-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0776-fq-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FQ"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['chats_list']={h2:b('section.list-pane:not(#pane-contacts) .pane-head-row h2'),row:b('section.list-pane:not(#pane-contacts) .pane-head-row'),rail:b('#btn-rail-chats-m')};return window.__na['chats_list'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['contacts_list']={h2:b('#pane-contacts .pane-head-row h2'),row:b('#pane-contacts .pane-head-row'),rail:b('#btn-rail-chats-m')};return window.__na['contacts_list'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-settings"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['settings_list']={h2:b('.settings-rail header span'),row:b('.settings-rail header'),rail:b('#btn-rail-chats')};return window.__na['settings_list'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "click",
+   "sel": "button[data-pane=\"identity\"]"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['identity']={h2:b('#pane-identity .pane-head-row h2'),row:b('#pane-identity .pane-head-row'),rail:b('#btn-rail-chats')};return window.__na['identity'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "click",
+   "sel": "button[data-pane=\"server\"]"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['relay']={h2:b('#pane-server .pane-head-row h2'),row:b('#pane-server .pane-head-row'),rail:b('#btn-rail-chats')};return window.__na['relay'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "click",
+   "sel": "button[data-pane=\"vault\"]"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['vault']={h2:b('#pane-vault .pane-head-row h2'),row:b('#pane-vault .pane-head-row'),rail:b('#btn-rail-chats')};return window.__na['vault'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "click",
+   "sel": "button[data-pane=\"appearance\"]"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['appearance']={h2:b('#pane-appearance .pane-head-row h2'),row:b('#pane-appearance .pane-head-row'),rail:b('#btn-rail-chats')};return window.__na['appearance'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "click",
+   "sel": "button[data-pane=\"notifications\"]"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['notifications']={h2:b('#pane-notifications .pane-head-row h2'),row:b('#pane-notifications .pane-head-row'),rail:b('#btn-rail-chats')};return window.__na['notifications'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "click",
+   "sel": "button[data-pane=\"about\"]"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['about']={h2:b('#pane-about .pane-head-row h2'),row:b('#pane-about .pane-head-row'),rail:b('#btn-rail-chats')};return window.__na['about'].h2?'OK':'MISSING';})();"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){var n=window.__na,k=Object.keys(n),TOL=0.5;var f=[];if(k.length!==9)f.push('SITES='+k.length+' expected 9');var tops=k.map(function(x){return n[x].h2.t;});var hs=k.map(function(x){return n[x].row.h;});function spread(a){return Math.max.apply(null,a)-Math.min.apply(null,a);}if(spread(tops)>TOL)f.push('A1 heading tops spread='+spread(tops).toFixed(2)+' '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.t.toFixed(1);})));if(spread(hs)>TOL)f.push('A2 row heights spread='+spread(hs).toFixed(2));var rails=k.map(function(x){return n[x].rail.c;});if(spread(rails)>TOL)f.push('rails disagree');k.forEach(function(x){var d=Math.abs(n[x].h2.c-n[x].rail.c);if(d>TOL)f.push('A3 '+x+' centre-vs-rail='+d.toFixed(2));});var fs=k.map(function(x){return n[x].h2.fs;}),fw=k.map(function(x){return n[x].h2.fw;});var hh=k.map(function(x){return n[x].h2.h;});function uniq(a){return a.filter(function(v,i){return a.indexOf(v)===i;});}if(uniq(fs).length!==1)f.push('A4 font-size differs '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.fs;})));if(uniq(fw).length!==1)f.push('A4 font-weight differs '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.fw;})));if(spread(hh)>TOL)f.push('A4 heading box heights spread='+spread(hh).toFixed(2));return f.length?f.join(' | '):'OK';})();"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}
