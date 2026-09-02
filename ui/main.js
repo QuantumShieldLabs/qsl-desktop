@@ -3522,11 +3522,17 @@ async function relayScanOnce(ev) {
   if (quiet) tickQuietDepth += 1;
   try {
     for (const cls of SCAN_CLASSES) marks = await cls(marks);
+    // NA-0776 (3.3): the notice refresh piggybacks on this pass -- no new timer. ⚠ IT
+    // MUST SIT INSIDE THE QUIET SCOPE. Placed after the `finally` below, its `invoke`
+    // runs with `tickQuietDepth` back at zero and the busy indicator flashes on every
+    // tick -- which is ENG-0271's cure undone. Caught by f_p_tick_quiet_busy, the arm
+    // that exists for exactly this, and it is the reason MINOR-12 warned about a notice
+    // refresh riding the tick at all.
+    await refreshNotices();
   } finally {
     if (quiet) tickQuietDepth -= 1;
   }
   recordScanOutcome(ev, marks);
-  await refreshNotices();   // NA-0776 3.3: piggyback, never a new timer
   return marks;
 }
 
