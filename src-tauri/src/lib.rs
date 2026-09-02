@@ -306,6 +306,13 @@ pub fn bootstrap(data_dir: &Path) -> Result<(), String> {
     std::env::set_var("QSC_CONFIG_DIR", &qsc_dir);
     qsc::output::init_output_policy(false);
     qsc::output::set_marker_routing(qsc::output::MarkerRouting::InApp);
+    // NA-0776 (3.3 / cold read MAJOR-8): PIN THE MARKER FORMAT. qsc chooses plain vs
+    // jsonl from `QSC_MARK_FORMAT` in the launching environment (output/mod.rs:257-262).
+    // Unpinned, a `QSC_MARK_FORMAT=jsonl` environment would make the notice classifier
+    // match nothing and the footer stay EMPTY -- failing closed for privacy but OPEN
+    // into silence for the surface's purpose, with every test still green. Pinning here,
+    // beside the routing call, makes the parse total.
+    std::env::set_var("QSC_MARK_FORMAT", "plain");
     qsc::output::install_panic_redaction_hook();
     // NA-0776 (3.2 / MAJOR-5): the launch-path half of the 0600 remediation. `load` is
     // NOT a launch path -- measured: its only callers are settings_get, settings_set,
@@ -352,6 +359,8 @@ pub fn configure_builder<R: tauri::Runtime>(
             commands::destroy_vault,
             commands::erase_all,
             commands::marker_stats,
+            commands::notice_list,
+            commands::notice_dismiss,
             commands::core_busy,
             commands::app_info,
             // slice B (D609 GATE 2): server connectivity — thin forwarders onto
@@ -401,6 +410,9 @@ pub fn run() {
         data_dir,
         gw: CoreGateway::default(),
     };
+    // NA-0776 (3.3): arm the test-only marker injection seam. Inert unless the harness
+    // sets QSLD_INJECT_MARKER; never reachable from the front end.
+    app_state.gw.markers.inject_from_env();
     configure_builder(tauri::Builder::default(), app_state)
         .setup(|app| {
             // Item 15 (D597): the native menu — the pinned tauri 2 core

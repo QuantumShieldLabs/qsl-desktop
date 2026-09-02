@@ -753,6 +753,7 @@ function isPlainReason(reason) {
 
 async function enterMain() {
   show("scr-main");
+  refreshNotices();   // NA-0776 3.3: initial paint; not awaited, never blocking
   // Slice B (D609 R4) kept: the footer reflects the ACTUAL relay config, never
   // a "future update" claim. NA-0752 adds the desk's answer beside it.
   //
@@ -2003,6 +2004,48 @@ function renderTickStatus() {
 }
 
 // The tick's OWN observable counter (R6). Never touches `#redeem-overlay`.
+// ---- NA-0776 (`ENG-0274`, spec v2 3.3): the declined-frame notice ----------
+// The copy map is ALSO a whitelist: a kind with no entry here renders nothing, so the
+// Rust allowlist and the UI agree by construction rather than by discipline. The DTO
+// carries `{kind, count}` only -- no timestamps (BLOCKER-4 / NOTE-4).
+const NOTICE_COPY = {
+  invite_finish_hs_unconsumed: "A connection attempt was declined",
+};
+
+// ⚠ NO TIMER. This is called from places that ALREADY complete an invoke -- the scan
+// pass and entering main -- because the app's tick was deliberately quieted by
+// ENG-0271 and a polled notice would re-introduce exactly the periodic loop that cure
+// removed (cold read MINOR-12).
+async function refreshNotices() {
+  const el = byId("notice-line");
+  if (!el) return;
+  let rows = [];
+  try {
+    rows = await invoke("notice_list");
+  } catch (_) {
+    return; // fail-quiet: a notice must never be the reason something else breaks
+  }
+  const shown = (rows || []).filter((r) => NOTICE_COPY[r.kind]);
+  if (shown.length === 0) {
+    el.className = "status-line-quiet hidden";
+    delete el.dataset.noticeKind;
+    return;
+  }
+  const r = shown[0];
+  setStatusLine(el, "neutral", NOTICE_COPY[r.kind] + (r.count > 1 ? " (" + r.count + ")" : ""));
+  el.dataset.noticeKind = r.kind;
+  el.dataset.noticeCount = String(r.count);
+}
+
+byId("btn-notice-dismiss").addEventListener("click", async () => {
+  const kind = byId("notice-line").dataset.noticeKind;
+  if (!kind) return;
+  try {
+    await invoke("notice_dismiss", { kind });
+  } catch (_) { /* fail-quiet, as above */ }
+  await refreshNotices();
+});
+
 function tickMark() {
   const el = byId("tick-status");
   if (!el) return;
@@ -3451,6 +3494,7 @@ async function relayScanOnce(ev) {
     if (quiet) tickQuietDepth -= 1;
   }
   recordScanOutcome(ev, marks);
+  await refreshNotices();   // NA-0776 3.3: piggyback, never a new timer
   return marks;
 }
 

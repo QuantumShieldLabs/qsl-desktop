@@ -448,6 +448,44 @@ pub fn erase_all_impl(data_dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// NA-0776 (spec v2 3.3 / `ENG-0274`) -- the declined-frame notice's DTO.
+/// `{ kind, count }` and nothing else. `first_seen_ms`/`last_seen_ms` were specified in
+/// v1 and REMOVED: they have no source in `MarkerBuffer` (cold read BLOCKER-4) and,
+/// independently, per-attempt timing metadata is a deliberate acquisition this house
+/// declines to make as a side effect of a DTO shape (NOTE-4) -- whoever can see the
+/// window would learn when connection attempts happened, in a tool whose emitting lane
+/// deliberately stripped every other correlator.
+#[derive(serde::Serialize)]
+pub struct NoticeDto {
+    /// Always a member of `markers::NOTICE_KINDS` -- the classifier's return type makes
+    /// that structural, not a convention.
+    pub kind: &'static str,
+    /// The UNDISMISSED count: monotonic total minus this kind's dismiss watermark.
+    pub count: u64,
+}
+
+/// The notice surface. A plain sync command, like `marker_stats`: it reads an in-memory
+/// buffer and must not queue behind core calls on the serial gateway.
+/// ⚠ It returns a CLASSIFICATION, never a marker line. There is no route from here to
+/// raw marker text.
+#[tauri::command]
+pub fn notice_list(st: State<'_, AppState>) -> Vec<NoticeDto> {
+    st.gw
+        .markers
+        .notices()
+        .into_iter()
+        .map(|(kind, count)| NoticeDto { kind, count })
+        .collect()
+}
+
+/// Dismiss one kind. Rust-side watermark, so it SURVIVES the `window.location.reload()`
+/// that erase and destroy both perform (cold read MINOR-11). A kind outside the
+/// whitelist is ignored.
+#[tauri::command]
+pub fn notice_dismiss(st: State<'_, AppState>, kind: String) {
+    st.gw.markers.dismiss(&kind);
+}
+
 #[tauri::command]
 pub fn marker_stats(st: State<'_, AppState>) -> MarkerStatsDto {
     let (buffered, dropped) = st.gw.markers.stats();

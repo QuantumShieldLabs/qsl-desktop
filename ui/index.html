@@ -205,6 +205,20 @@
        over the attribute. `setStatusLine` rewrites `className` wholesale, so
        the hidden state is re-applied in the same helper that sets the text —
        one place, not a habit re-derived at each call site. -->
+  <!-- NA-0776 (`ENG-0274`, spec v2 3.3) — THE DECLINED-FRAME NOTICE. A NEW element,
+       minted deliberately and on the SAME quiet-line pattern `#tick-status` uses.
+       ⚠ It is NOT `#status-line`: index.html:200 records that the footer is NA-0752's
+       ruled TWO-SOURCE truth line and that "a third source would re-open a settled
+       ruling", and `statusFooterLine` is a total function with exactly one slot. That
+       ruling is UNTOUCHED by this element. NO CSS IS MINTED — `.status-line-quiet` and
+       `.hidden` both already exist, the same argument NA-0763 made for `#tick-status`.
+       The dismiss control carries a tier class because `every_button_is_tiered_or_nav`
+       (design_system.rs:150-186) requires every button element to.
+       ⚠ NOTE FOR A LATER AUTHOR: do not write the button tag literally in a comment
+       here. That pin scans RAW TEXT for the opening tag, not parsed DOM, so a tag
+       written inside a comment is read as a class-less button and reds the pin. Found
+       by the pin itself while this notice was being added. -->
+  <p id="notice-line" class="status-line-quiet hidden"><i class="icon"></i><span class="status-text"></span><button id="btn-notice-dismiss" class="secondary">Dismiss</button></p>
   <p id="tick-status" class="status-line-quiet hidden"><i class="icon"></i><span class="status-text"></span></p>
   <footer id="status-line" class="status-line">No relay configured.</footer>
 </section>
