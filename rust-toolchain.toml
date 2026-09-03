@@ -1,0 +1,9 @@
+# THE TOOLCHAIN PIN (NA-0778; operator decision R4 of 2026-09-02; the box measured 2026-09-03).
+# This file is the SINGLE source of the toolchain for the box AND for CI: rustup reads it as a
+# directory override, and .github/workflows/ci.yml reads `channel` into the toolchain action's
+# input for every required job. Moving the pin is a lane, not a drift: bump `channel` here and
+# nowhere else. The pinned CI jobs print `rustc --version` and fail if it is not this channel;
+# the `stable-canary` job floats on @stable on purpose and is the early warning.
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]

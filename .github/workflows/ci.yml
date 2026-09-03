@@ -15,9 +15,28 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
             libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev
-      - uses: dtolnay/rust-toolchain@stable
+      # NA-0778 / R4 (2026-09-02): THE PIN. The toolchain is READ FROM rust-toolchain.toml,
+      # the repository's single source, never from this file. `@stable` does NOT read that
+      # file -- the action installs and `rustup default`s whatever its @rev names -- so the
+      # pin is passed as the `toolchain` input to `@master`, which is the form the action's
+      # README prescribes for an explicit toolchain. `stable-canary` (below) is the ONLY job
+      # left floating on @stable, by design.
+      - id: pin
+        name: read the toolchain pin from rust-toolchain.toml
+        run: |
+          channel="$(sed -n 's/^channel *= *"\([^"]*\)".*/\1/p' rust-toolchain.toml)"
+          test -n "$channel"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ steps.pin.outputs.channel }}
           components: rustfmt, clippy
+      # SR-20: the CONSUMER prints what it runs, and fails if it is not the pin. This line is
+      # the proof the operator reads from the run and cites by run id.
+      - name: rustc --version (the pin, printed by the job that runs it)
+        run: |
+          rustc --version
+          test "$(rustc --version | awk '{print $2}')" = "${{ steps.pin.outputs.channel }}"
       - name: fmt
         run: cargo fmt --all -- --check
       # NA-0686 / D-1325 (ENG-0075). `-q` is GONE: it hid which test binaries ran
@@ -87,7 +106,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      # NA-0778 / R4 (2026-09-02): THE PIN. The toolchain is READ FROM rust-toolchain.toml,
+      # the repository's single source, never from this file. `@stable` does NOT read that
+      # file -- the action installs and `rustup default`s whatever its @rev names -- so the
+      # pin is passed as the `toolchain` input to `@master`, which is the form the action's
+      # README prescribes for an explicit toolchain. `stable-canary` (below) is the ONLY job
+      # left floating on @stable, by design.
+      - id: pin
+        name: read the toolchain pin from rust-toolchain.toml
+        run: |
+          channel="$(sed -n 's/^channel *= *"\([^"]*\)".*/\1/p' rust-toolchain.toml)"
+          test -n "$channel"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.pin.outputs.channel }}
+      # SR-20: the CONSUMER prints what it runs, and fails if it is not the pin. This line is
+      # the proof the operator reads from the run and cites by run id.
+      - name: rustc --version (the pin, printed by the job that runs it)
+        run: |
+          rustc --version
+          test "$(rustc --version | awk '{print $2}')" = "${{ steps.pin.outputs.channel }}"
       - name: install cargo-audit (locked, pinned)
         run: cargo install --locked cargo-audit --version 0.22.0
       # --deny warnings, with every waived advisory named individually in
@@ -128,7 +167,27 @@ jobs:
             libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev \
             webkit2gtk-driver xvfb dbus
-      - uses: dtolnay/rust-toolchain@stable
+      # NA-0778 / R4 (2026-09-02): THE PIN. The toolchain is READ FROM rust-toolchain.toml,
+      # the repository's single source, never from this file. `@stable` does NOT read that
+      # file -- the action installs and `rustup default`s whatever its @rev names -- so the
+      # pin is passed as the `toolchain` input to `@master`, which is the form the action's
+      # README prescribes for an explicit toolchain. `stable-canary` (below) is the ONLY job
+      # left floating on @stable, by design.
+      - id: pin
+        name: read the toolchain pin from rust-toolchain.toml
+        run: |
+          channel="$(sed -n 's/^channel *= *"\([^"]*\)".*/\1/p' rust-toolchain.toml)"
+          test -n "$channel"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.pin.outputs.channel }}
+      # SR-20: the CONSUMER prints what it runs, and fails if it is not the pin. This line is
+      # the proof the operator reads from the run and cites by run id.
+      - name: rustc --version (the pin, printed by the job that runs it)
+        run: |
+          rustc --version
+          test "$(rustc --version | awk '{print $2}')" = "${{ steps.pin.outputs.channel }}"
       # PINNED --version 2.0.6 --locked: any bump is a LANE, not a drift —
       # the injection behavior above is corroborated at exactly this version.
       - name: tauri-driver (pinned)
@@ -159,3 +218,35 @@ jobs:
           name: gui-driver-evidence
           path: target/gui_driver_runs/
           if-no-files-found: warn
+
+  # NA-0778: THE CANARY. The one job that still floats on @stable, so a stable bump that would
+  # break fmt, clippy or the suite is SEEN before the pin moves (WF-0097's mechanism (ii),
+  # made visible instead of surprising). ADVISORY: NOT in the required set -- the set is
+  # measured at the branch protection, never read from this file.
+  # RUSTUP_TOOLCHAIN=stable is LOAD-BEARING: with rust-toolchain.toml present, a bare `cargo`
+  # would resolve to the PIN through rustup's directory override and this job would silently
+  # test the pin instead of stable. The variable outranks the file (measured on the box).
+  stable-canary:
+    name: stable-canary (advisory; floats on @stable by design)
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v5
+      - name: system deps (tauri v2)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: rustc --version (the floating stable, printed so the drift is legible)
+        run: rustc --version
+      - name: fmt (stable)
+        run: cargo fmt --all -- --check
+      - name: clippy (stable)
+        run: cargo clippy --all-targets -q -- -D warnings
+      - name: test (stable)
+        run: cargo test
