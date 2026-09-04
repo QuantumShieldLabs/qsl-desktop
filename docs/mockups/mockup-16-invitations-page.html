@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<!--
+  Mockup 16 — the Invitations page, in the main panel.
+  Design intent (operator, 2026-08-31): "review invites" under Contacts becomes
+  "Invitations"; the main panel lists sent and received invitations with their
+  state; a second entry point lives under Settings. Review-only: creation stays
+  on the Contacts "+" (one mint surface).
+  MOCKUP — layout and structure authority ONLY; NOT shipped UI. Colour comes
+  from the shipped design tokens (docs/DESIGN_SPEC_AppendixF.md); this file's
+  palette is NOT binding, and reading a hex out of it into the build is a STOP.
+  DATA DEPENDENCY, OPEN: the "Received" group needs a record of redeemed codes
+  (who you redeemed, when). Whether that record exists today is for the lane
+  to measure; if it does not, the group ships empty-with-explanation until it
+  does, and the mockup's layout still binds.
+  Sanitized: no operator infrastructure; relay host is a placeholder.
+  Operator rulings folded in (2026-08-31): verification is a POP-UP (the existing
+  verify modal, mockup 13a), never inline in the list; a renamed contact is renamed
+  everywhere and the original label is NOT kept; expired rows are "Clear"ed; the
+  one-time INVITATION code is distinct from the static VERIFICATION code and the copy
+  says so.
+  SHOW-ONCE (operator, 2026-08-31): the invitation code is shown ONCE, in the
+  creation dialog, and never on this page. The app drops it from memory when that
+  dialog closes. A lost code is handled by Revoke + create a new one. Coupled change
+  to the creation dialog (mockup 14): "this is the only time you'll see it" and a
+  close confirmation "Did you share the code?".
+  ONE LINE PER CONTACT (operator, 2026-08-31): no expandable rows, no explanatory
+  copy in the list. The lost-code guidance (revoke and create a new one) lives in the
+  creation dialog, where the code is shown once.
+  Status: v6 BLESSED by the operator 2026-08-31 ("looks good for now, bank it").
+  Layout authority for Lane C's Invitations page; colour from shipped tokens only.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 16 — Invitations page</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --bg-inset:#1A1A1C;
+  --fg:#E8E8E8; --fg-secondary:#A8A8A8; --fg-muted:#7A7A7A; --border:#3A3A3E;
+  --accent-bg:#1C2A3E; --accent-border:#2E5A8E; --accent-text:#8FBAF0;
+  --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF; --rail-active-bg:#2E3B4E;
+  --ok:#8FDCA8; --warn:#E6C27A; --danger-text:#F0A0A0; --neutral-bg:#2A2A2E;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
+  --radius-small:6px; --radius:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#141416;color:var(--fg);
+  font:13.5px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;flex-direction:column;align-items:center;gap:18px;min-height:100vh;padding:24px}
+.win{width:960px;height:640px;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;display:flex;flex-direction:column;overflow:hidden}
+.titlebar{text-align:center;padding:8px;font-weight:600;font-size:13px;background:#161618;
+  border-bottom:1px solid var(--border)}
+.menubar{display:flex;gap:var(--sp-4);padding:4px var(--sp-3);border-bottom:1px solid var(--border);
+  font-size:13px;color:var(--fg-secondary)}
+.main-layout{flex:1;display:grid;grid-template-columns:52px 210px 1fr;min-height:0}
+.rail{display:flex;flex-direction:column;align-items:center;padding-top:var(--sp-3);gap:var(--sp-2);
+  border-right:1px solid var(--border)}
+.rail-btn{width:36px;height:36px;border-radius:var(--radius-small);display:grid;place-items:center;
+  color:var(--fg-muted)}
+.rail-btn.active{background:var(--rail-active-bg);color:var(--accent-text)}
+.rail-spacer{flex:1}
+.list-pane{border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
+.pane-title{display:flex;align-items:center;justify-content:space-between;padding:var(--sp-4) var(--sp-4) var(--sp-1)}
+.pane-title h2{margin:0;font-size:16px;font-weight:600}
+.pane-title .plus{color:var(--fg-muted);font-size:20px;line-height:1}
+.pane-link{padding:0 var(--sp-4) var(--sp-3);font-size:12.5px;color:var(--accent-text)}
+.pane-link .count{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:9px;
+  background:var(--accent-fill);color:var(--accent-fill-text);font-size:11px;line-height:18px;text-align:center}
+.rows{flex:1;overflow-y:auto;min-height:0}
+.contact-row{display:flex;align-items:center;gap:var(--sp-3);border-radius:var(--radius-small);
+  padding:var(--sp-2) var(--sp-4);margin:0 var(--sp-2) var(--sp-1)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--fg-muted);flex:none}
+.dot.done{background:var(--ok)} .dot.active{background:var(--accent-text)}
+
+/* ---------- the page ---------- */
+.page{padding:var(--sp-6) var(--sp-6) var(--sp-4);overflow-y:auto;min-height:0}
+.page h1{margin:0 0 var(--sp-1);font-size:20px;font-weight:600}
+.page .lede{margin:0 0 var(--sp-3);color:var(--fg-secondary);max-width:62ch}
+.page .nudge{margin:0 0 var(--sp-5);padding:var(--sp-2) var(--sp-3);max-width:70ch;border-left:3px solid var(--accent-fill);background:var(--accent-bg);color:var(--fg);border-radius:0 var(--radius-small) var(--radius-small) 0}
+.page .nudge a{color:var(--accent-text);text-decoration:none}
+.group{margin-top:40px;margin-bottom:var(--sp-6)}
+.group-head{display:flex;align-items:baseline;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+.group-head h2{margin:0;font-size:14.5px;font-weight:600}
+.group-head .meta{color:var(--fg-muted);font-size:12.5px}
+.filters{display:flex;gap:var(--sp-1);margin-left:auto}
+.chip{padding:2px 10px;border-radius:12px;border:1px solid var(--border);color:var(--fg-secondary);font-size:12px}
+.chip.on{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent-text)}
+table{width:100%;border-collapse:collapse}
+th{font-weight:500;color:var(--fg-muted);text-align:left;padding:var(--sp-1) var(--sp-3);font-size:12px;
+  border-bottom:1px solid var(--border)}
+td{padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--border);vertical-align:top}
+.name{font-weight:600}
+.name small{display:block;font-weight:400;color:var(--fg-muted);font-size:12px}
+.state{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.state.wait .dot{background:var(--accent-text)} .state.ok .dot{background:var(--ok)}
+.state.expired .dot,.state.revoked .dot{background:var(--fg-muted)}
+.state.expired,.state.revoked{color:var(--fg-secondary)}
+.when{color:var(--fg-secondary);white-space:nowrap}
+.actions{display:flex;gap:var(--sp-3);justify-content:flex-end;white-space:nowrap}
+.actions a{color:var(--accent-text);text-decoration:none}
+.actions a.quiet{color:var(--fg-muted)}
+.empty{padding:var(--sp-4);border:1px dashed var(--border);border-radius:var(--radius);color:var(--fg-secondary);max-width:60ch}
+.empty a{color:var(--accent-text)}
+.footer{border-top:1px solid var(--border);padding:6px var(--sp-3);font-size:12px;color:var(--fg-secondary)}
+/* focus ring per mockup 10 */
+a:focus-visible{outline:2px solid var(--accent-text);outline-offset:2px;border-radius:3px}
+
+/* ---------- annotation strip (not part of the UI) ---------- */
+.notes{width:960px;color:#B9B9BE;font-size:12.5px;line-height:1.5}
+.notes b{color:#E8E8E8}
+.notes ol{margin:6px 0 0 18px;padding:0}
+</style>
+</head>
+<body>
+
+<div class="win">
+  <div class="titlebar">QuantumShield Chat</div>
+  <div class="menubar"><span>File</span><span>Edit</span><span>View</span><span>Help</span></div>
+  <div class="main-layout">
+
+    <div class="rail">
+      <div class="rail-btn" title="Chats">&#x1F5E8;</div>
+      <div class="rail-btn active" title="Contacts">&#x1F465;</div>
+      <div class="rail-spacer"></div>
+      <div class="rail-btn" title="Settings">&#x2699;</div>
+    </div>
+
+    <div class="list-pane">
+      <div class="pane-title"><h2>Contacts</h2><span class="plus">+</span></div>
+      <div class="pane-link">Invitations<span class="count">2</span></div>
+      <div class="rows">
+        <div class="contact-row"><span class="dot done"></span>Ben</div>
+        <div class="contact-row"><span class="dot done"></span>Dana</div>
+        <div class="contact-row"><span class="dot active"></span>Marcus</div>
+        <div class="contact-row"><span class="dot done"></span>Priya</div>
+        <div class="contact-row"><span class="dot"></span>Sam</div>
+      </div>
+    </div>
+
+    <div class="page">
+      <h1>Invitations</h1>
+      <p class="lede">Invitations you've sent and codes you've redeemed. The names here are the ones you typed — they're stored on this device and never sent anywhere.</p>
+      <p class="nudge">2 connected contacts aren't verified yet. Verifying takes a minute on a call and is how you know it's really them. <a href="#">Verify Dana</a> · <a href="#">Verify Ben</a></p>
+
+      <!-- SENT -->
+      <div class="group">
+        <div class="group-head">
+          <h2>Sent</h2><span class="meta">2 waiting · 2 connected · 1 expired</span>
+          <div class="filters">
+            <span class="chip on">All</span><span class="chip">Waiting</span><span class="chip">Connected</span><span class="chip">Expired</span>
+          </div>
+        </div>
+        <table>
+          <tr><th style="width:26%">Name</th><th style="width:20%">Status</th><th style="width:16%">Created</th><th style="width:20%">Expires</th><th></th></tr>
+
+          <tr>
+            <td class="name">Marcus</td>
+            <td><span class="state wait"><span class="dot"></span>Waiting for reply</span></td>
+            <td class="when">Today, 09:12</td>
+            <td class="when">In 6 days</td>
+            <td class="actions"><a href="#" class="quiet">Revoke</a></td>
+          </tr>
+
+          <tr>
+            <td class="name">Sam</td>
+            <td><span class="state wait"><span class="dot"></span>Waiting for reply</span></td>
+            <td class="when">Yesterday</td>
+            <td class="when">In 5 days</td>
+            <td class="actions"><a href="#" class="quiet">Revoke</a></td>
+          </tr>
+
+          <tr>
+            <td class="name">Dana</td>
+            <td><span class="state ok"><span class="dot"></span>Connected · not verified</span></td>
+            <td class="when">Aug 28</td>
+            <td class="when">Connected Aug 28</td>
+            <td class="actions"><a href="#">Verify</a><a href="#">Open contact</a></td>
+          </tr>
+
+          <tr>
+            <td class="name">Priya</td>
+            <td><span class="state ok"><span class="dot"></span>Connected · verified</span></td>
+            <td class="when">Aug 21</td>
+            <td class="when">Connected Aug 22</td>
+            <td class="actions"><a href="#">Open contact</a></td>
+          </tr>
+
+          <tr>
+            <td class="name">Lena</td>
+            <td><span class="state expired"><span class="dot"></span>Expired</span></td>
+            <td class="when">Aug 10</td>
+            <td class="when">Aug 17</td>
+            <td class="actions"><a href="#" class="quiet">Clear</a></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- RECEIVED -->
+      <div class="group">
+        <div class="group-head">
+          <h2>Received</h2><span class="meta">codes you redeemed</span>
+        </div>
+        <table>
+          <tr><th style="width:26%">From</th><th style="width:20%">Status</th><th style="width:16%">Redeemed</th><th style="width:20%"></th><th></th></tr>
+          <tr>
+            <td class="name">Ben</td>
+            <td><span class="state ok"><span class="dot"></span>Connected · not verified</span></td>
+            <td class="when">Aug 19</td>
+            <td></td>
+            <td class="actions"><a href="#">Verify</a><a href="#">Open contact</a></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- EMPTY STATE (shown here for the design; replaces a group when it has no rows) -->
+      <div class="group">
+        <div class="group-head"><h2>When there's nothing here</h2><span class="meta">empty state</span></div>
+        <div class="empty">You haven't sent any invitations yet. <a href="#">Create one from Contacts</a> — you'll see a one-time code exactly once to pass to the person you want to reach, and they'll appear here while you wait.</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">Ready. Relay: https://relay.example:8443</div>
+</div>
+
+<div class="notes">
+  <b>Design notes (not UI).</b>
+  <ol>
+    <li><b>Entry points:</b> the Contacts pane link is renamed “Invitations” and keeps the waiting count; a second entry, “Invitations”, sits in the Settings nav. Both open this page in the main panel. Creation stays on Contacts “+”.</li>
+    <li><b>Row language is a sentence, not a status code:</b> “Waiting for reply”, “Connected · not verified”, “Connected · verified”, “Expired”. Waiting rows can be revoked; expired rows are cleared. No row ever shows a code.</li>
+    <li><b>Verification is a pop-up, never inline:</b> “Verify” on any connected-unverified row opens the existing verify modal (mockup 13a). The page nudges once, at the top, with the count and direct links — it does not nag per row.</li>
+    <li><b>One line per contact, nothing expands.</b> The invitation code is shown ONCE, in the creation dialog, and dropped from memory when it closes; that dialog carries the guidance (“this is the only time you'll see it”, a close confirmation, and “if it's lost, revoke and create a new one”). This page never explains codes. Verification codes are separate and static; they belong to the verify pop-up.</li>
+    <li><b>One name, everywhere (operator ruling):</b> a renamed contact is renamed throughout; the original label is not kept. Rows show the contact’s current alias; waiting rows show the label typed at creation.</li>
+    <li><b>Received</b> depends on a record of redeemed codes existing in the store; if it does not yet, the group renders its explanation and the lane files the gap.</li>
+  </ol>
+</div>
+</body>
+</html>

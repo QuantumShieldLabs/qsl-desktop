@@ -797,6 +797,10 @@ a.rm:hover { color: var(--fg); }
    empty and minted is a COLOUR difference only -- the box keeps its geometry across activation,
    which is what lets item 6's "nothing shifts" be true of the code slot. */
 .code-box.empty { color: var(--fg-muted); font-family: inherit; word-break: normal; }
+/* NA-0778 (`D-0047`) -- the close confirmation sits between the code and the footer's Close, in the
+   shipped callout box; two secondary buttons on the shipped button row. */
+.invite-close-confirm { margin-top: var(--sp-x20); }
+.invite-close-confirm-q { margin: 0 0 var(--sp-3); font-size: var(--fs-body); }
 
 /* The empty state: centred and quiet — the list answers "what is open", and nothing open is a
    legitimate answer rather than an error. */
@@ -904,7 +908,42 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
    The "review invites" link inherits the position and spacing the hint held, and takes its colour
    and its no-underline from the shipped `a.rm.plain` idiom rather than re-minting either. It is
    `display: block` because an inline anchor cannot hold the hint's block position. */
-#btn-contacts-review { display: block; margin: 0 0 var(--sp-3); padding: 0 var(--sp-4); }
+/* NA-0778 (`D-0047`) -- THE INVITATIONS BLOCK (mockup 17) takes the position and spacing the single
+   link held; the link itself is inline now, one of three. The label is `--fg` because it is NOT
+   clickable -- blue is reserved for what is; the links reuse `a.rm.plain`; the separators are muted
+   dots; the 6px gap is the shipped `--sp-x6`. No count badge (the mockup's own v2 note). */
+.contacts-inv { margin: 0 0 var(--sp-3); padding: 0 var(--sp-4); }
+.contacts-inv-label { margin: 0 0 var(--sp-1); font-size: var(--fs-body); color: var(--fg); }
+.contacts-inv-links { display: flex; gap: var(--sp-x6); align-items: baseline; }
+.contacts-inv-links a.rm { font-size: var(--fs-body); }
+.contacts-inv-sep { color: var(--fg-muted); font-size: var(--fs-body); }
+
+/* NA-0778 (`D-0047`) -- SETTINGS > INVITATIONS (mockup 16). Layout authority only; every colour a
+   shipped token; type and spacing from the scales. The table is the mockup's; the group head
+   carries the count line and the filter chips; the state dots reuse the contact-dot colours. The
+   pane's width cap is lifted so a wider window gives the table room; the form cap the settings
+   window derives from is untouched. */
+#pane-invitations, #pane-invitations .pane-form { max-width: none; }
+.invitations-nudge { border-left: 3px solid var(--accent-fill); }
+.invitations-group-head { display: flex; align-items: baseline; gap: var(--sp-3); margin: 0 0 var(--sp-3); }
+.invitations-group-head h3 { margin: 0; }
+.invitations-filters { display: flex; gap: var(--sp-1); margin-left: auto; }
+.invitations-chip { padding: 0 var(--sp-x10); border-radius: var(--radius); border: 1px solid var(--border); color: var(--fg-secondary); font-size: var(--fs-hint); line-height: 20px; cursor: pointer; }
+.invitations-chip.on { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent-text); }
+.invitations-table { width: 100%; border-collapse: collapse; }
+.invitations-table th { font-weight: var(--fw-mid); color: var(--fg-muted); text-align: left; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-hint); border-bottom: 1px solid var(--border); }
+.invitations-table td { padding: var(--sp-2) var(--sp-2); border-bottom: 1px solid var(--border); vertical-align: top; font-size: var(--fs-body); }
+.invitations-name { font-weight: var(--fw-section); color: var(--fg); }
+.invitations-state { display: inline-flex; align-items: center; gap: var(--sp-2); white-space: nowrap; }
+.invitations-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-muted); flex: none; }
+.invitations-state.is-waiting .invitations-dot { background: var(--accent-text); }
+.invitations-state.is-accepted .invitations-dot { background: var(--ok); }
+.invitations-state.is-expired, .invitations-state.is-revoked, .invitations-state.is-failed { color: var(--fg-secondary); }
+.invitations-when { color: var(--fg-secondary); white-space: nowrap; }
+.invitations-actions { text-align: right; white-space: nowrap; }
+.invitations-actions a.rm { font-size: var(--fs-body); }
+.invitations-empty { padding: var(--sp-4); border: 1px dashed var(--border); border-radius: var(--radius); color: var(--fg-secondary); font-size: var(--fs-body); max-width: 60ch; margin: 0; }
+.invitations-empty a.rm { font-size: var(--fs-body); }
 
 /* A row is MINIMAL by ruling R3: dot, name, and at most one small word. */
 .contact-row { display: flex; align-items: center; gap: var(--sp-3); border-radius: var(--radius-small); padding: var(--sp-3) var(--sp-4); margin: 0 var(--sp-2) var(--sp-1); cursor: default; }

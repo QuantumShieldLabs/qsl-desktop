@@ -202,40 +202,49 @@
    "sel": "#btn-rail-contacts"
   },
   {
+   "op": "note",
+   "text": "NA-0778 (`D-0047`) -- ITEM 1 RE-AIMED AT MOCKUP 17. The link reads 'review' under the non-clickable 'Invitations' label and it lands on Settings > Invitations (the mockup-16 page), a SCREEN transition; the overlay's own list view is no longer reachable from any control, so the two reads of its empty state and its slot line are retired with the route. Returning to Contacts is the settings rail's own button."
+  },
+  {
    "op": "read_tc",
    "sel": "#btn-contacts-review",
-   "literal": "review invites"
+   "literal": "review"
   },
   {
    "op": "click",
    "sel": "#btn-contacts-review"
   },
   {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
    "op": "prop_eq",
-   "sel": "#invite-list-view",
+   "sel": "#pane-invitations",
    "prop": "className",
-   "expect": "",
+   "expect": "pane",
    "poll": 5
   },
   {
-   "op": "read_text",
-   "sel": "#invite-list-empty .muted",
-   "literal": "No open invites."
-  },
-  {
-   "op": "read_text",
-   "sel": "#invite-slots",
-   "literal": "0 of 10 slots used — codes expire on their own"
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the page renders after its data"
   },
   {
    "op": "click",
-   "sel": "#btn-invite-close"
+   "sel": "#btn-rail-contacts-s"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
   },
   {
    "op": "prop_eq",
-   "sel": "#invite-overlay",
+   "sel": "#pane-contacts",
    "prop": "className",
-   "expect": "overlay hidden",
+   "expect": "list-pane",
    "poll": 5
   },
   {
@@ -861,7 +870,7 @@
   {
    "op": "exec",
    "script": "var a=document.getElementById('btn-contacts-review');return JSON.stringify({tag:a.tagName,text:a.textContent,deco:getComputedStyle(a).textDecorationLine,hint:!!document.querySelector('.contacts-hint')});",
-   "expect": "{\"tag\":\"A\",\"text\":\"review invites\",\"deco\":\"none\",\"hint\":false}"
+   "expect": "{\"tag\":\"A\",\"text\":\"review\",\"deco\":\"none\",\"hint\":false}"
   },
   {
    "op": "teardown"

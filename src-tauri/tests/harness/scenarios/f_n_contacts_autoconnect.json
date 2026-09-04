@@ -434,7 +434,7 @@
   {
    "op": "exec",
    "script": "var a=document.getElementById('btn-contacts-review');return JSON.stringify({present:!!a,tag:a?a.tagName:null,text:a?a.textContent:null,visible:a?a.getClientRects().length>0:false});",
-   "expect": "{\"present\":true,\"tag\":\"A\",\"text\":\"review invites\",\"visible\":true}"
+   "expect": "{\"present\":true,\"tag\":\"A\",\"text\":\"review\",\"visible\":true}"
   },
   {
    "op": "note",
@@ -448,7 +448,7 @@
   {
    "op": "exec",
    "script": "contactsOutstanding=4;renderContactsList();var a=document.getElementById('btn-contacts-review');return JSON.stringify({vis:a.getClientRects().length>0,text:a.textContent});",
-   "expect": "{\"vis\":true,\"text\":\"review invites\"}"
+   "expect": "{\"vis\":true,\"text\":\"review\"}"
   },
   {
    "op": "note",

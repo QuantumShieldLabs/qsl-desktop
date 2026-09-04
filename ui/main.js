@@ -921,6 +921,8 @@ byId("contacts-rows").addEventListener("click", (ev) => {
 async function openSettings(pane) {
   show("scr-settings");
   selectPane(pane);
+  // NA-0778 (`D-0047`): the Invitations pane refreshes on open, before the other panes' reads.
+  if (pane === "invitations") await refreshInvitationsPane();
   await refreshIdentityPane();
   await refreshVaultPane();
   await refreshServerPane();
@@ -958,12 +960,18 @@ function selectPane(name) {
   for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
     b.classList.toggle("active", b.dataset.pane === name);
   }
-  for (const p of ["identity", "server", "vault", "appearance", "notifications", "about"]) {
+  for (const p of ["identity", "server", "vault", "invitations", "appearance", "notifications", "about"]) {
     byId("pane-" + p).classList.toggle("hidden", p !== name);
   }
+  // NA-0778 (`D-0047`, RULING_NA0778_004 R22): selecting the Invitations pane puts it in its
+  // LOADING state synchronously; only a completed refresh replaces that with rows.
+  if (name === "invitations") invitationsSetLoading();
 }
 for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
-  b.addEventListener("click", () => selectPane(b.dataset.pane));
+  b.addEventListener("click", () => {
+    selectPane(b.dataset.pane);
+    if (b.dataset.pane === "invitations") refreshInvitationsPane();
+  });
 }
 
 // ---- the Identity pane (existing identity_show surface ONLY) -------------
@@ -2174,6 +2182,248 @@ function mapErr(e, table) {
   return s;
 }
 
+// ---- NA-0778 (`D-0047`): SETTINGS > INVITATIONS -- THE REVIEW SURFACE (mockup 16) ---------------
+//
+// REFRESH-ON-OPEN, never polling (the 08-31 bank's decision 1, the same rule the mint's list took).
+// ⚠ RULING_NA0778_004 R22, BUILT IN RATHER THAN REMEMBERED: (1) the rows render ONLY after the data
+// has arrived -- `invitationsSetLoading` is the pane's state the moment it is selected, and only
+// `invitationsRender` replaces it; (2) the pane has NO editable field, so no loaded value can
+// overwrite anything a user typed (the hazard E-4 names in the Vault pane); (3) every row action
+// carries the invitation id in its own dataset and the handler reads THAT, never a row index, so a
+// re-render between the click and the call cannot retarget it.
+// ⚠ WHAT THE RECORD CAN SAY (RULING 004 R23, measured at f32a4c20): Waiting (active, not yet
+// expired), Expired (the facade's read-time overlay, or active past its expiry by this clock),
+// Accepted (redeemed -- the operator's interim word), and the shipped "Didn't finish" for a
+// `creating` record. NOT drawn, because nothing in the record carries them: which contact an
+// invitation produced, whether that contact is verified, and when it connected. Revoked rows are
+// not rendered. An expired row carries NO action: the engine's `invite_clear` accepts a `creating`
+// record only (invite/mod.rs:985-999) and refuses every live state -- the mockup's "Clear" on an
+// expired row has no verb behind it and is FILED, not faked. NO TIMER anywhere in this module.
+const INVITATIONS_STATE_TEXT = {
+  waiting: "Waiting for reply", accepted: "Accepted", expired: "Expired", failed: "Didn't finish",
+};
+let invitationsFilter = "all";
+let invitationsRows = [];      // the last invite_list read, as delivered
+let invitationsContacts = [];  // {alias, name, ui, state} for the nudge, from the contacts refresh
+
+function invitationsKind(r, now) {
+  if (r.state === "creating") return "failed";
+  if (r.state === "redeemed") return "accepted";
+  if (r.state === "expired") return "expired";
+  if (r.state === "active") return r.expiry > now ? "waiting" : "expired";
+  return null;                                   // revoked: never rendered
+}
+
+function invitationsDate(unix) {
+  if (!unix) return "—";
+  const d = new Date(unix * 1000);
+  const now = new Date();
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const yday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (sameDay(d, now)) return "Today, " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (sameDay(d, yday)) return "Yesterday";
+  const opts = { month: "short", day: "numeric" };
+  if (d.getFullYear() !== now.getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString([], opts);
+}
+
+function invitationsExpires(r, kind, now) {
+  if (kind === "waiting") return "In " + humanDuration(r.expiry - now);
+  if (kind === "expired") return invitationsDate(r.expiry);
+  return "";
+}
+
+function invitationsSetLoading() {
+  byId("invitations-loading").classList.remove("hidden");
+  byId("invitations-body").classList.add("hidden");
+  byId("invitations-nudge").classList.add("hidden");
+  byId("invitations-error").classList.add("hidden");
+}
+
+async function refreshInvitationsPane() {
+  invitationsSetLoading();
+  let rows = null;
+  let failure = null;
+  try {
+    rows = await invoke("invite_list");
+  } catch (e) {
+    failure = e;
+  }
+  // The nudge's source is the CONTACTS list, which carries the verified state; the shipped refresh
+  // publishes it to `contactsRows` / `contactsStatus`, and this reads those after it returns.
+  await refreshContacts();
+  if (rows === null) {
+    byId("invitations-loading").classList.add("hidden");
+    const box = byId("invitations-error");
+    setBanner(box.querySelector(".status-banner"), "accent", "Couldn't read your invitations");
+    box.querySelector(".hint").textContent =
+      "The app reported: " + String((failure && failure.code) || failure || "unknown") + ". Open this page again to retry.";
+    box.classList.remove("hidden");
+    return;
+  }
+  invitationsRows = rows;
+  invitationsContacts = contactsRows.map((row) => ({
+    alias: row.alias,
+    name: contactDisplayName(row),
+    ui: contactUiState(row, contactsStatus[row.alias]),
+    state: row.state,
+  }));
+  invitationsRender();
+}
+
+function invitationsRowEl(r, kind, now) {
+  const tr = document.createElement("tr");
+  tr.className = "invitations-row";
+  tr.dataset.inviteId = r.invite_id;
+  tr.dataset.kind = kind;
+  const name = document.createElement("td");
+  name.className = "invitations-name";
+  name.textContent = r.label ? r.label : "(no name)";
+  const state = document.createElement("td");
+  const s = document.createElement("span");
+  s.className = "invitations-state is-" + kind;
+  const dot = document.createElement("span");
+  dot.className = "invitations-dot";
+  s.append(dot, document.createTextNode(INVITATIONS_STATE_TEXT[kind]));
+  state.appendChild(s);
+  const when = document.createElement("td");
+  when.className = "invitations-when";
+  when.textContent = r.created ? "Sent " + invitationsDate(r.created) : "—";
+  const exp = document.createElement("td");
+  exp.className = "invitations-when";
+  exp.textContent = invitationsExpires(r, kind, now);
+  const act = document.createElement("td");
+  act.className = "invitations-actions";
+  if (kind === "waiting" && r.revocable) {
+    const a = document.createElement("a");
+    // the shipped Revoke idiom: plain, and the danger-LINK token
+    a.className = "rm plain link-danger"; a.setAttribute("role", "button"); a.tabIndex = 0;
+    a.textContent = "Revoke"; a.dataset.revoke = r.invite_id;
+    act.appendChild(a);
+  } else if (kind === "failed") {
+    const a = document.createElement("a");
+    a.className = "rm plain"; a.setAttribute("role", "button"); a.tabIndex = 0;
+    a.textContent = "Clear"; a.dataset.clear = r.invite_id;
+    act.appendChild(a);
+  }
+  tr.append(name, state, when, exp, act);
+  return tr;
+}
+
+function invitationsRender() {
+  const now = Math.floor(Date.now() / 1000);
+  const rows = invitationsRows
+    .map((r) => ({ r, kind: invitationsKind(r, now) }))
+    .filter((x) => x.kind !== null)
+    .sort((a, b) => (b.r.created || 0) - (a.r.created || 0));     // newest first
+  const counts = { waiting: 0, accepted: 0, expired: 0, failed: 0 };
+  for (const x of rows) counts[x.kind] += 1;
+  const meta = [];
+  if (counts.waiting) meta.push(counts.waiting + " waiting");
+  if (counts.accepted) meta.push(counts.accepted + " accepted");
+  if (counts.expired) meta.push(counts.expired + " expired");
+  if (counts.failed) meta.push(counts.failed + " didn't finish");
+  byId("invitations-sent-meta").textContent = meta.join(" · ");
+  const host = byId("invitations-sent-rows");
+  host.innerHTML = "";
+  const shown = rows.filter((x) => invitationsFilter === "all" || x.kind === invitationsFilter);
+  for (const x of shown) host.appendChild(invitationsRowEl(x.r, x.kind, now));
+  byId("invitations-sent-empty").classList.toggle("hidden", rows.length > 0);
+  byId("invitations-sent").classList.toggle("hidden", rows.length === 0);
+  byId("invitations-filters").classList.toggle("hidden", rows.length === 0);
+  for (const chip of document.querySelectorAll("#invitations-filters .invitations-chip")) {
+    chip.classList.toggle("on", chip.dataset.filter === invitationsFilter);
+  }
+  invitationsRenderNudge();
+  byId("invitations-loading").classList.add("hidden");
+  byId("invitations-body").classList.remove("hidden");
+}
+
+function invitationsRenderNudge() {
+  // "N connected contacts aren't verified yet": CONNECTED by the session status the contacts
+  // refresh already reads (a new arrival counts -- it is connected and awaiting verification),
+  // and NOT VERIFIED by the contact record's own state -- a join the engine feeds today (RULING
+  // 004 R23). The Verify link lands on the contact's detail, which is the shipped verification
+  // surface (the code card and its compare hint); no verify pop-up exists in this build, so
+  // nothing pretends one does.
+  const unverified = invitationsContacts.filter(
+    (c) => (c.ui === "connected" || c.ui === "new") && c.state !== "verified"
+  );
+  const nudge = byId("invitations-nudge");
+  if (unverified.length === 0) { nudge.classList.add("hidden"); return; }
+  const n = unverified.length;
+  byId("invitations-nudge-text").textContent =
+    n + " connected contact" + (n === 1 ? " isn't" : "s aren't") +
+    " verified yet. Verifying takes a minute on a call and is how you know it's really them.";
+  const links = byId("invitations-nudge-links");
+  links.innerHTML = "";
+  unverified.forEach((c, i) => {
+    if (i > 0) links.appendChild(document.createTextNode(" · "));
+    const a = document.createElement("a");
+    a.className = "rm plain"; a.setAttribute("role", "button"); a.tabIndex = 0;
+    a.textContent = "Verify " + c.name; a.dataset.verify = c.alias;
+    links.appendChild(a);
+  });
+  nudge.classList.remove("hidden");
+}
+
+// ⚠ THE ID, NEVER THE ROW (R22): the control carries the invitation id and the handler acts on
+// that id; the row it repaints is looked up by the same id at that moment.
+byId("invitations-sent-rows").addEventListener("click", async (ev) => {
+  const t = ev.target;
+  const rev = t.dataset && t.dataset.revoke;
+  const clr = t.dataset && t.dataset.clear;
+  if (!rev && !clr) return;
+  byId("invitations-error").classList.add("hidden");
+  const id = rev || clr;
+  try {
+    if (rev) {
+      await invoke("invite_revoke", { inviteId: id });
+      // FLIP IN PLACE, with no timer: the row reads "Revoked" where the user is looking and leaves
+      // on the next refresh (revoked rows are never rendered). Visible success, then tidy.
+      const row = document.querySelector('#invitations-sent-rows tr[data-invite-id="' + CSS.escape(id) + '"]');
+      if (row) {
+        const s = row.querySelector(".invitations-state");
+        s.className = "invitations-state is-revoked";
+        s.lastChild.textContent = "Revoked";
+        row.dataset.kind = "revoked";
+        t.remove();
+      }
+    } else {
+      await invoke("invite_clear", { inviteId: id });
+      invitationsRows = invitationsRows.filter((r) => r.invite_id !== id);
+      invitationsRender();
+    }
+  } catch (e) {
+    // The row is untouched: nothing flipped, nothing left. The shared vocabulary renders the line.
+    renderInviteError("invitations-error", e && e.code, e && e.detail, rev ? "revoke" : "clear");
+  }
+});
+
+byId("invitations-filters").addEventListener("click", (ev) => {
+  const chip = ev.target.closest(".invitations-chip");
+  if (!chip) return;
+  invitationsFilter = chip.dataset.filter;
+  invitationsRender();
+});
+
+byId("invitations-nudge-links").addEventListener("click", async (ev) => {
+  const a = ev.target.closest("a[data-verify]");
+  if (!a) return;
+  await enterMain();
+  showContactsPane();
+  contactsSelected = a.dataset.verify;
+  contactsNewBadge.delete(contactsSelected);
+  renderContactsList();
+  renderContactDetail();
+});
+
+byId("btn-invitations-create").addEventListener("click", async () => {
+  await enterMain();
+  showContactsPane();
+});
+
 // ---- NA-0755 v2 (D-0036): THE INVITE SURFACE — THE SINGLE-VIEW MINT AND THE LIST ----
 //
 // Supersedes the v1 two-step modal, which the operator flew and which came back RED.
@@ -2405,6 +2655,7 @@ function closeInviteModal() {
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
   inviteResetSlot();
+  byId("invite-close-confirm").classList.add("hidden");
   byId("invite-label").value = "";
   byId("invite-label").readOnly = false;
   inviteId = null;
@@ -2807,16 +3058,31 @@ byId("invite-rows").addEventListener("click", async (ev) => {
 
 // ITEM 1: the Contacts pane's link is the ONE route to the list. It opens the overlay on the list
 // view directly, so the user lands where the link said they would.
-byId("btn-contacts-review").addEventListener("click", async () => {
-  clearInviteErrors();
-  byId("invite-overlay").classList.remove("hidden");
-  await inviteRefresh();
-  await renderInviteList();
-  inviteShowList();
+// NA-0778 (`D-0047`) -- THE INVITATIONS BLOCK'S THREE ENTRY POINTS (mockup 17, blessed 2026-09-01).
+// ⚠ ENTRY POINTS, NOT SECOND FLOWS: each lands on a surface that already ships. `review` is a
+// SCREEN transition to Settings > Invitations (so `show()` closes both overlays on the way, as it
+// does for every transition); `redeem` opens the redeem overlay ON ITS CODE-ENTRY VIEW, through the
+// chooser's own opener so the finish scan that rides that opener (R387 S6) still fires; `send`
+// opens the mint through `openInviteModal`, the ONE path that enters the mint fresh.
+// ⚠ NAMED CONSEQUENCE, not carried silently: the overlay's own list view is no longer reachable
+// from any control -- the page is the review surface now. Its markup, its renderer and the pins on
+// them are LEFT IN PLACE (outside this lane's ordered edit set); retiring them is a small item.
+function railLinkKeys(id) {
+  byId(id).addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); byId(id).click(); }
+  });
+}
+byId("btn-contacts-review").addEventListener("click", () => openSettings("invitations"));
+byId("btn-contacts-redeem").addEventListener("click", async () => {
+  await openRedeemChooser();
+  redeemClearError();
+  redeemSyncConnect();
+  redeemShow("redeem-form");
 });
-byId("btn-contacts-review").addEventListener("keydown", (ev) => {
-  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); byId("btn-contacts-review").click(); }
-});
+byId("btn-contacts-send").addEventListener("click", () => openInviteModal());
+railLinkKeys("btn-contacts-review");
+railLinkKeys("btn-contacts-redeem");
+railLinkKeys("btn-contacts-send");
 // NA-0765 (`D-0042`): the Chats "+" and its listener retire together — adding people is
 // a Contacts act. `#btn-contacts-add` and the welcome button carry the flow.
 // NA-0766 (`D-0043`) -- ITEMS 2, 3 and 4. The corner X and the Back are gone from this overlay
@@ -2824,12 +3090,26 @@ byId("btn-contacts-review").addEventListener("keydown", (ev) => {
 // is also what Escape and the scrim call -- so the visible exit and the invisible ones cannot
 // drift apart. NA-0765 wired the X to that same closer for exactly this reason; the property
 // survives its control.
-byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
+// NA-0778 (`D-0047`) -- "DID YOU SHARE THE CODE?" The operator's close confirmation (2026-08-31),
+// asked ONLY when this window minted a code, and only of the USER's three gestures: the Close
+// button, Escape and the scrim -- all three through this one request. `show()` keeps calling
+// `closeInviteModal()` directly and unconditionally: the autolock path must never wait on a
+// question with a live code on screen. "Yes, close" IS the one closer; "Not yet" only hides the
+// question. Before a mint there is nothing to ask, and the request closes at once.
+function inviteRequestClose() {
+  const ov = byId("invite-overlay");
+  if (!ov || ov.classList.contains("hidden")) return;
+  if (inviteMinted) { byId("invite-close-confirm").classList.remove("hidden"); return; }
+  closeInviteModal();
+}
+byId("btn-invite-close").addEventListener("click", () => inviteRequestClose());
+byId("btn-invite-confirm-yes").addEventListener("click", () => closeInviteModal());
+byId("btn-invite-confirm-notyet").addEventListener("click", () => byId("invite-close-confirm").classList.add("hidden"));
 byId("invite-overlay").addEventListener("click", (ev) => {
-  if (ev.target === byId("invite-overlay")) closeInviteModal();
+  if (ev.target === byId("invite-overlay")) inviteRequestClose();
 });
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") closeInviteModal();
+  if (ev.key === "Escape") inviteRequestClose();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════

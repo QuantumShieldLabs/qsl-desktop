@@ -120,6 +120,19 @@
    "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['notifications']={h2:b('#pane-notifications .pane-head-row h2'),row:b('#pane-notifications .pane-head-row'),rail:b('#btn-rail-chats')};return window.__na['notifications'].h2?'OK':'MISSING';})();"
   },
   {
+   "op": "note",
+   "text": "NA-0778 (`D-0047`): the TENTH site -- the Invitations pane's heading joins the unified set."
+  },
+  {
+   "op": "click",
+   "sel": "button[data-pane=\"invitations\"]"
+  },
+  {
+   "op": "exec",
+   "expect": "OK",
+   "script": "return (function(){window.__na=window.__na||{};function b(s){var e=document.querySelector(s);if(!e)return null;var r=e.getBoundingClientRect();var cs=getComputedStyle(e);return {t:r.top,h:r.height,c:r.top+r.height/2,fs:cs.fontSize,fw:cs.fontWeight};}window.__na['invitations']={h2:b('#pane-invitations .pane-head-row h2'),row:b('#pane-invitations .pane-head-row'),rail:b('#btn-rail-chats')};return window.__na['invitations'].h2?'OK':'MISSING';})();"
+  },
+  {
    "op": "click",
    "sel": "button[data-pane=\"about\"]"
   },
@@ -131,7 +144,7 @@
   {
    "op": "exec",
    "expect": "OK",
-   "script": "return (function(){var n=window.__na,k=Object.keys(n),TOL=0.5;var f=[];if(k.length!==9)f.push('SITES='+k.length+' expected 9');var tops=k.map(function(x){return n[x].h2.t;});var hs=k.map(function(x){return n[x].row.h;});function spread(a){return Math.max.apply(null,a)-Math.min.apply(null,a);}if(spread(tops)>TOL)f.push('A1 heading tops spread='+spread(tops).toFixed(2)+' '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.t.toFixed(1);})));if(spread(hs)>TOL)f.push('A2 row heights spread='+spread(hs).toFixed(2));var rails=k.map(function(x){return n[x].rail.c;});if(spread(rails)>TOL)f.push('rails disagree');k.forEach(function(x){var d=Math.abs(n[x].h2.c-n[x].rail.c);if(d>TOL)f.push('A3 '+x+' centre-vs-rail='+d.toFixed(2));});var fs=k.map(function(x){return n[x].h2.fs;}),fw=k.map(function(x){return n[x].h2.fw;});var hh=k.map(function(x){return n[x].h2.h;});function uniq(a){return a.filter(function(v,i){return a.indexOf(v)===i;});}if(uniq(fs).length!==1)f.push('A4 font-size differs '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.fs;})));if(uniq(fw).length!==1)f.push('A4 font-weight differs '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.fw;})));if(spread(hh)>TOL)f.push('A4 heading box heights spread='+spread(hh).toFixed(2));return f.length?f.join(' | '):'OK';})();"
+   "script": "return (function(){var n=window.__na,k=Object.keys(n),TOL=0.5;var f=[];if(k.length!==10)f.push('SITES='+k.length+' expected 10');var tops=k.map(function(x){return n[x].h2.t;});var hs=k.map(function(x){return n[x].row.h;});function spread(a){return Math.max.apply(null,a)-Math.min.apply(null,a);}if(spread(tops)>TOL)f.push('A1 heading tops spread='+spread(tops).toFixed(2)+' '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.t.toFixed(1);})));if(spread(hs)>TOL)f.push('A2 row heights spread='+spread(hs).toFixed(2));var rails=k.map(function(x){return n[x].rail.c;});if(spread(rails)>TOL)f.push('rails disagree');k.forEach(function(x){var d=Math.abs(n[x].h2.c-n[x].rail.c);if(d>TOL)f.push('A3 '+x+' centre-vs-rail='+d.toFixed(2));});var fs=k.map(function(x){return n[x].h2.fs;}),fw=k.map(function(x){return n[x].h2.fw;});var hh=k.map(function(x){return n[x].h2.h;});function uniq(a){return a.filter(function(v,i){return a.indexOf(v)===i;});}if(uniq(fs).length!==1)f.push('A4 font-size differs '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.fs;})));if(uniq(fw).length!==1)f.push('A4 font-weight differs '+JSON.stringify(k.map(function(x){return x+'='+n[x].h2.fw;})));if(spread(hh)>TOL)f.push('A4 heading box heights spread='+spread(hh).toFixed(2));return f.length?f.join(' | '):'OK';})();"
   },
   {
    "op": "teardown"

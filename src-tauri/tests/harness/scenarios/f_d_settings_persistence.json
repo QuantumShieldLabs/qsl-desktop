@@ -97,13 +97,45 @@
    "poll": 10
   },
   {
+   "op": "note",
+   "text": "NA-0778 (RULING_NA0778_003 R18 / RULING_NA0778_004 R21) -- THE SETTLE WAIT. `openSettings` shows the pane and THEN awaits the vault refresh, which writes the LOADED value back into #autolock-min (main.js refreshVaultPane); a value typed before that write-back lands is overwritten, and the Save reads whatever is in the field at click time. Run 33805382399 met exactly that window on the runner and saved 60. So: wait for the write-back's own signal -- the loaded value in the field -- before typing. The literal is AUTOLOCK_DEFAULT_MINUTES (settings.rs:11 = 60); if that default moves, this row moves with it."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#autolock-min",
+   "prop": "value",
+   "expect": "60",
+   "poll": 10
+  },
+  {
    "op": "clear_type",
    "sel": "#autolock-min",
    "text": "7"
   },
   {
+   "op": "note",
+   "text": "R21 (b) -- the discriminator immediately BEFORE the click: a failure here names the INPUT, not the persistence."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#autolock-min",
+   "prop": "value",
+   "expect": "7"
+  },
+  {
    "op": "click",
    "sel": "#btn-autolock-save"
+  },
+  {
+   "op": "note",
+   "text": "R21 (c) -- the post-click read of the status line proves the handler ran WITH 7 (renderAutolockState's exact sentence), so the json_field step below isolates PERSISTENCE from the click."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#autolock-status .status-text",
+   "prop": "textContent",
+   "expect": "Locks after 7 minutes of inactivity. 0 = never.",
+   "poll": 10
   },
   {
    "op": "json_field_eq",

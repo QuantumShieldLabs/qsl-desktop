@@ -1,0 +1,671 @@
+{
+ "scenario": "na0778_gui_u_invitations_page",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "note",
+   "text": "NA-0778 (`D-0047`) -- the Invitations page, the Contacts-pane block and the show-once dialog. Fresh profile: onboard first (the f_r prelude)."
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "na0778-gui-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "na0778-gui-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FU"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "== THE CONTACTS-PANE BLOCK (mockup 17, blessed 2026-09-01) =="
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-contacts",
+   "prop": "className",
+   "expect": "list-pane",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "The label is NOT a link and is `--fg`: blue is for what is clickable. Colours are compared against the shipped TOKENS, never a literal."
+  },
+  {
+   "op": "exec",
+   "script": "function rgb(h){h=h.trim();return 'rgb('+parseInt(h.slice(1,3),16)+', '+parseInt(h.slice(3,5),16)+', '+parseInt(h.slice(5,7),16)+')';}function tok(v){return getComputedStyle(document.documentElement).getPropertyValue(v);}var l=document.getElementById('contacts-invitations-label');var cs=getComputedStyle(l);return JSON.stringify({tag:l.tagName,text:l.textContent,fg:cs.color===rgb(tok('--fg')),link:!!l.closest('a')});",
+   "expect": "{\"tag\":\"P\",\"text\":\"Invitations\",\"fg\":true,\"link\":false}"
+  },
+  {
+   "op": "note",
+   "text": "Three plain text links, lowercase, never underlined, in the accent token, in the mockup's order."
+  },
+  {
+   "op": "exec",
+   "script": "function rgb(h){h=h.trim();return 'rgb('+parseInt(h.slice(1,3),16)+', '+parseInt(h.slice(3,5),16)+', '+parseInt(h.slice(5,7),16)+')';}function tok(v){return getComputedStyle(document.documentElement).getPropertyValue(v);}var ids=['btn-contacts-review','btn-contacts-redeem','btn-contacts-send'];return JSON.stringify(ids.map(function(id){var a=document.getElementById(id);var cs=getComputedStyle(a);return [a.tagName,a.textContent,cs.textDecorationLine,cs.color===rgb(tok('--accent-text'))];}));",
+   "expect": "[[\"A\",\"review\",\"none\",true],[\"A\",\"redeem\",\"none\",true],[\"A\",\"send\",\"none\",true]]"
+  },
+  {
+   "op": "note",
+   "text": "Separated by small muted dots at the 6px gap (v3 of the mockup), and NO count badge (v2)."
+  },
+  {
+   "op": "exec",
+   "script": "function rgb(h){h=h.trim();return 'rgb('+parseInt(h.slice(1,3),16)+', '+parseInt(h.slice(3,5),16)+', '+parseInt(h.slice(5,7),16)+')';}function tok(v){return getComputedStyle(document.documentElement).getPropertyValue(v);}var w=document.querySelector('.contacts-inv-links');var seps=w.querySelectorAll('.contacts-inv-sep');return JSON.stringify({gap:getComputedStyle(w).gap,seps:seps.length,sepText:seps[0].textContent,sepMuted:getComputedStyle(seps[0]).color===rgb(tok('--fg-muted')),badge:document.querySelectorAll('#contacts-invitations .count').length});",
+   "expect": "{\"gap\":\"6px\",\"seps\":2,\"sepText\":\"·\",\"sepMuted\":true,\"badge\":0}"
+  },
+  {
+   "op": "note",
+   "text": "The empty state reads on TWO lines (v3): a fresh profile has no contacts, so it is on screen -- AFTER the pane's first async contacts refresh renders it (the note ships hidden and the renderer reveals it; the first run of this arm read it before that refresh returned -- the seat's timing, banked as attempt 1)."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('contacts-empty').className;",
+   "expect": "empty-note",
+   "poll": 10,
+   "label": "the empty note is rendered"
+  },
+  {
+   "op": "exec",
+   "script": "var e=document.getElementById('contacts-empty');return JSON.stringify({hidden:e.classList.contains('hidden'),lines:e.innerText.split('\\n')});",
+   "expect": "{\"hidden\":false,\"lines\":[\"No contacts yet\",\"Press + or use a link above\"]}"
+  },
+  {
+   "op": "note",
+   "text": "'+' still opens the chooser, unchanged (mockup 17 v4)."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-add"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "click",
+   "sel": "#btn-choose-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "'redeem' lands DIRECTLY on the code-entry view -- the chooser is skipped, the overlay is the existing one."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-redeem"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-form",
+   "prop": "className",
+   "expect": "",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "hidden",
+   "poll": 3
+  },
+  {
+   "op": "click",
+   "sel": "#btn-redeem-close3"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "== THE CREATION DIALOG: SHOW-ONCE (the operator, 2026-08-31) =="
+  },
+  {
+   "op": "note",
+   "text": "'send' lands DIRECTLY on the mint; the show-once line is on screen from open (NA-0766 item 6 forbids anything appearing on activation)."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-send"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-show-once",
+   "literal": "This is the only time you’ll see the code. If it’s lost, revoke this invite under Settings → Invitations and create a new one."
+  },
+  {
+   "op": "note",
+   "text": "BEFORE a mint there is nothing to ask: Close closes at once and no question appears."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-close-confirm",
+   "prop": "className",
+   "expect": "callout invite-close-confirm hidden",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "AFTER a mint (the product's own adopt path with a synthetic code -- no fixture relay, ENG-0226), Close ASKS instead of closing; the window and the code stay."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-send"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "exec",
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');return document.getElementById('invite-code').textContent;",
+   "expect": "QSLI-1-NA0778SHOWONCETESTCODE"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-close-confirm",
+   "prop": "className",
+   "expect": "callout invite-close-confirm",
+   "poll": 3
+  },
+  {
+   "op": "read_text",
+   "sel": "#invite-close-confirm .invite-close-confirm-q",
+   "literal": "Did you share the code? Once this window closes, you won’t see it again."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 1
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-code",
+   "literal": "QSLI-1-NA0778SHOWONCETESTCODE"
+  },
+  {
+   "op": "note",
+   "text": "'Not yet' only hides the question; the window and the code are untouched."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-confirm-notyet"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-close-confirm",
+   "prop": "className",
+   "expect": "callout invite-close-confirm hidden",
+   "poll": 3
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 1
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-code",
+   "literal": "QSLI-1-NA0778SHOWONCETESTCODE"
+  },
+  {
+   "op": "note",
+   "text": "Escape is held to the same question (the invisible exit cannot bypass what the visible one asks)."
+  },
+  {
+   "op": "exec",
+   "script": "document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'})); return 'sent';"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-close-confirm",
+   "prop": "className",
+   "expect": "callout invite-close-confirm",
+   "poll": 3
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 1
+  },
+  {
+   "op": "note",
+   "text": "'Yes, close' IS the one closer: the window closes and the slot is reset to its empty sentence (the one-time boundary's local half)."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-confirm-yes"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-code",
+   "literal": "Your invite code will appear here after you activate."
+  },
+  {
+   "op": "note",
+   "text": "The scrim is the third gesture, and it asks too."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-send"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "exec",
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');var ov=document.getElementById('invite-overlay');ov.dispatchEvent(new MouseEvent('click',{bubbles:true}));return document.getElementById('invite-close-confirm').className;",
+   "expect": "callout invite-close-confirm"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 1
+  },
+  {
+   "op": "note",
+   "text": "A SCREEN TRANSITION closes UNCONDITIONALLY -- the autolock path (`show('scr-unlock')`) must never wait on the question with a live code on screen. Driven through `show()` itself and returned to main."
+  },
+  {
+   "op": "exec",
+   "script": "show('scr-unlock');var r={ov:document.getElementById('invite-overlay').className,confirm:document.getElementById('invite-close-confirm').className,code:document.getElementById('invite-code').textContent};show('scr-main');return JSON.stringify(r);",
+   "expect": "{\"ov\":\"overlay hidden\",\"confirm\":\"callout invite-close-confirm hidden\",\"code\":\"Your invite code will appear here after you activate.\"}"
+  },
+  {
+   "op": "note",
+   "text": "== SETTINGS > INVITATIONS (mockup 16, blessed 2026-08-31) =="
+  },
+  {
+   "op": "note",
+   "text": "'review' is a SCREEN transition to Settings > Invitations; the rail entry is selected; the rows render only after the data has arrived (R22)."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-review"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-invitations",
+   "prop": "className",
+   "expect": "pane",
+   "poll": 5
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.settings-rail .cat.active').dataset.pane;",
+   "expect": "invitations"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the page renders after its data"
+  },
+  {
+   "op": "exec",
+   "script": "return document.getElementById('invitations-loading').className;",
+   "expect": "hint hidden"
+  },
+  {
+   "op": "note",
+   "text": "A fresh profile has sent nothing: the empty state, VERBATIM from the mockup, with 'Create one from Contacts' as a link; the Received group ships WITH ITS EXPLANATION (no readable record of redeemed codes exists -- STOP 003 E-a); the nudge is hidden with no contacts."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invitations-sent-empty",
+   "literal": "You haven't sent any invitations yet. Create one from Contacts — you'll see a one-time code exactly once to pass to the person you want to reach, and they'll appear here while you wait."
+  },
+  {
+   "op": "read_text",
+   "sel": "#invitations-received-note",
+   "literal": "This app doesn't yet keep a list of the codes you've redeemed. A contact you added with a code is in your Contacts list."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invitations-nudge",
+   "prop": "className",
+   "expect": "callout invitations-nudge hidden",
+   "poll": 1
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify({table:document.getElementById('invitations-sent').className,filters:document.getElementById('invitations-filters').className});",
+   "expect": "{\"table\":\"invitations-table hidden\",\"filters\":\"invitations-filters hidden\"}"
+  },
+  {
+   "op": "note",
+   "text": "R22 (1): SELECTING the pane puts it in its loading state SYNCHRONOUSLY, and only a completed refresh replaces that with rows."
+  },
+  {
+   "op": "exec",
+   "script": "selectPane('invitations');return JSON.stringify({loading:document.getElementById('invitations-loading').className,body:document.getElementById('invitations-body').className});",
+   "expect": "{\"loading\":\"hint\",\"body\":\"pane-form hidden\"}"
+  },
+  {
+   "op": "exec",
+   "script": "refreshInvitationsPane();return 'started';",
+   "expect": "started"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the refresh completes"
+  },
+  {
+   "op": "note",
+   "text": "R22 (2): the pane has NO editable field -- nothing a loaded value could overwrite."
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelectorAll('#pane-invitations input, #pane-invitations textarea, #pane-invitations select').length+'';",
+   "expect": "0"
+  },
+  {
+   "op": "note",
+   "text": "THE ROWS, through the product's own renderer with SYNTHETIC records (no fixture relay, ENG-0226): seven records covering every wire state; the revoked one must not render."
+  },
+  {
+   "op": "exec",
+   "script": "var now=Math.floor(Date.now()/1000);invitationsRows=[{invite_id:'u1',state:'active',expiry:now+6*86400,revocable:true,label:'Marcus',created:now-600},{invite_id:'u2',state:'active',expiry:now+5*86400,revocable:false,label:'Sam',created:now-86400},{invite_id:'u3',state:'redeemed',expiry:now+86400,revocable:false,label:'Priya',created:now-13*86400},{invite_id:'u4',state:'expired',expiry:now-7*86400,revocable:true,label:'Lena',created:now-14*86400},{invite_id:'u5',state:'active',expiry:now-60,revocable:true,label:'Past',created:now-4*86400},{invite_id:'u6',state:'revoked',expiry:now+86400,revocable:false,label:'Gone',created:now-3600},{invite_id:'u7',state:'creating',expiry:now+86400,revocable:false,label:null,created:now-30}];invitationsContacts=[{alias:'dana',name:'Dana',ui:'connected',state:'unverified'},{alias:'ben',name:'Ben',ui:'new',state:'unverified'},{alias:'priya',name:'Priya',ui:'connected',state:'verified'},{alias:'sam',name:'Sam',ui:'connecting',state:'unverified'}];invitationsFilter='all';invitationsRender();return document.querySelectorAll('#invitations-sent-rows tr').length+'';",
+   "expect": "6"
+  },
+  {
+   "op": "note",
+   "text": "Each row from the record: Waiting for reply (Revoke only when revocable), Accepted (no action, no expiry), Expired -- stored OR active past its expiry by this clock -- (no action: the engine's invite_clear refuses every live state), Didn't finish (Clear). The date is the MINT time labelled 'Sent'."
+  },
+  {
+   "op": "exec",
+   "script": "function row(id){var tr=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"'+id+'\"]');if(!tr)return null;var td=tr.querySelectorAll('td');return [td[0].textContent,td[1].textContent,td[2].textContent.slice(0,5),td[3].textContent.length>0,td[4].textContent,tr.dataset.kind];}return JSON.stringify([row('u1'),row('u2'),row('u3'),row('u4'),row('u5'),row('u7')]);",
+   "expect": "[[\"Marcus\",\"Waiting for reply\",\"Sent \",true,\"Revoke\",\"waiting\"],[\"Sam\",\"Waiting for reply\",\"Sent \",true,\"\",\"waiting\"],[\"Priya\",\"Accepted\",\"Sent \",false,\"\",\"accepted\"],[\"Lena\",\"Expired\",\"Sent \",true,\"\",\"expired\"],[\"Past\",\"Expired\",\"Sent \",true,\"\",\"expired\"],[\"(no name)\",\"Didn't finish\",\"Sent \",false,\"Clear\",\"failed\"]]"
+  },
+  {
+   "op": "note",
+   "text": "Newest first; the count line; 'Sent Today, HH:MM' and 'Sent Yesterday' for the two dated rows this clock can name."
+  },
+  {
+   "op": "exec",
+   "script": "var t=document.querySelectorAll('#invitations-sent-rows tr');return t[0].dataset.inviteId+','+t[t.length-1].dataset.inviteId;",
+   "expect": "u7,u4"
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invitations-sent-meta",
+   "literal": "2 waiting · 1 accepted · 2 expired · 1 didn't finish"
+  },
+  {
+   "op": "exec",
+   "script": "function c(id){return document.querySelector('#invitations-sent-rows tr[data-invite-id=\"'+id+'\"] td:nth-child(3)').textContent;}return JSON.stringify({today:c('u7').indexOf('Sent Today, ')===0,yesterday:c('u2')});",
+   "expect": "{\"today\":true,\"yesterday\":\"Sent Yesterday\"}"
+  },
+  {
+   "op": "note",
+   "text": "The filters (All / Waiting / Accepted / Expired) narrow the rows by kind."
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-filters [data-filter=\"waiting\"]"
+  },
+  {
+   "op": "exec",
+   "script": "var t=document.querySelectorAll('#invitations-sent-rows tr');var k={};for(var i=0;i<t.length;i++){k[t[i].dataset.kind]=(k[t[i].dataset.kind]||0)+1;}return JSON.stringify(k);",
+   "expect": "{\"waiting\":2}"
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-filters [data-filter=\"accepted\"]"
+  },
+  {
+   "op": "exec",
+   "script": "var t=document.querySelectorAll('#invitations-sent-rows tr');var k={};for(var i=0;i<t.length;i++){k[t[i].dataset.kind]=(k[t[i].dataset.kind]||0)+1;}return JSON.stringify(k);",
+   "expect": "{\"accepted\":1}"
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-filters [data-filter=\"expired\"]"
+  },
+  {
+   "op": "exec",
+   "script": "var t=document.querySelectorAll('#invitations-sent-rows tr');var k={};for(var i=0;i<t.length;i++){k[t[i].dataset.kind]=(k[t[i].dataset.kind]||0)+1;}return JSON.stringify(k);",
+   "expect": "{\"expired\":2}"
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-filters [data-filter=\"all\"]"
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelectorAll('#invitations-sent-rows tr').length+'';",
+   "expect": "6"
+  },
+  {
+   "op": "note",
+   "text": "R22 (3): the row action carries the invitation id in its OWN dataset; the non-revocable waiting row carries none."
+  },
+  {
+   "op": "exec",
+   "script": "var a=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"u1\"] a[data-revoke]');var b=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"u2\"] a');return JSON.stringify({u1:a?a.dataset.revoke:null,u2:!!b});",
+   "expect": "{\"u1\":\"u1\",\"u2\":false}"
+  },
+  {
+   "op": "note",
+   "text": "THE FAILURE ARM of the id binding: the click calls the verb with THAT id; a synthetic id is unknown to the store, the verb refuses, the honest error line renders and the row is untouched."
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-sent-rows tr[data-invite-id=\"u1\"] a[data-revoke]"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-error').className;",
+   "expect": "",
+   "poll": 10,
+   "label": "the error line renders"
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('#invitations-error .status-text').textContent;"
+  },
+  {
+   "op": "exec",
+   "script": "var tr=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"u1\"]');return JSON.stringify({kind:tr.dataset.kind,state:tr.querySelector('.invitations-state').textContent,action:tr.querySelector('a[data-revoke]').textContent});",
+   "expect": "{\"kind\":\"waiting\",\"state\":\"Waiting for reply\",\"action\":\"Revoke\"}"
+  },
+  {
+   "op": "note",
+   "text": "THE NUDGE is built from the CONTACTS list: connected (or newly arrived) AND not verified -- the verified contact and the still-connecting one are not counted. One line, a Verify link per name."
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invitations-nudge-text",
+   "literal": "2 connected contacts aren't verified yet. Verifying takes a minute on a call and is how you know it's really them."
+  },
+  {
+   "op": "exec",
+   "script": "var as=document.querySelectorAll('#invitations-nudge-links a');return JSON.stringify(Array.prototype.map.call(as,function(a){return [a.textContent,a.dataset.verify];}));",
+   "expect": "[[\"Verify Dana\",\"dana\"],[\"Verify Ben\",\"ben\"]]"
+  },
+  {
+   "op": "note",
+   "text": "'Verify <name>' lands on the contact's detail in the Contacts pane -- the shipped verification surface. No verify pop-up exists in this build (STOP 004 premise P3)."
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-nudge-links a[data-verify=\"dana\"]"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-contacts",
+   "prop": "className",
+   "expect": "list-pane",
+   "poll": 5
+  },
+  {
+   "op": "poll_exec",
+   "script": "return contactsSelected;",
+   "expect": "dana",
+   "poll": 10,
+   "label": "the Verify link selected the contact (after the handler's awaited navigation)"
+  },
+  {
+   "op": "note",
+   "text": "And the empty state's 'Create one from Contacts' lands on the Contacts pane."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-review"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the page renders again"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invitations-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#pane-contacts",
+   "prop": "className",
+   "expect": "list-pane",
+   "poll": 5
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}
