@@ -191,8 +191,10 @@
           <a class="rm plain" id="btn-contacts-review" role="button" tabindex="0">review</a><span class="contacts-inv-sep" aria-hidden="true">&middot;</span><a class="rm plain" id="btn-contacts-redeem" role="button" tabindex="0">redeem</a><span class="contacts-inv-sep" aria-hidden="true">&middot;</span><a class="rm plain" id="btn-contacts-send" role="button" tabindex="0">send</a>
         </div>
       </div>
-      <div id="contacts-rows"></div>
+      <!-- NA-0778 (004c / RULING_NA0778_008 R52, the operator's flight ruling): the empty state sits DIRECTLY
+           BELOW the three links, not at the bottom of the column. -->
       <p id="contacts-empty" class="empty-note hidden">No contacts yet<br>Press + or use a link above</p>
+      <div id="contacts-rows"></div>
     </section>
     <main class="content-pane welcome">
       <svg class="welcome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><rect x="9" y="10" width="6" height="5" rx="1"/><path d="M10 10V8a2 2 0 0 1 4 0v2"/></svg>
@@ -485,10 +487,13 @@
         <div id="invitations-body" class="pane-form hidden">
           <div class="pane-sect">
             <div class="invitations-group-head">
-              <h3>Sent</h3><span id="invitations-sent-meta" class="hint"></span>
+              <!-- NA-0778 (004c / RULING_NA0778_008 R53, the operator's flight ruling; supersedes mockup 16's empty
+                   state and its page-level link): each group carries its OWN link, shown only while that group has
+                   nothing to list. Sent: "send invitation" opens the Invite-someone window. -->
+              <h3>Sent<span id="invitations-sent-link" class="invitations-head-link hidden"> — <a class="rm plain" id="btn-invitations-send" role="button" tabindex="0">send invitation</a></span></h3><span id="invitations-sent-meta" class="hint"></span>
               <div id="invitations-filters" class="invitations-filters hidden"><a class="invitations-chip on" role="button" tabindex="0" data-filter="all">All</a><a class="invitations-chip" role="button" tabindex="0" data-filter="waiting">Waiting</a><a class="invitations-chip" role="button" tabindex="0" data-filter="accepted">Accepted</a><a class="invitations-chip" role="button" tabindex="0" data-filter="expired">Expired</a></div>
             </div>
-            <p id="invitations-sent-empty" class="invitations-empty hidden">You haven't sent any invitations yet. <a class="rm plain" id="btn-invitations-create" role="button" tabindex="0">Create one from Contacts</a> &mdash; you'll see a one-time code exactly once to pass to the person you want to reach, and they'll appear here while you wait.</p>
+            <p id="invitations-sent-empty" class="invitations-empty hidden">You haven't sent any invitations yet.</p>
             <p id="invitations-filter-empty" class="hint hidden">No invitations match this filter.</p>
             <table id="invitations-sent" class="invitations-table hidden">
               <thead><tr><th>Name</th><th>Status</th><th>Sent</th><th>Expires</th><th></th></tr></thead>
@@ -496,7 +501,9 @@
             </table>
           </div>
           <div class="pane-sect">
-            <div class="invitations-group-head"><h3>Received</h3><span class="hint">codes you redeemed</span></div>
+            <!-- R53: Received has nothing to list until the engine records redeemed codes (ENG-B), so its link
+                 shows today; the toggle is the same rule as Sent's, applied to a group that is always empty. -->
+            <div class="invitations-group-head"><h3>Received<span id="invitations-received-link" class="invitations-head-link"> — <a class="rm plain" id="btn-invitations-redeem" role="button" tabindex="0">redeem invitation</a></span></h3><span class="hint">codes you redeemed</span></div>
             <p id="invitations-received-note" class="invitations-empty">This app doesn't yet keep a list of the codes you've redeemed. A contact you added with a code is in your Contacts list.</p>
           </div>
         </div>
@@ -581,16 +588,14 @@
         <!-- ITEM 13 — UNCHANGED AND DELIBERATELY SO. The cycle (click → "copied" → revert →
              reusable) was measured already shipped exactly as ordered; this lane's obligation is
              to carry it UNBROKEN through the restructure, which is what `I5` pins. -->
+        <!-- NA-0778 (004c / RULING_NA0778_008 R54, the operator's flight ruling; supersedes the 08-31 bank's
+             coupled change): the show-once line is exactly this sentence, on the LEFT of the copy link's row,
+             present from open (NA-0766 item 6). There is no close confirmation. -->
         <div class="copy-row">
+          <span class="hint" id="invite-show-once">Warning: this is the only time you&rsquo;ll see the code.</span>
           <a class="rm plain" id="btn-invite-copy" role="button" tabindex="0">copy code</a>
         </div>
         <p class="hint hidden" id="invite-copy-note"></p>
-        <!-- NA-0778 (`D-0047`) -- SHOW-ONCE (the operator, 2026-08-31): the code is shown ONCE, here,
-             and never on the Invitations page; the lost-code guidance lives HERE and nowhere else.
-             PRESENT FROM OPEN, deliberately: NA-0766 item 6 measures the visible element set across
-             activation (`f_k` I4), so this line cannot appear on activation -- it is on screen before
-             the code is, as the forewarning. -->
-        <p class="hint" id="invite-show-once">This is the only time you&rsquo;ll see the code. If it&rsquo;s lost, revoke this invite under Settings &rarr; Invitations and create a new one.</p>
       </div>
 
         <div class="callout" id="invite-warning"><strong>Only send this code to the person it&rsquo;s intended for&hellip;</strong> over a secure channel that you fully trust such as a text message, a call, or in person. It works only once, then dies. If unused, it expires on its own in <span id="invite-warn-days">3 days</span>.</div>
@@ -654,15 +659,8 @@
          sibling. Returning to the chooser is Close then "+". ⚠ Escape and the scrim are UNTOUCHED
          and still reach `closeInviteModal()`, which is what keeps Close and Escape from ever
          being able to disagree. -->
-    <!-- NA-0778 (`D-0047`) -- THE CLOSE CONFIRMATION (the operator, 2026-08-31: "Did you share the
-         code?"). Shown ONLY when this window minted a code and the user asks to close it -- by the
-         Close button, Escape or the scrim, all three through `inviteRequestClose`. `show()` still
-         calls `closeInviteModal()` UNCONDITIONALLY: an autolock must never leave a live code over
-         the unlock screen, and no question may stand in its way. -->
-    <div id="invite-close-confirm" class="callout invite-close-confirm hidden">
-      <p class="invite-close-confirm-q">Did you share the code? Once this window closes, you won&rsquo;t see it again.</p>
-      <div class="btnrow"><button class="secondary" id="btn-invite-confirm-yes">Yes, close</button><button class="secondary" id="btn-invite-confirm-notyet">Not yet</button></div>
-    </div>
+    <!-- NA-0778 (004c / R54): the close confirmation that stood here was RETIRED by the operator's flight
+         ruling -- after a mint, Close, Escape and the scrim simply close the window. -->
     <div class="block"><button class="secondary full" id="btn-invite-close">Close</button></div>
   </div>
 </div>

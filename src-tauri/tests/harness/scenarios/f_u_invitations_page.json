@@ -107,6 +107,15 @@
   },
   {
    "op": "note",
+   "text": "R52 (the operator's flight ruling): the empty state sits DIRECTLY BELOW the three links -- the DOM order is links, then the note, then the rows."
+  },
+  {
+   "op": "exec",
+   "script": "var b=document.getElementById('contacts-invitations');return JSON.stringify({next:b.nextElementSibling?b.nextElementSibling.id:null,rows_after:document.getElementById('contacts-empty').nextElementSibling.id});",
+   "expect": "{\"next\":\"contacts-empty\",\"rows_after\":\"contacts-rows\"}"
+  },
+  {
+   "op": "note",
    "text": "'+' still opens the chooser, unchanged (mockup 17 v4)."
   },
   {
@@ -231,7 +240,12 @@
   {
    "op": "read_text",
    "sel": "#invite-show-once",
-   "literal": "This is the only time you’ll see the code. If it’s lost, revoke this invite under Settings → Invitations and create a new one."
+   "literal": "Warning: this is the only time you’ll see the code."
+  },
+  {
+   "op": "exec",
+   "script": "var w=document.getElementById('invite-show-once'),a=document.getElementById('btn-invite-copy');var r=document.querySelector('#invite-mint .copy-row');return JSON.stringify({sameRow:w.parentElement===r&&a.parentElement===r,leftOfLink:w.getBoundingClientRect().right<=a.getBoundingClientRect().left,sameLine:Math.abs(w.getBoundingClientRect().top-a.getBoundingClientRect().top)<12});",
+   "expect": "{\"sameRow\":true,\"leftOfLink\":true,\"sameLine\":true}"
   },
   {
    "op": "note",
@@ -246,18 +260,12 @@
    "sel": "#invite-overlay",
    "prop": "className",
    "expect": "overlay hidden",
-   "poll": 5
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#invite-close-confirm",
-   "prop": "className",
-   "expect": "callout invite-close-confirm hidden",
-   "poll": 3
+   "poll": 5,
+   "text": "BEFORE a mint, Close closes at once (there is no question at all since R54)."
   },
   {
    "op": "note",
-   "text": "AFTER a mint (the product's own adopt path with a synthetic code -- no fixture relay, ENG-0226), Close ASKS instead of closing; the window and the code stay."
+   "text": "AFTER a mint (the product's own adopt path with a synthetic code -- no fixture relay, ENG-0226), Close simply closes the window (R54, the operator's flight ruling): the overlay hides and the slot resets to its empty sentence -- the one-time boundary's local half."
   },
   {
    "op": "click",
@@ -281,58 +289,35 @@
   },
   {
    "op": "prop_eq",
-   "sel": "#invite-close-confirm",
-   "prop": "className",
-   "expect": "callout invite-close-confirm",
-   "poll": 3
-  },
-  {
-   "op": "read_text",
-   "sel": "#invite-close-confirm .invite-close-confirm-q",
-   "literal": "Did you share the code? Once this window closes, you won’t see it again."
-  },
-  {
-   "op": "prop_eq",
    "sel": "#invite-overlay",
    "prop": "className",
-   "expect": "overlay",
-   "poll": 1
+   "expect": "overlay hidden",
+   "poll": 5
   },
   {
    "op": "read_tc",
    "sel": "#invite-code",
-   "literal": "QSLI-1-NA0778SHOWONCETESTCODE"
+   "literal": "Your invite code will appear here after you activate."
   },
   {
    "op": "note",
-   "text": "'Not yet' only hides the question; the window and the code are untouched."
+   "text": "R54 completing R40 -- A LIVE MINT IS NEVER SILENTLY DISCARDED, as a NO-OP: the rail's 'send' behind the scrim (the keyboard's route) is clicked through its own handler while a code is on screen; the open mint stays EXACTLY as it is -- no reset, no question."
   },
   {
    "op": "click",
-   "sel": "#btn-invite-confirm-notyet"
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#invite-close-confirm",
-   "prop": "className",
-   "expect": "callout invite-close-confirm hidden",
-   "poll": 3
+   "sel": "#btn-contacts-send"
   },
   {
    "op": "prop_eq",
    "sel": "#invite-overlay",
    "prop": "className",
    "expect": "overlay",
-   "poll": 1
+   "poll": 5
   },
   {
-   "op": "read_tc",
-   "sel": "#invite-code",
-   "literal": "QSLI-1-NA0778SHOWONCETESTCODE"
-  },
-  {
-   "op": "note",
-   "text": "R40 -- A LIVE MINT IS NEVER SILENTLY DISCARDED. The keyboard can reach the rail's 'send' behind the scrim (no focus trap: filed); its handler re-opens the mint. Driven through that handler's own click: the guard routes to the question and the code stays in the slot."
+   "op": "exec",
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');return document.getElementById('invite-code').textContent;",
+   "expect": "QSLI-1-NA0778SHOWONCETESTCODE"
   },
   {
    "op": "exec",
@@ -340,69 +325,44 @@
    "expect": "clicked"
   },
   {
-   "op": "poll_exec",
-   "script": "return document.getElementById('invite-close-confirm').className;",
-   "expect": "callout invite-close-confirm",
-   "poll": 5,
-   "label": "the re-open asks instead of resetting"
+   "op": "exec",
+   "script": "return JSON.stringify({overlay:document.getElementById('invite-overlay').className,slot:document.getElementById('invite-code').textContent,minted:inviteMinted,readOnly:document.getElementById('invite-label').readOnly});",
+   "expect": "{\"overlay\":\"overlay\",\"slot\":\"QSLI-1-NA0778SHOWONCETESTCODE\",\"minted\":true,\"readOnly\":true}"
   },
   {
-   "op": "read_tc",
-   "sel": "#invite-code",
-   "literal": "QSLI-1-NA0778SHOWONCETESTCODE"
+   "op": "click",
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "Escape after a mint closes at once too (R54); the slot resets."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contacts-send"
   },
   {
    "op": "prop_eq",
    "sel": "#invite-overlay",
    "prop": "className",
    "expect": "overlay",
-   "poll": 1
+   "poll": 5
   },
   {
-   "op": "click",
-   "sel": "#btn-invite-confirm-notyet"
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#invite-close-confirm",
-   "prop": "className",
-   "expect": "callout invite-close-confirm hidden",
-   "poll": 3
-  },
-  {
-   "op": "read_tc",
-   "sel": "#invite-code",
-   "literal": "QSLI-1-NA0778SHOWONCETESTCODE"
-  },
-  {
-   "op": "note",
-   "text": "Escape is held to the same question (the invisible exit cannot bypass what the visible one asks)."
+   "op": "exec",
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');return document.getElementById('invite-code').textContent;",
+   "expect": "QSLI-1-NA0778SHOWONCETESTCODE"
   },
   {
    "op": "exec",
    "script": "document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'})); return 'sent';"
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#invite-close-confirm",
-   "prop": "className",
-   "expect": "callout invite-close-confirm",
-   "poll": 3
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#invite-overlay",
-   "prop": "className",
-   "expect": "overlay",
-   "poll": 1
-  },
-  {
-   "op": "note",
-   "text": "'Yes, close' IS the one closer: the window closes and the slot is reset to its empty sentence (the one-time boundary's local half)."
-  },
-  {
-   "op": "click",
-   "sel": "#btn-invite-confirm-yes"
   },
   {
    "op": "prop_eq",
@@ -418,7 +378,7 @@
   },
   {
    "op": "note",
-   "text": "The scrim is the third gesture, and it asks too."
+   "text": "The scrim is the third gesture, and after a mint it closes at once too (R54)."
   },
   {
    "op": "click",
@@ -433,15 +393,8 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');var ov=document.getElementById('invite-overlay');ov.dispatchEvent(new MouseEvent('click',{bubbles:true}));return document.getElementById('invite-close-confirm').className;",
-   "expect": "callout invite-close-confirm"
-  },
-  {
-   "op": "prop_eq",
-   "sel": "#invite-overlay",
-   "prop": "className",
-   "expect": "overlay",
-   "poll": 1
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');var ov=document.getElementById('invite-overlay');ov.dispatchEvent(new MouseEvent('click',{bubbles:true}));return ov.className+'|'+document.getElementById('invite-code').textContent;",
+   "expect": "overlay hidden|Your invite code will appear here after you activate."
   },
   {
    "op": "note",
@@ -449,8 +402,8 @@
   },
   {
    "op": "exec",
-   "script": "show('scr-unlock');var r={ov:document.getElementById('invite-overlay').className,confirm:document.getElementById('invite-close-confirm').className,code:document.getElementById('invite-code').textContent};show('scr-main');return JSON.stringify(r);",
-   "expect": "{\"ov\":\"overlay hidden\",\"confirm\":\"callout invite-close-confirm hidden\",\"code\":\"Your invite code will appear here after you activate.\"}"
+   "script": "show('scr-unlock');var r={ov:document.getElementById('invite-overlay').className,code:document.getElementById('invite-code').textContent};show('scr-main');return JSON.stringify(r);",
+   "expect": "{\"ov\":\"overlay hidden\",\"code\":\"Your invite code will appear here after you activate.\"}"
   },
   {
    "op": "note",
@@ -499,7 +452,16 @@
   {
    "op": "read_text",
    "sel": "#invitations-sent-empty",
-   "literal": "You haven't sent any invitations yet. Create one from Contacts — you'll see a one-time code exactly once to pass to the person you want to reach, and they'll appear here while you wait."
+   "literal": "You haven't sent any invitations yet."
+  },
+  {
+   "op": "note",
+   "text": "R53 (the operator's flight ruling): the Sent empty state is the short sentence; each group carries its OWN link only while it has nothing to list -- Sent's 'send invitation' and Received's 'redeem invitation' (Received has nothing to list until ENG-B lands); the page-level link is gone."
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify({sentLink:document.getElementById('invitations-sent-link').className,sentText:document.getElementById('btn-invitations-send').textContent,recvLink:document.getElementById('invitations-received-link').className,recvText:document.getElementById('btn-invitations-redeem').textContent,pageLink:document.getElementById('btn-invitations-create')?'PRESENT':'absent'});",
+   "expect": "{\"sentLink\":\"invitations-head-link\",\"sentText\":\"send invitation\",\"recvLink\":\"invitations-head-link\",\"recvText\":\"redeem invitation\",\"pageLink\":\"absent\"}"
   },
   {
    "op": "read_text",
@@ -556,6 +518,11 @@
    "op": "exec",
    "script": "var now=Math.floor(Date.now()/1000);invitationsRows=[{invite_id:'u1',state:'active',expiry:now+6*86400,revocable:true,label:'Marcus',created:now-600},{invite_id:'u2',state:'active',expiry:now+5*86400,revocable:false,label:'Sam',created:now-86400},{invite_id:'u3',state:'redeemed',expiry:now+86400,revocable:false,label:'Priya',created:now-13*86400},{invite_id:'u4',state:'expired',expiry:now-7*86400,revocable:true,label:'Lena',created:now-14*86400},{invite_id:'u5',state:'active',expiry:now-60,revocable:true,label:'Past',created:now-4*86400},{invite_id:'u6',state:'revoked',expiry:now+86400,revocable:false,label:'Gone',created:now-3600},{invite_id:'u7',state:'creating',expiry:now+86400,revocable:false,label:null,created:now-30}];invitationsContacts=[{alias:'dana',name:'Dana',ui:'connected',state:'unverified'},{alias:'ben',name:'Ben',ui:'new',state:'unverified'},{alias:'priya',name:'Priya',ui:'connected',state:'verified'},{alias:'sam',name:'Sam',ui:'connecting',state:'unverified'}];invitationsFilter='all';invitationsRender();return document.querySelectorAll('#invitations-sent-rows tr').length+'';",
    "expect": "6"
+  },
+  {
+   "op": "exec",
+   "script": "return document.getElementById('invitations-sent-link').className;",
+   "expect": "invitations-head-link hidden"
   },
   {
    "op": "note",
@@ -758,7 +725,7 @@
   },
   {
    "op": "note",
-   "text": "And the empty state's 'Create one from Contacts' lands on the Contacts pane."
+   "text": "R53's links land on the EXISTING windows over Settings: 'send invitation' opens the mint (and fires the surface-open trigger); closing it refreshes the page; 'redeem invitation' opens the code-entry view."
   },
   {
    "op": "click",
@@ -776,18 +743,87 @@
    "label": "the page renders again"
   },
   {
-   "op": "click",
-   "sel": "#btn-invitations-create"
+   "op": "exec",
+   "script": "var el=document.getElementById('redeem-overlay');delete el.dataset.finishWhy;return el.dataset.finishWhy||'cleared';",
+   "expect": "cleared"
   },
   {
-   "op": "poll_visible",
-   "screen": "scr-main"
+   "op": "click",
+   "sel": "#btn-invitations-send"
   },
   {
    "op": "prop_eq",
-   "sel": "#pane-contacts",
+   "sel": "#invite-overlay",
    "prop": "className",
-   "expect": "list-pane",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-mint",
+   "prop": "className",
+   "expect": "",
+   "poll": 3
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('redeem-overlay').dataset.finishWhy||'NONE';",
+   "expect": "surface_open",
+   "poll": 10,
+   "label": "the page's send link fired the surface-open trigger"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the page refreshed after the mint window closed"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invitations-redeem"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#choose-view",
+   "prop": "className",
+   "expect": "hidden",
+   "poll": 1
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-form",
+   "prop": "className",
+   "expect": "",
+   "poll": 1
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 1
+  },
+  {
+   "op": "click",
+   "sel": "#btn-redeem-close3"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#redeem-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
    "poll": 5
   },
   {

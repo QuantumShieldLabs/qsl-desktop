@@ -2360,6 +2360,8 @@ function invitationsRender() {
   const shown = rows.filter((x) => invitationsFilter === "all" || x.kind === invitationsFilter);
   for (const x of shown) host.appendChild(invitationsRowEl(x.r, x.kind, x.now));
   byId("invitations-sent-empty").classList.toggle("hidden", rows.length > 0);
+  // R53: the Sent heading's own link shows ONLY while Sent has nothing to list.
+  byId("invitations-sent-link").classList.toggle("hidden", rows.length > 0);
   // F-15a: a chip with no matching rows says so, instead of a header-only table.
   byId("invitations-filter-empty").classList.toggle("hidden", !(rows.length > 0 && shown.length === 0));
   byId("invitations-sent").classList.toggle("hidden", shown.length === 0);
@@ -2453,12 +2455,18 @@ byId("invitations-nudge-links").addEventListener("click", async (ev) => {
   renderContactDetail();
 });
 
-byId("btn-invitations-create").addEventListener("click", async () => {
-  await enterMain();
-  showContactsPane();
+// NA-0778 (004c / RULING_NA0778_008 R53): the groups' own links -- shown only while a group has nothing
+// to list -- open the existing windows: "send invitation" the mint (painted, then the surface-open
+// trigger, as the rail's send does), "redeem invitation" the code-entry view. The page-level
+// "Create one from Contacts" link is retired with the mockup's explanation.
+byId("btn-invitations-send").addEventListener("click", async () => {
+  await openInviteModal();
+  await relayScan({ source: "surface_open", at: Date.now() });
 });
+byId("btn-invitations-redeem").addEventListener("click", () => openRedeemEntry());
 for (const chip of document.querySelectorAll("#invitations-filters .invitations-chip")) bindKeyClick(chip);
-bindKeyClick(byId("btn-invitations-create"));
+bindKeyClick(byId("btn-invitations-send"));
+bindKeyClick(byId("btn-invitations-redeem"));
 
 // ---- NA-0755 v2 (D-0036): THE INVITE SURFACE — THE SINGLE-VIEW MINT AND THE LIST ----
 //
@@ -2692,7 +2700,10 @@ function closeInviteModal() {
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
   inviteResetSlot();
-  byId("invite-close-confirm").classList.add("hidden");
+  // NA-0778 (004c / R53): a mint opened from the Invitations page (its "send invitation" link) closes
+  // back onto that page, which refreshes so the new row is listed. Reached only when the window WAS
+  // open (the early return above), so a screen transition without a mint costs nothing.
+  if (currentScreen === "scr-settings" && !byId("pane-invitations").classList.contains("hidden")) refreshInvitationsPane();
   byId("invite-label").value = "";
   byId("invite-label").readOnly = false;
   inviteId = null;
@@ -2826,14 +2837,13 @@ function inviteSyncActivate() {
   byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;
 }
 
-// NA-0778 (`D-0047`, 004a / RULING_NA0778_006 R40): A LIVE MINT IS NEVER SILENTLY DISCARDED. The
-// cold read found a keyboard route -- Tab to the rail's "send" behind the scrim, Enter -- that
-// re-entered the mint fresh and reset the slot with no question. The guard routes a re-open of a
-// window that holds a minted code to the ONE close request (the question); a fresh open hides any
-// question left behind. No new closer exists: the exit pins prove the one closer still.
+// NA-0778 (004c / RULING_NA0778_008 R54, completing R40): A LIVE MINT IS NEVER SILENTLY DISCARDED, and
+// with the close confirmation retired by the operator's flight ruling the guard's action is a NO-OP:
+// a re-open while a code is on screen (the keyboard's route behind the scrim) leaves the open mint
+// exactly as it is -- no reset, no question. Comments stay ABOVE this function: a pin reads a fixed
+// 400-byte window after its signature (D-05).
 async function openInviteModal() {
-  if (inviteMinted && !byId("invite-overlay").classList.contains("hidden")) { inviteRequestClose(); return; }
-  byId("invite-close-confirm").classList.add("hidden");
+  if (inviteMinted && !byId("invite-overlay").classList.contains("hidden")) return;
   clearInviteErrors();
   inviteEnterMintFresh();
   byId("btn-invite-activate").textContent = HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate";
@@ -3135,26 +3145,16 @@ railLinkKeys("btn-contacts-send");
 // is also what Escape and the scrim call -- so the visible exit and the invisible ones cannot
 // drift apart. NA-0765 wired the X to that same closer for exactly this reason; the property
 // survives its control.
-// NA-0778 (`D-0047`) -- "DID YOU SHARE THE CODE?" The operator's close confirmation (2026-08-31),
-// asked ONLY when this window minted a code, and only of the USER's three gestures: the Close
-// button, Escape and the scrim -- all three through this one request. `show()` keeps calling
-// `closeInviteModal()` directly and unconditionally: the autolock path must never wait on a
-// question with a live code on screen. "Yes, close" IS the one closer; "Not yet" only hides the
-// question. Before a mint there is nothing to ask, and the request closes at once.
-function inviteRequestClose() {
-  const ov = byId("invite-overlay");
-  if (!ov || ov.classList.contains("hidden")) return;
-  if (inviteMinted) { byId("invite-close-confirm").classList.remove("hidden"); return; }
-  closeInviteModal();
-}
-byId("btn-invite-close").addEventListener("click", () => inviteRequestClose());
-byId("btn-invite-confirm-yes").addEventListener("click", () => closeInviteModal());
-byId("btn-invite-confirm-notyet").addEventListener("click", () => byId("invite-close-confirm").classList.add("hidden"));
+// NA-0778 (004c / RULING_NA0778_008 R54, the operator's flight ruling): THERE IS NO CLOSE CONFIRMATION.
+// After a mint, Close, Escape and the scrim simply close the window through the ONE closer, as they
+// did before 004. The Director's note stands in the record (an accidental close loses an unshared
+// code); the operator flew it and ruled.
+byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
 byId("invite-overlay").addEventListener("click", (ev) => {
-  if (ev.target === byId("invite-overlay")) inviteRequestClose();
+  if (ev.target === byId("invite-overlay")) closeInviteModal();
 });
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") inviteRequestClose();
+  if (ev.key === "Escape") closeInviteModal();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════

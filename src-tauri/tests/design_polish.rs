@@ -3263,21 +3263,18 @@ fn na0765_both_modal_flows_have_a_visible_way_out() {
     }
     // And each reuses its overlay's ONE dismissal — the same function Escape and
     // the scrim take — so the visible and invisible exits cannot drift apart.
-    // NA-0778 (`D-0047`) RE-AIM, NEVER WEAKENED: the Close, Escape and the scrim all go through
-    // `inviteRequestClose`, which asks "Did you share the code?" after a mint and otherwise
-    // reaches `closeInviteModal()` at once; the exit count per surface is still exact, and
-    // `show()`'s direct call is pinned separately. The visible exit and the invisible ones share
-    // ONE function still -- that is the property, and it survives the control.
+    // NA-0778 (004c / RULING_NA0778_008 R54): 004a's close confirmation was retired by the operator's
+    // flight ruling; the needle returns to the ONE dismissal, which is also Escape's and the scrim's.
     assert!(
         js.contains(
-            r#"byId("btn-invite-close").addEventListener("click", () => inviteRequestClose());"#
+            r#"byId("btn-invite-close").addEventListener("click", () => closeInviteModal());"#
         ),
-        "the invite Close reuses that overlay's one request, which is also Escape's and the scrim's"
+        "the invite Close reuses that overlay's one dismissal, which is also Escape's"
     );
     assert!(
-        js.contains(r#"if (ev.key === "Escape") inviteRequestClose();"#)
-            && js.contains(r#"if (ev.target === byId("invite-overlay")) inviteRequestClose();"#),
-        "Escape and the scrim take the same request"
+        js.contains(r#"if (ev.key === "Escape") closeInviteModal();"#)
+            && js.contains(r#"if (ev.target === byId("invite-overlay")) closeInviteModal();"#),
+        "Escape and the scrim take the same dismissal"
     );
     assert!(
         js.contains(r#"byId("btn-choose-close").addEventListener("click", closeRedeemModal);"#),

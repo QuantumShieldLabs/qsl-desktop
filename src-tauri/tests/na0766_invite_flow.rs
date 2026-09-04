@@ -170,7 +170,7 @@ fn na0766_i1_one_exit_per_modal_by_element() {
 fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
     let js = ui_file("main.js");
     for (overlay, closer) in [
-        ("invite-overlay", "inviteRequestClose()"),
+        ("invite-overlay", "closeInviteModal()"),
         ("redeem-overlay", "closeRedeemModal()"),
     ] {
         let scrim = format!(
@@ -181,26 +181,28 @@ fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
             "{overlay}'s scrim still reaches its one closer"
         );
     }
-    // NA-0778 (`D-0047`) RE-AIM, NEVER WEAKENED: the three user gestures on the invite overlay now
-    // route through ONE request, `inviteRequestClose`, which asks "Did you share the code?" after
-    // a mint and otherwise reaches the one closer at once. The property this seal exists for --
-    // the visible and invisible exits cannot disagree -- is stronger, not weaker: all three go
-    // through the same function, and that function is pinned to reach `closeInviteModal()`.
-    // `show()` keeps its direct, unconditional call (pinned by
-    // `every_screen_transition_closes_the_invite_modal`).
+    // NA-0778 (004c / RULING_NA0778_008 R54): the close confirmation of 004a was RETIRED by the operator's
+    // flight ruling, and the needles return to the ONE closer -- Escape, the scrim and Close reach
+    // `closeInviteModal()` directly, as they did before 004. What 004a added is kept where it still
+    // holds: a re-open of a live mint (the keyboard's route behind the scrim) is a NO-OP, never a
+    // reset -- pinned below as the guard's first statement.
     assert!(
-        js.contains("if (ev.key === \"Escape\") inviteRequestClose();"),
-        "Escape still closes the invite overlay, through the one request"
+        js.contains("if (ev.key === \"Escape\") closeInviteModal();"),
+        "Escape still closes the invite overlay, through the one closer"
     );
-    let req = js
-        .find("function inviteRequestClose() {")
-        .expect("the one request exists");
-    let req_body = &js[req..];
-    let req_end = req_body.find("\n}\n").expect("it ends");
-    let req_body = &req_body[..req_end];
+    let open = js
+        .find("async function openInviteModal() {")
+        .expect("the mint opener exists");
+    let open_body = &js[open..open + 400];
     assert!(
-        req_body.contains("closeInviteModal();") && req_body.contains("inviteMinted"),
-        "the request reaches the ONE closer, and asks only after a mint"
+        open_body.contains(
+            r#"if (inviteMinted && !byId("invite-overlay").classList.contains("hidden")) return;"#
+        ),
+        "a re-open while a code is on screen is a NO-OP: the open mint stays exactly as it is"
+    );
+    assert!(
+        !js.contains("inviteRequestClose") && !js.contains("invite-close-confirm"),
+        "the retired question leaves no needle behind (a comment cannot re-plant it)"
     );
     assert!(
         js.contains("if (ev.key === \"Escape\") closeRedeemModal();"),
@@ -209,15 +211,9 @@ fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
     // The visible exits reuse the SAME closers, never a second one.
     assert!(
         js.contains(
-            r#"byId("btn-invite-close").addEventListener("click", () => inviteRequestClose());"#
+            r#"byId("btn-invite-close").addEventListener("click", () => closeInviteModal());"#
         ),
-        "the invite Close reuses that overlay's one request, which reaches its one dismissal"
-    );
-    assert!(
-        js.contains(
-            r#"byId("btn-invite-confirm-yes").addEventListener("click", () => closeInviteModal());"#
-        ),
-        "and the confirmation's Yes IS the one closer"
+        "the invite Close reuses that overlay's one dismissal"
     );
     assert!(
         js.contains(r#"byId("btn-redeem-close3").addEventListener("click", closeRedeemModal);"#),

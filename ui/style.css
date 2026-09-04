@@ -797,10 +797,9 @@ a.rm:hover { color: var(--fg); }
    empty and minted is a COLOUR difference only -- the box keeps its geometry across activation,
    which is what lets item 6's "nothing shifts" be true of the code slot. */
 .code-box.empty { color: var(--fg-muted); font-family: inherit; word-break: normal; }
-/* NA-0778 (`D-0047`) -- the close confirmation sits between the code and the footer's Close, in the
-   shipped callout box; two secondary buttons on the shipped button row. */
-.invite-close-confirm { margin-top: var(--sp-x20); }
-.invite-close-confirm-q { margin: 0 0 var(--sp-3); font-size: var(--fs-body); }
+/* NA-0778 (004c / R54): the show-once warning sits on the LEFT of the copy row; the row's own rule is
+   untouched (it packs right), the warning takes the remaining space with an auto margin. */
+#invite-show-once { margin-right: auto; }
 
 /* The empty state: centred and quiet — the list answers "what is open", and nothing open is a
    legitimate answer rather than an error. */
@@ -944,6 +943,9 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
 .invitations-actions a.rm { font-size: var(--fs-body); }
 .invitations-empty { padding: var(--sp-4); border: 1px dashed var(--border); border-radius: var(--radius); color: var(--fg-secondary); font-size: var(--fs-body); max-width: 60ch; margin: 0; }
 .invitations-empty a.rm { font-size: var(--fs-body); }
+/* NA-0778 (004c / R53): the group heading's own link, plain weight beside the bold word. */
+.invitations-head-link { font-weight: 400; color: var(--fg-secondary); }
+.invitations-head-link a.rm { font-size: var(--fs-section); }
 
 /* A row is MINIMAL by ruling R3: dot, name, and at most one small word. */
 .contact-row { display: flex; align-items: center; gap: var(--sp-3); border-radius: var(--radius-small); padding: var(--sp-3) var(--sp-4); margin: 0 var(--sp-2) var(--sp-1); cursor: default; }
