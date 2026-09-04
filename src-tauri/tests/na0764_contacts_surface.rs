@@ -203,7 +203,14 @@ fn the_state_precedence_is_blocked_then_changed_then_new() {
     let body = &body[..body.find("\n}").expect("function end")];
 
     let blocked = body.find("row.blocked").expect("blocked arm");
-    let changed = body.find(r#""CHANGED""#).expect("CHANGED arm");
+    // NA-0778 (004a / RULING_NA0778_006 R42): the arm compares the WIRE form the gateway emits
+    // ("changed", commands.rs contact_state_wire). The uppercase literal this pin used to seek
+    // was the upstream enum's spelling, and the comparison it pinned was unreachable from live
+    // data -- the pin proved the wrong literal for two lanes. The precedence it asserts is
+    // unchanged; only the needle is the wire form now.
+    let changed = body
+        .find(r#""changed""#)
+        .expect("changed arm (the wire form)");
     let badge = body.find("contactsNewBadge.has").expect("badge arm");
     let active = body.find(r#""active""#).expect("active arm");
 

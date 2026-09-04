@@ -475,7 +475,7 @@
            mockup's straight apostrophes because the empty state is pinned VERBATIM to it. -->
       <div id="pane-invitations" class="pane hidden">
         <div class="pane-header"><div class="pane-head-row"><h2>Invitations</h2></div></div>
-        <p class="muted">Invitations you've sent and codes you've redeemed. The names here are the ones you typed, stored only on this device.</p>
+        <p class="muted">Invitations you've sent and codes you've redeemed. The names here are the ones you typed — they're stored on this device and never sent anywhere.</p>
         <p id="invitations-loading" class="hint">Loading&hellip;</p>
         <p id="invitations-nudge" class="callout invitations-nudge hidden"><span id="invitations-nudge-text"></span> <span id="invitations-nudge-links"></span></p>
         <div id="invitations-error" class="hidden">
@@ -489,8 +489,9 @@
               <div id="invitations-filters" class="invitations-filters hidden"><a class="invitations-chip on" role="button" tabindex="0" data-filter="all">All</a><a class="invitations-chip" role="button" tabindex="0" data-filter="waiting">Waiting</a><a class="invitations-chip" role="button" tabindex="0" data-filter="accepted">Accepted</a><a class="invitations-chip" role="button" tabindex="0" data-filter="expired">Expired</a></div>
             </div>
             <p id="invitations-sent-empty" class="invitations-empty hidden">You haven't sent any invitations yet. <a class="rm plain" id="btn-invitations-create" role="button" tabindex="0">Create one from Contacts</a> &mdash; you'll see a one-time code exactly once to pass to the person you want to reach, and they'll appear here while you wait.</p>
+            <p id="invitations-filter-empty" class="hint hidden">No invitations match this filter.</p>
             <table id="invitations-sent" class="invitations-table hidden">
-              <thead><tr><th>Name</th><th>Status</th><th>Date</th><th>Expires</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th>Status</th><th>Sent</th><th>Expires</th><th></th></tr></thead>
               <tbody id="invitations-sent-rows"></tbody>
             </table>
           </div>

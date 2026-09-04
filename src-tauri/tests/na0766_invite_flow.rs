@@ -256,9 +256,16 @@ fn na0766_i7_review_invites_is_a_link_not_a_button() {
             "the `{text}` link ships as an ANCHOR on the shipped plain text-link idiom, lowercase, no count"
         );
     }
+    // NA-0778 (004a / F-07): the no-badge check reads the BLOCK's own slice, so it discriminates --
+    // the first form tested a selector string that cannot occur in markup, and a whole-file needle.
+    let block = view_slice(&html, "contacts-invitations", "contacts-rows");
     assert!(
-        !html.contains("contacts-invitations .count") && !html.contains(r#"class="count""#),
-        "no count badge (mockup 17 v2)"
+        block.contains(r#"id="btn-contacts-send""#),
+        "non-vacuity: the slice is the invitations block"
+    );
+    assert!(
+        !block.contains(r#"class="count""#) && !block.contains("<span class=\"count"),
+        "no count badge inside the block (mockup 17 v2)"
     );
     // By ELEMENT: there is no button element carrying this id anywhere.
     assert!(

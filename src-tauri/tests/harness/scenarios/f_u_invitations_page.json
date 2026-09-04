@@ -140,7 +140,7 @@
   },
   {
    "op": "note",
-   "text": "'redeem' lands DIRECTLY on the code-entry view -- the chooser is skipped, the overlay is the existing one."
+   "text": "'redeem' lands DIRECTLY on the code-entry view: PAINTED BEFORE the surface-open scan is awaited (R39), so the chooser is hidden at the FIRST poll after the click -- on this profile the scan returns at its first guard, so this read bounds what it can prove and says so."
   },
   {
    "op": "click",
@@ -148,24 +148,24 @@
   },
   {
    "op": "prop_eq",
-   "sel": "#redeem-overlay",
+   "sel": "#choose-view",
    "prop": "className",
-   "expect": "overlay",
-   "poll": 5
+   "expect": "hidden",
+   "poll": 1
   },
   {
    "op": "prop_eq",
    "sel": "#redeem-form",
    "prop": "className",
    "expect": "",
-   "poll": 5
+   "poll": 1
   },
   {
    "op": "prop_eq",
-   "sel": "#choose-view",
+   "sel": "#redeem-overlay",
    "prop": "className",
-   "expect": "hidden",
-   "poll": 3
+   "expect": "overlay",
+   "poll": 1
   },
   {
    "op": "click",
@@ -184,7 +184,12 @@
   },
   {
    "op": "note",
-   "text": "'send' lands DIRECTLY on the mint; the show-once line is on screen from open (NA-0766 item 6 forbids anything appearing on activation)."
+   "text": "'send' lands DIRECTLY on the mint AND fires the surface-open trigger '+' fires (R39: paint first, then scan). The trigger is observed through the scan's own shipped marker on the redeem overlay's dataset (Z6's measurement surface): cleared here, then expected after the click. The show-once line is on screen from open (NA-0766 item 6 forbids anything appearing on activation)."
+  },
+  {
+   "op": "exec",
+   "script": "var el=document.getElementById('redeem-overlay');delete el.dataset.finishWhy;return el.dataset.finishWhy||'cleared';",
+   "expect": "cleared"
   },
   {
    "op": "click",
@@ -203,6 +208,13 @@
    "prop": "className",
    "expect": "",
    "poll": 3
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('redeem-overlay').dataset.finishWhy||'NONE';",
+   "expect": "surface_open",
+   "poll": 10,
+   "label": "the send link fired the surface-open trigger"
   },
   {
    "op": "read_text",
@@ -300,6 +312,50 @@
    "prop": "className",
    "expect": "overlay",
    "poll": 1
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-code",
+   "literal": "QSLI-1-NA0778SHOWONCETESTCODE"
+  },
+  {
+   "op": "note",
+   "text": "R40 -- A LIVE MINT IS NEVER SILENTLY DISCARDED. The keyboard can reach the rail's 'send' behind the scrim (no focus trap: filed); its handler re-opens the mint. Driven through that handler's own click: the guard routes to the question and the code stays in the slot."
+  },
+  {
+   "op": "exec",
+   "script": "document.getElementById('btn-contacts-send').click();return 'clicked';",
+   "expect": "clicked"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invite-close-confirm').className;",
+   "expect": "callout invite-close-confirm",
+   "poll": 5,
+   "label": "the re-open asks instead of resetting"
+  },
+  {
+   "op": "read_tc",
+   "sel": "#invite-code",
+   "literal": "QSLI-1-NA0778SHOWONCETESTCODE"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 1
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-confirm-notyet"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-close-confirm",
+   "prop": "className",
+   "expect": "callout invite-close-confirm hidden",
+   "poll": 3
   },
   {
    "op": "read_tc",
@@ -589,6 +645,64 @@
    "op": "exec",
    "script": "var tr=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"u1\"]');return JSON.stringify({kind:tr.dataset.kind,state:tr.querySelector('.invitations-state').textContent,action:tr.querySelector('a[data-revoke]').textContent});",
    "expect": "{\"kind\":\"waiting\",\"state\":\"Waiting for reply\",\"action\":\"Revoke\"}"
+  },
+  {
+   "op": "note",
+   "text": "R38 -- A SUCCESSFUL REVOKE MOVES THE IN-MEMORY SET. The success branch's ONE function is exec'd for the synthetic waiting row (the verb itself cannot succeed here: no fixture relay): the count line moves at once; a chip click re-renders from the updated set and the row is ABSENT -- no resurrection."
+  },
+  {
+   "op": "exec",
+   "script": "invitationsMarkRevoked('u1');return document.getElementById('invitations-sent-meta').textContent;",
+   "expect": "1 waiting · 1 accepted · 2 expired · 1 didn't finish"
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-filters [data-filter=\"waiting\"]"
+  },
+  {
+   "op": "exec",
+   "script": "var k={};var t=document.querySelectorAll('#invitations-sent-rows tr');for(var i=0;i<t.length;i++){k[t[i].dataset.kind]=(k[t[i].dataset.kind]||0)+1;}return JSON.stringify({kinds:k,u1:document.querySelector('#invitations-sent-rows tr[data-invite-id=\"u1\"]')?'PRESENT':'absent'});",
+   "expect": "{\"kinds\":{\"waiting\":1},\"u1\":\"absent\"}"
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-filters [data-filter=\"all\"]"
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify({rows:document.querySelectorAll('#invitations-sent-rows tr').length,u1:document.querySelector('#invitations-sent-rows tr[data-invite-id=\"u1\"]')?'PRESENT':'absent'});",
+   "expect": "{\"rows\":5,\"u1\":\"absent\"}"
+  },
+  {
+   "op": "note",
+   "text": "F-15a -- a chip with NO matching rows shows the note for that filter, not a header-only table: the accepted record is removed from the set and the Accepted chip re-rendered."
+  },
+  {
+   "op": "exec",
+   "script": "invitationsRows=invitationsRows.filter(function(r){return r.state!=='redeemed';});invitationsFilter='accepted';invitationsRender();return JSON.stringify({table:document.getElementById('invitations-sent').className,note:document.getElementById('invitations-filter-empty').className,rows:document.querySelectorAll('#invitations-sent-rows tr').length});",
+   "expect": "{\"table\":\"invitations-table hidden\",\"note\":\"hint\",\"rows\":0}"
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-filters [data-filter=\"all\"]"
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify({note:document.getElementById('invitations-filter-empty').className,rows:document.querySelectorAll('#invitations-sent-rows tr').length});",
+   "expect": "{\"note\":\"hint hidden\",\"rows\":4}"
+  },
+  {
+   "op": "note",
+   "text": "F-22 -- the pane's own anchors answer Enter: a keydown on a chip acts (the shipped copy link's idiom, bound by one binder)."
+  },
+  {
+   "op": "exec",
+   "script": "var c=document.querySelector('#invitations-filters [data-filter=\"expired\"]');c.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));return document.querySelectorAll('#invitations-sent-rows tr').length+'';",
+   "expect": "2"
+  },
+  {
+   "op": "click",
+   "sel": "#invitations-filters [data-filter=\"all\"]"
   },
   {
    "op": "note",

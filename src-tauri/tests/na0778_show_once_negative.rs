@@ -7,6 +7,9 @@
 //!   (3) the code lands in exactly ONE DOM slot with TWO writers   adopt, and the reset
 //!   (4) the slot is READ in exactly ONE place                     the copy link
 //!   (5) the Invitations page's module and markup touch neither the slot nor the verb.
+//!   (6) the mint's promise has exactly ONE consumer -- the activation gesture's ClipboardItem
+//!       (`mint.then(`): the CLIPBOARD is the second sink beside the slot, named here because the
+//!       cold read found it unnamed (F-09); it is the user's, by the kickoff's own boundary.
 //! ⚠ MUST GO RED IF: a second mint call, a second gateway path, a second slot, a second writer or a
 //! second reader appears -- each is a new emission site. Exact equalities, deliberately: a `>=`
 //! would absorb precisely the regression this arm exists to catch. The red arm was shown by
@@ -129,4 +132,16 @@ fn na0778_the_invitations_page_never_touches_the_code() {
             "the page markup must not carry `{needle}`"
         );
     }
+}
+
+/// (6) the mint's promise has exactly one consumer: the clipboard sink, named.
+#[test]
+fn na0778_the_mint_promise_has_exactly_one_consumer() {
+    let js = repo_file("ui/main.js");
+    assert_eq!(
+        js.matches("mint.then(").count(),
+        1,
+        "exactly ONE consumer of the mint's promise -- the activation gesture's clipboard blob; a second \
+         is a second sink for the one-time code"
+    );
 }

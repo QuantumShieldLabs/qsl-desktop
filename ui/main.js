@@ -2191,7 +2191,7 @@ function mapErr(e, table) {
 // overwrite anything a user typed (the hazard E-4 names in the Vault pane); (3) every row action
 // carries the invitation id in its own dataset and the handler reads THAT, never a row index, so a
 // re-render between the click and the call cannot retarget it.
-// ⚠ WHAT THE RECORD CAN SAY (RULING 004 R23, measured at f32a4c20): Waiting (active, not yet
+// ⚠ WHAT THE RECORD CAN SAY (RULING 004 R23, measured at the desktop's pinned qsc rev 63ece4fe, byte-identical to f32a4c20 for these verbs): Waiting (active, not yet
 // expired), Expired (the facade's read-time overlay, or active past its expiry by this clock),
 // Accepted (redeemed -- the operator's interim word), and the shipped "Didn't finish" for a
 // `creating` record. NOT drawn, because nothing in the record carries them: which contact an
@@ -2199,6 +2199,15 @@ function mapErr(e, table) {
 // not rendered. An expired row carries NO action: the engine's `invite_clear` accepts a `creating`
 // record only (invite/mod.rs:985-999) and refuses every live state -- the mockup's "Clear" on an
 // expired row has no verb behind it and is FILED, not faked. NO TIMER anywhere in this module.
+// NA-0778 (`D-0047`, 004a / F-22): an anchor that plays a button answers Enter and Space. ONE binder for
+// every such control this pane creates (Revoke, Clear, the chips, the Verify links, the create link)
+// and for the rail links; the shipped copy link keeps its own handler.
+function bindKeyClick(el) {
+  el.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); el.click(); }
+  });
+}
+
 const INVITATIONS_STATE_TEXT = {
   waiting: "Waiting for reply", accepted: "Accepted", expired: "Expired", failed: "Didn't finish",
 };
@@ -2255,11 +2264,8 @@ async function refreshInvitationsPane() {
   await refreshContacts();
   if (rows === null) {
     byId("invitations-loading").classList.add("hidden");
-    const box = byId("invitations-error");
-    setBanner(box.querySelector(".status-banner"), "accent", "Couldn't read your invitations");
-    box.querySelector(".hint").textContent =
-      "The app reported: " + String((failure && failure.code) || failure || "unknown") + ". Open this page again to retry.";
-    box.classList.remove("hidden");
+    // F-12: the shared vocabulary, so a code-less error cannot render as "[object Object]".
+    renderInviteError("invitations-error", failure && failure.code, failure && failure.detail, "list");
     return;
   }
   invitationsRows = rows;
@@ -2300,23 +2306,31 @@ function invitationsRowEl(r, kind, now) {
     // the shipped Revoke idiom: plain, and the danger-LINK token
     a.className = "rm plain link-danger"; a.setAttribute("role", "button"); a.tabIndex = 0;
     a.textContent = "Revoke"; a.dataset.revoke = r.invite_id;
+    bindKeyClick(a);
     act.appendChild(a);
   } else if (kind === "failed") {
     const a = document.createElement("a");
     a.className = "rm plain"; a.setAttribute("role", "button"); a.tabIndex = 0;
     a.textContent = "Clear"; a.dataset.clear = r.invite_id;
+    bindKeyClick(a);
     act.appendChild(a);
   }
   tr.append(name, state, when, exp, act);
   return tr;
 }
 
-function invitationsRender() {
+// The rows the record yields, classified and ordered (newest first), with the clock they were
+// classified against.
+function invitationsClassified() {
   const now = Math.floor(Date.now() / 1000);
-  const rows = invitationsRows
-    .map((r) => ({ r, kind: invitationsKind(r, now) }))
+  return invitationsRows
+    .map((r) => ({ r, kind: invitationsKind(r, now), now }))
     .filter((x) => x.kind !== null)
     .sort((a, b) => (b.r.created || 0) - (a.r.created || 0));     // newest first
+}
+
+// The count line, from the classified set -- the ONE writer of `#invitations-sent-meta`.
+function invitationsRenderMeta(rows) {
   const counts = { waiting: 0, accepted: 0, expired: 0, failed: 0 };
   for (const x of rows) counts[x.kind] += 1;
   const meta = [];
@@ -2325,12 +2339,30 @@ function invitationsRender() {
   if (counts.expired) meta.push(counts.expired + " expired");
   if (counts.failed) meta.push(counts.failed + " didn't finish");
   byId("invitations-sent-meta").textContent = meta.join(" · ");
+}
+
+// NA-0778 (`D-0047`, 004a / RULING_NA0778_006 R38): A SUCCESSFUL REVOKE MOVES THE IN-MEMORY SET,
+// not only the DOM. The cold read found the set left as delivered, so any chip click re-rendered
+// the revoked row as "Waiting for reply" with a live Revoke. ONE function owns the update (the
+// handler's success branch calls it; the arm can exec it): the record is marked revoked, the
+// count line is re-rendered from the updated set, and the row -- already flipped to "Revoked"
+// where the user is looking -- is dropped on the next render (revoked rows never render).
+function invitationsMarkRevoked(id) {
+  for (const r of invitationsRows) if (r.invite_id === id) r.state = "revoked";
+  invitationsRenderMeta(invitationsClassified());
+}
+
+function invitationsRender() {
+  const rows = invitationsClassified();
+  invitationsRenderMeta(rows);
   const host = byId("invitations-sent-rows");
   host.innerHTML = "";
   const shown = rows.filter((x) => invitationsFilter === "all" || x.kind === invitationsFilter);
-  for (const x of shown) host.appendChild(invitationsRowEl(x.r, x.kind, now));
+  for (const x of shown) host.appendChild(invitationsRowEl(x.r, x.kind, x.now));
   byId("invitations-sent-empty").classList.toggle("hidden", rows.length > 0);
-  byId("invitations-sent").classList.toggle("hidden", rows.length === 0);
+  // F-15a: a chip with no matching rows says so, instead of a header-only table.
+  byId("invitations-filter-empty").classList.toggle("hidden", !(rows.length > 0 && shown.length === 0));
+  byId("invitations-sent").classList.toggle("hidden", shown.length === 0);
   byId("invitations-filters").classList.toggle("hidden", rows.length === 0);
   for (const chip of document.querySelectorAll("#invitations-filters .invitations-chip")) {
     chip.classList.toggle("on", chip.dataset.filter === invitationsFilter);
@@ -2363,6 +2395,7 @@ function invitationsRenderNudge() {
     const a = document.createElement("a");
     a.className = "rm plain"; a.setAttribute("role", "button"); a.tabIndex = 0;
     a.textContent = "Verify " + c.name; a.dataset.verify = c.alias;
+    bindKeyClick(a);
     links.appendChild(a);
   });
   nudge.classList.remove("hidden");
@@ -2390,6 +2423,7 @@ byId("invitations-sent-rows").addEventListener("click", async (ev) => {
         row.dataset.kind = "revoked";
         t.remove();
       }
+      invitationsMarkRevoked(id);
     } else {
       await invoke("invite_clear", { inviteId: id });
       invitationsRows = invitationsRows.filter((r) => r.invite_id !== id);
@@ -2423,6 +2457,8 @@ byId("btn-invitations-create").addEventListener("click", async () => {
   await enterMain();
   showContactsPane();
 });
+for (const chip of document.querySelectorAll("#invitations-filters .invitations-chip")) bindKeyClick(chip);
+bindKeyClick(byId("btn-invitations-create"));
 
 // ---- NA-0755 v2 (D-0036): THE INVITE SURFACE — THE SINGLE-VIEW MINT AND THE LIST ----
 //
@@ -2628,6 +2664,7 @@ function inviteErrorLine(code, detail, verb) {
   const shown = c === "other" && d ? d : c || "unknown";
   return { banner: verb === "revoke" ? "Couldn't revoke the invite"
          : verb === "clear" ? "Couldn't remove the invite"
+         : verb === "list" ? "Couldn't read your invitations"
          // NA-0756 (R387 §S2c): without this arm a redeem fell through to the CREATE string.
          : verb === "redeem" ? "Couldn't add the contact"
          : "Couldn't create the invite",
@@ -2789,7 +2826,14 @@ function inviteSyncActivate() {
   byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;
 }
 
+// NA-0778 (`D-0047`, 004a / RULING_NA0778_006 R40): A LIVE MINT IS NEVER SILENTLY DISCARDED. The
+// cold read found a keyboard route -- Tab to the rail's "send" behind the scrim, Enter -- that
+// re-entered the mint fresh and reset the slot with no question. The guard routes a re-open of a
+// window that holds a minted code to the ONE close request (the question); a fresh open hides any
+// question left behind. No new closer exists: the exit pins prove the one closer still.
 async function openInviteModal() {
+  if (inviteMinted && !byId("invite-overlay").classList.contains("hidden")) { inviteRequestClose(); return; }
+  byId("invite-close-confirm").classList.add("hidden");
   clearInviteErrors();
   inviteEnterMintFresh();
   byId("btn-invite-activate").textContent = HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate";
@@ -3067,19 +3111,20 @@ byId("invite-rows").addEventListener("click", async (ev) => {
 // ⚠ NAMED CONSEQUENCE, not carried silently: the overlay's own list view is no longer reachable
 // from any control -- the page is the review surface now. Its markup, its renderer and the pins on
 // them are LEFT IN PLACE (outside this lane's ordered edit set); retiring them is a small item.
-function railLinkKeys(id) {
-  byId(id).addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); byId(id).click(); }
-  });
-}
+function railLinkKeys(id) { bindKeyClick(byId(id)); }
 byId("btn-contacts-review").addEventListener("click", () => openSettings("invitations"));
-byId("btn-contacts-redeem").addEventListener("click", async () => {
-  await openRedeemChooser();
-  redeemClearError();
-  redeemSyncConnect();
-  redeemShow("redeem-form");
+// NA-0778 (`D-0047`, 004a / RULING_NA0778_006 R39): PAINT FIRST, THEN SCAN, for both links. The cold
+// read found `redeem` awaiting the chooser's opener -- which paints the CHOOSER and only then awaits
+// the surface-open scan -- so with a relay configured the chooser sat on screen for the scan's
+// whole round trip; and `send` entered the mint WITHOUT the surface-open trigger "+" fires. Now
+// `redeem` opens the code-entry view through its own opener (the view painted and the overlay
+// shown BEFORE the await), and `send` paints the mint and THEN fires the same trigger, so P2's
+// property -- every surface-open feeds the one handler -- is evenly true again.
+byId("btn-contacts-redeem").addEventListener("click", () => openRedeemEntry());
+byId("btn-contacts-send").addEventListener("click", async () => {
+  await openInviteModal();
+  await relayScan({ source: "surface_open", at: Date.now() });
 });
-byId("btn-contacts-send").addEventListener("click", () => openInviteModal());
 railLinkKeys("btn-contacts-review");
 railLinkKeys("btn-contacts-redeem");
 railLinkKeys("btn-contacts-send");
@@ -3208,6 +3253,20 @@ function redeemShowSecurityFailure(code) {
   // ⚠ The wire code rides the LOCAL diagnostic only. Nothing here is sent anywhere.
   byId("redeem-failed").dataset.arm = code;
   redeemShow("redeem-failed");
+}
+
+// NA-0778 (`D-0047`, 004a / R39): the code-entry landing's OWN opener. It is the chooser opener with
+// the view swapped, and it is a second function rather than a parameter BECAUSE the trigger-census
+// pin reads `openRedeemChooser()` by its literal signature and requires the surface-open trigger
+// inside that body; the two share four lines by design and fire the same trigger AFTER painting.
+async function openRedeemEntry() {
+  redeemClearError();
+  byId("redeem-code").value = "";
+  byId("redeem-name").value = "";
+  redeemSyncConnect();
+  redeemShow("redeem-form");
+  byId("redeem-overlay").classList.remove("hidden");
+  await relayScan({ source: "surface_open", at: Date.now() });
 }
 
 async function openRedeemChooser() {
@@ -3353,7 +3412,11 @@ let contactsOutstanding = 0;
 /// blocked > CHANGED > new-badge > connected > fault > connecting.
 function contactUiState(row, st) {
   if (row.blocked) return "blocked";                       // dominates CHANGED (R4)
-  if (row.state === "CHANGED") return "changed";           // dominates Active (R4)
+  // NA-0778 (004a / RULING_NA0778_006 R42, F-14): the WIRE FORM. The gateway emits the facade's
+  // lowercase "changed" (commands.rs contact_state_wire); this arm compared the upstream
+  // UPPERCASE and was unreachable from live data -- the MITM tell, dead since NA-0764. Every
+  // comparison of a contact record's `state` in this file is censused in STOP 004a.
+  if (row.state === "changed") return "changed";           // dominates Active (R4)
   if (contactsNewBadge.has(row.alias)) return "new";
   if (st && st.state === "active") return "connected";
   if (st && CONTACT_FAULT_REASONS.indexOf(st.reason) !== -1) return "attention";

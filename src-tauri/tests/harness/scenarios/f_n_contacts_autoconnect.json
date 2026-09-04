@@ -171,11 +171,11 @@
   },
   {
    "op": "note",
-   "text": "I3 -- STATES RENDER, ALL SIX, per ruling R4's table. The rows and statuses are PLANTED so every state is reachable: a real rig cannot produce a CHANGED peer or a storage fault on demand. Each assertion reads the state the RENDERER chose, not the input it was given."
+   "text": "I3 -- STATES RENDER, ALL SIX, per ruling R4's table. The rows and statuses are PLANTED so every state is reachable: a real rig cannot produce a CHANGED peer or a storage fault on demand. NA-0778 (004a / RULING_NA0778_006 R42): the planted states carry the WIRE forms the gateway emits (pinned / unverified / changed, lowercase), so the arm exercises the live code path; the uppercase plants had been keeping a dead comparison green. Each assertion reads the state the RENDERER chose, not the input it was given."
   },
   {
    "op": "exec",
-   "script": "contactsRows = [{alias:'dana', display_name:null, blocked:false, state:'PINNED', fingerprint:{full:'a'.repeat(64), voice:'849301265709214773805516209447'}, device_count:1},{alias:'aud', display_name:null, blocked:false, state:'PINNED', fingerprint:null, device_count:1},{alias:'aliza', display_name:null, blocked:false, state:'UNVERIFIED', fingerprint:null, device_count:1},{alias:'marcus', display_name:null, blocked:false, state:'CHANGED', fingerprint:null, device_count:1},{alias:'pat', display_name:null, blocked:false, state:'UNVERIFIED', fingerprint:null, device_count:1},{alias:'oldpeer', display_name:null, blocked:true, state:'CHANGED', fingerprint:null, device_count:1}];contactsStatus = {dana:{state:'active',reason:'handshake'}, aud:{state:'active',reason:'handshake'},aliza:{state:'inactive',reason:'missing_seed'}, marcus:{state:'active',reason:'handshake'},pat:{state:'inactive',reason:'unsafe_parent'}, oldpeer:{state:'active',reason:'handshake'}};contactsNewBadge.clear(); contactsNewBadge.add('dana');contactsOutstanding = 0; renderContactsList(); renderContactDetail();return String(document.querySelectorAll('.contact-row').length);",
+   "script": "contactsRows = [{alias:'dana', display_name:null, blocked:false, state:'pinned', fingerprint:{full:'a'.repeat(64), voice:'849301265709214773805516209447'}, device_count:1},{alias:'aud', display_name:null, blocked:false, state:'pinned', fingerprint:null, device_count:1},{alias:'aliza', display_name:null, blocked:false, state:'unverified', fingerprint:null, device_count:1},{alias:'marcus', display_name:null, blocked:false, state:'changed', fingerprint:null, device_count:1},{alias:'pat', display_name:null, blocked:false, state:'unverified', fingerprint:null, device_count:1},{alias:'oldpeer', display_name:null, blocked:true, state:'changed', fingerprint:null, device_count:1}];contactsStatus = {dana:{state:'active',reason:'handshake'}, aud:{state:'active',reason:'handshake'},aliza:{state:'inactive',reason:'missing_seed'}, marcus:{state:'active',reason:'handshake'},pat:{state:'inactive',reason:'unsafe_parent'}, oldpeer:{state:'active',reason:'handshake'}};contactsNewBadge.clear(); contactsNewBadge.add('dana');contactsOutstanding = 0; renderContactsList(); renderContactDetail();return String(document.querySelectorAll('.contact-row').length);",
    "expect": "6"
   },
   {
@@ -429,7 +429,7 @@
   },
   {
    "op": "note",
-   "text": "NA-0766 (`D-0043`) — ITEM 1 RE-AIM. The 0/1/n outstanding-count line is RETIRED from the Contacts pane: it becomes a plain blue text link reading exactly 'review invites', lowercase, never underlined, carrying NO count (the operator's variant-B ruling, taken knowingly). ⚠ ALWAYS VISIBLE by ruling Q2 = (A) — a navigation control that vanishes at zero is the clutter this lane removes, and an empty 'Your invites' screen must stay reachable. So the count states this seal used to drive no longer exist to drive; what replaces them is the ONE state the link now has."
+   "text": "NA-0766 (`D-0043`) — ITEM 1 RE-AIM. The 0/1/n outstanding-count line is RETIRED from the Contacts pane: it becomes a plain blue text link reading exactly 'review' (NA-0778 re-aimed it to mockup 17: the word under the non-clickable 'Invitations' label), lowercase, never underlined, carrying NO count (the operator's variant-B ruling, taken knowingly). ⚠ ALWAYS VISIBLE by ruling Q2 = (A) — a navigation control that vanishes at zero is the clutter this lane removes, and an empty 'Your invites' screen must stay reachable. So the count states this seal used to drive no longer exist to drive; what replaces them is the ONE state the link now has."
   },
   {
    "op": "exec",
