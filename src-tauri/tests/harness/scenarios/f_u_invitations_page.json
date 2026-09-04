@@ -140,7 +140,12 @@
   },
   {
    "op": "note",
-   "text": "'redeem' lands DIRECTLY on the code-entry view: PAINTED BEFORE the surface-open scan is awaited (R39), so the chooser is hidden at the FIRST poll after the click -- on this profile the scan returns at its first guard, so this read bounds what it can prove and says so."
+   "text": "'redeem' lands DIRECTLY on the code-entry view: PAINTED BEFORE the surface-open scan is awaited (R39), so the chooser is hidden at the FIRST poll after the click -- on this profile the scan returns at its first guard, so this read bounds what it can prove and says so. NA-0778 (004b / RULING_NA0778_007 R47, the re-read's D-01): the link's OWN surface-open trigger is asserted through the scan's shipped marker, cleared before the click (the '+' click above already set it) and polled after the reads -- the same two halves the send arm uses; without the clear the poll could not discriminate."
+  },
+  {
+   "op": "exec",
+   "script": "var el=document.getElementById('redeem-overlay');delete el.dataset.finishWhy;return el.dataset.finishWhy||'cleared';",
+   "expect": "cleared"
   },
   {
    "op": "click",
@@ -166,6 +171,13 @@
    "prop": "className",
    "expect": "overlay",
    "poll": 1
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('redeem-overlay').dataset.finishWhy||'NONE';",
+   "expect": "surface_open",
+   "poll": 10,
+   "label": "the redeem link fired the surface-open trigger"
   },
   {
    "op": "click",
