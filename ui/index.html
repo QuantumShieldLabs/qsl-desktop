@@ -569,7 +569,14 @@
            gap. ITEM 9 — the private-note hint line beneath the field is DELETED: the
            parenthetical says the same thing, in the place the eye already is. -->
       <span class="field-label" id="invite-label-caption">Who is this invite for?&nbsp;&nbsp;&nbsp;&nbsp;<span class="field-note-accent">(stored only on this device)</span></span>
-      <input type="text" id="invite-label" class="full" autocomplete="off" spellcheck="false" placeholder="e.g. Dana" aria-labelledby="invite-label-caption">
+      <!-- NA-0778 (004d / RULING_NA0778_009 R61): the create field enforces the SAME grammar as the redeem
+           field (the engine's channel_label_ok: letters, digits, - _ #; no space) and the app's shipped name
+           cap of 32 (the onboarding, settings and rename fields' value -- the redeem field carries none).
+           Activate stays disabled while the typed name is illegal; the muted hint beneath the field shows
+           only then; what the user typed is NEVER rewritten. Without this, a name with a space minted an
+           invitation every accept of which failed at provisioning, silently, forever (candidate (e)). -->
+      <input type="text" id="invite-label" class="full" maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. Dana" aria-labelledby="invite-label-caption">
+      <p class="hint hidden" id="invite-label-hint">letters, numbers, - _ # only</p>
 
       <!-- The meta row sits ABOVE the code and names it: LEFT is "Invite for: <note>" when a note
            was given, else plain "Invite code"; RIGHT carries the expiry. The row, the box and the

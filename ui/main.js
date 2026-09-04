@@ -2832,8 +2832,16 @@ async function inviteRefresh() {
 //   already minted  -- ITEM 12: one invite per window.
 // ⚠ The emptiness test TRIMS first, so a field holding only spaces is empty. That matches how
 // the label has always been READ at mint time, so the gate and the mint cannot disagree.
+// NA-0778 (004d / RULING_NA0778_009 R61): the name term is the REDEEM side's grammar, not emptiness
+// alone -- the engine's channel_label_ok refuses a label outside [A-Za-z0-9_#-] at the INVITER's
+// accept (contacts_provision_from_invite), so a name with a space minted an invitation that could
+// never be accepted, silently. The one decision keeps its shape (four causes, one assignment); the
+// hint beneath the field shows only while the typed name is non-empty and illegal; the value the
+// user typed is never rewritten here.
 function inviteSyncActivate() {
-  const nameOk = byId("invite-label").value.trim() !== "";
+  const name = byId("invite-label").value.trim();
+  const nameOk = name !== "" && REDEEM_NAME_RE.test(name);
+  byId("invite-label-hint").classList.toggle("hidden", !(name !== "" && !nameOk));
   byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;
 }
 
@@ -2894,6 +2902,10 @@ async function adoptMinted(before) {
 byId("btn-invite-activate").addEventListener("click", async (ev) => {
   clearInviteErrors();
   const label = byId("invite-label").value.trim();
+  // R61, belt and braces (the redeem handler's own shape): the commit refuses an illegal name
+  // independently of the button's state -- a gate that lives only in the enable path is one
+  // keyboard event from being bypassed.
+  if (label === "" || !REDEEM_NAME_RE.test(label)) { inviteSyncActivate(); return; }
   const btn = byId("btn-invite-activate");
   // In-flight guard. Unconditional and deliberately so -- it is not a DECISION about whether the
   // control may be enabled, which is `inviteSyncActivate`'s single job, but a latch for the

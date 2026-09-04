@@ -348,9 +348,29 @@ fn na0766_the_name_gate_lives_in_the_single_assignment() {
         ),
         "the ONE decision carries all four causes, the name among them"
     );
+    // NA-0778 (004d / RULING_NA0778_009 R61): the name term is the REDEEM side's grammar -- the trim
+    // still comes first (whitespace alone is empty) and the SAME regex constant the redeem gate
+    // uses decides legality, so the two fields cannot drift apart. The typed value is never
+    // rewritten by the gate.
     assert!(
-        js.contains(r#"const nameOk = byId("invite-label").value.trim() !== "";"#),
-        "and the emptiness test TRIMS first, so whitespace alone is empty"
+        js.contains(r#"const name = byId("invite-label").value.trim();"#)
+            && js.contains(r#"const nameOk = name !== "" && REDEEM_NAME_RE.test(name);"#),
+        "the name term trims first and applies the redeem side's grammar through the shared constant"
+    );
+    let gate = js
+        .find("function inviteSyncActivate() {")
+        .expect("the one gate exists");
+    let gate_body = &js[gate..];
+    let gate_end = gate_body.find("\n}\n").expect("it ends");
+    assert!(
+        !gate_body[..gate_end].contains(r#"byId("invite-label").value ="#),
+        "the gate never rewrites what the user typed"
+    );
+    assert!(
+        js.contains(
+            r#"if (label === "" || !REDEEM_NAME_RE.test(label)) { inviteSyncActivate(); return; }"#
+        ),
+        "and the commit handler refuses an illegal name independently of the button"
     );
     assert_eq!(
         js.matches(r#"byId("btn-invite-activate").disabled ="#)

@@ -723,7 +723,26 @@
   },
   {
    "op": "note",
-   "text": "⚠ AND NO ERROR TEXT APPEARS FOR THE NAME CAUSE — item 10 says the disabled control is the WHOLE enforcement. ⚠ MY FIRST FORM OF THIS STEP ASSERTED THAT NO HINT WAS VISIBLE AND THE INSTRUMENT CAUGHT IT: the no-relay hint IS legitimately on screen here, because the harness genuinely has no relay (`ENG-0226`), and that is a DIFFERENT cause with a message of its own. The property actually ordered is that the NAME cause adds nothing — so it is measured as what it is: the VISIBLE SET must be identical with an empty name and with a valid one. Corrected against the measurement rather than guessed a second time."
+   "text": "NA-0778 (004d / RULING_NA0778_009 R61) -- THE CREATE FIELD ENFORCES THE REDEEM SIDE's GRAMMAR. A name with a space minted an invitation every accept of which failed at the inviter's provisioning (the engine's channel_label_ok), silently, forever. Now: 'Flight B' -> Activate disabled and the muted hint visible, the typed value UNTOUCHED; 'Flight-B' -> enabled, the hint hidden; the field carries the app's 32-character cap."
+  },
+  {
+   "op": "exec",
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;var i=document.getElementById('invite-label');i.value='Flight B';inviteSyncActivate();return JSON.stringify({activate:document.getElementById('btn-invite-activate').disabled,hint:document.getElementById('invite-label-hint').className,hintText:document.getElementById('invite-label-hint').textContent,value:i.value});",
+   "expect": "{\"activate\":true,\"hint\":\"hint\",\"hintText\":\"letters, numbers, - _ # only\",\"value\":\"Flight B\"}"
+  },
+  {
+   "op": "exec",
+   "script": "var i=document.getElementById('invite-label');i.value='Flight-B';inviteSyncActivate();return JSON.stringify({activate:document.getElementById('btn-invite-activate').disabled,hint:document.getElementById('invite-label-hint').className,value:i.value});",
+   "expect": "{\"activate\":false,\"hint\":\"hint hidden\",\"value\":\"Flight-B\"}"
+  },
+  {
+   "op": "exec",
+   "script": "var i=document.getElementById('invite-label');i.value='Dana K';inviteSyncActivate();var a=document.getElementById('btn-invite-activate').disabled;i.value='Dana';inviteSyncActivate();return JSON.stringify({withSpace:a,legal:document.getElementById('btn-invite-activate').disabled,maxLength:i.maxLength,hint:document.getElementById('invite-label-hint').className});",
+   "expect": "{\"withSpace\":true,\"legal\":false,\"maxLength\":32,\"hint\":\"hint hidden\"}"
+  },
+  {
+   "op": "note",
+   "text": "⚠ NO ERROR TEXT FOR THE EMPTY-NAME CAUSE -- item 10 says the disabled control is the WHOLE enforcement there. NA-0778 (004d / RULING_NA0778_009 R61) adds the ILLEGAL-name cause, which DOES carry a muted hint: see the rows above. ⚠ AND NO ERROR TEXT APPEARS FOR THE NAME CAUSE — item 10 says the disabled control is the WHOLE enforcement. ⚠ MY FIRST FORM OF THIS STEP ASSERTED THAT NO HINT WAS VISIBLE AND THE INSTRUMENT CAUGHT IT: the no-relay hint IS legitimately on screen here, because the harness genuinely has no relay (`ENG-0226`), and that is a DIFFERENT cause with a message of its own. The property actually ordered is that the NAME cause adds nothing — so it is measured as what it is: the VISIBLE SET must be identical with an empty name and with a valid one. Corrected against the measurement rather than guessed a second time."
   },
   {
    "op": "exec",
