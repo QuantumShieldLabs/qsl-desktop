@@ -942,7 +942,6 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
 .invitations-actions { text-align: right; white-space: nowrap; }
 .invitations-actions a.rm { font-size: var(--fs-body); }
 .invitations-empty { padding: var(--sp-4); border: 1px dashed var(--border); border-radius: var(--radius); color: var(--fg-secondary); font-size: var(--fs-body); max-width: 60ch; margin: 0; }
-.invitations-empty a.rm { font-size: var(--fs-body); }
 /* NA-0778 (004c / R53): the group heading's own link, plain weight beside the bold word. */
 .invitations-head-link { font-weight: 400; color: var(--fg-secondary); }
 .invitations-head-link a.rm { font-size: var(--fs-section); }

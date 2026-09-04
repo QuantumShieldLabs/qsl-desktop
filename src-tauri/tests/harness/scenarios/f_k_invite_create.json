@@ -760,7 +760,7 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-AQHJuXa0gk6i0eK0m24Au9eZAAAAAGqT0t0AG2h0dHBzOi8vcmVsYXkuZXhhbXBsZS5uZXQ6ODQ0Mwa');return document.getElementById('invite-code').classList.contains('minted')?'minted':'not-minted';",
+   "script": "inviteAdoptCode('QSLI-1-AQHJuXa0gk6i0eK0m24Au9eZAAAAAGqT0t0AG2h0dHBzOi8vcmVsYXkuZXhhbXBsZS5uZXQ6ODQ0Mwa', inviteGen);return document.getElementById('invite-code').classList.contains('minted')?'minted':'not-minted';",
    "expect": "minted"
   },
   {
@@ -811,7 +811,7 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-CAPBOUNDARYTESTCODE');return 'adopted';",
+   "script": "inviteAdoptCode('QSLI-1-CAPBOUNDARYTESTCODE', inviteGen);return 'adopted';",
    "expect": "adopted"
   },
   {

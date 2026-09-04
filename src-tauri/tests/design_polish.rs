@@ -1849,11 +1849,13 @@ fn create_is_disabled_when_no_relay_is_configured() {
         body.contains("inviteSyncActivate();"),
         "the gate routes through the ONE decision"
     );
+    // NA-0778 (004f / RULING_NA0778_011 R74 (b)): a FIFTH cause, the mint in flight -- the decision
+    // still disables on every cause it had; the equality stays EXACT.
     assert!(
         js.contains(
-            r#"  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;"#
+            r#"  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted || inviteInFlight;"#
         ),
-        "and that decision DISABLES create on all four causes"
+        "and that decision DISABLES create on all five causes"
     );
     assert!(
         body.contains(r#"invoke("relay_config_get")"#),
@@ -3267,13 +3269,13 @@ fn na0765_both_modal_flows_have_a_visible_way_out() {
     // flight ruling; the needle returns to the ONE dismissal, which is also Escape's and the scrim's.
     assert!(
         js.contains(
-            r#"byId("btn-invite-close").addEventListener("click", () => closeInviteModal());"#
+            r#"byId("btn-invite-close").addEventListener("click", () => inviteUserClose());"#
         ),
         "the invite Close reuses that overlay's one dismissal, which is also Escape's"
     );
     assert!(
-        js.contains(r#"if (ev.key === "Escape") closeInviteModal();"#)
-            && js.contains(r#"if (ev.target === byId("invite-overlay")) closeInviteModal();"#),
+        js.contains(r#"if (ev.key === "Escape") inviteUserClose();"#)
+            && js.contains(r#"if (ev.target === byId("invite-overlay")) inviteUserClose();"#),
         "Escape and the scrim take the same dismissal"
     );
     assert!(

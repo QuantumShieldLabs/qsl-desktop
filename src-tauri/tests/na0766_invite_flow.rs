@@ -170,7 +170,7 @@ fn na0766_i1_one_exit_per_modal_by_element() {
 fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
     let js = ui_file("main.js");
     for (overlay, closer) in [
-        ("invite-overlay", "closeInviteModal()"),
+        ("invite-overlay", "inviteUserClose()"),
         ("redeem-overlay", "closeRedeemModal()"),
     ] {
         let scrim = format!(
@@ -182,22 +182,57 @@ fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
         );
     }
     // NA-0778 (004c / RULING_NA0778_008 R54): the close confirmation of 004a was RETIRED by the operator's
-    // flight ruling, and the needles return to the ONE closer -- Escape, the scrim and Close reach
-    // `closeInviteModal()` directly, as they did before 004. What 004a added is kept where it still
-    // holds: a re-open of a live mint (the keyboard's route behind the scrim) is a NO-OP, never a
-    // reset -- pinned below as the guard's first statement.
+    // flight ruling, and the needles return to the ONE closer. NA-0778 (004f / RULING_NA0778_011 R74 (c),
+    // RULING_NA0778_012 R79): the three user gestures reach it through ONE gesture closer,
+    // `inviteUserClose()` -- a no-op while the window is hidden or a mint is in flight, then
+    // `closeInviteModal()`, then the R53 page refresh (moved OUT of the structural closer, which is
+    // also show()'s). What 004a added is kept where it still holds: a re-open of a live mint (the
+    // keyboard's route behind the scrim) is a NO-OP, never a reset -- pinned below as the guard's
+    // first statement, now the ONE predicate `inviteLive()` that both redeem openers share (R74 (a)).
     assert!(
-        js.contains("if (ev.key === \"Escape\") closeInviteModal();"),
-        "Escape still closes the invite overlay, through the one closer"
+        js.contains("if (ev.key === \"Escape\") inviteUserClose();"),
+        "Escape still closes the invite overlay, through the one gesture closer"
+    );
+    let gesture = js
+        .find("function inviteUserClose() {")
+        .expect("the gesture closer exists");
+    let gesture_body = &js[gesture..gesture + 400];
+    assert!(
+        gesture_body.contains("if (inviteInFlight) return;")
+            && gesture_body.contains("closeInviteModal();")
+            && gesture_body.contains("refreshInvitationsPane();"),
+        "the gesture closer is a no-op in flight, reaches the ONE closer, then refreshes the page"
+    );
+    let closer = js
+        .find("function closeInviteModal() {")
+        .expect("the one closer exists");
+    let closer_body = &js[closer..js[closer..].find("\n}\n").expect("the closer ends") + closer];
+    assert!(
+        !closer_body.contains("refreshInvitationsPane"),
+        "the structural closer (also show()'s) never calls into the vault: the refresh is the gesture's"
+    );
+    assert!(
+        js.matches("if (inviteLive()) return;").count() == 3,
+        "the ONE predicate guards exactly three openers: the mint's re-open and both redeem openers"
+    );
+    assert!(
+        js.contains("return (inviteMinted || inviteInFlight) && !byId(\"invite-overlay\").classList.contains(\"hidden\");"),
+        "inviteLive() is a code on screen OR a mint in flight, in an open window"
+    );
+    assert!(
+        js.contains("if (gen !== inviteGen || byId(\"invite-overlay\").classList.contains(\"hidden\")) return false;"),
+        "inviteAdoptCode is generation-checked: a stale generation or a hidden overlay discards the code"
+    );
+    assert!(
+        js.contains("if (inviteInFlight) return; // NA-0778 (004f / R74 (b)): ONE mint at a time"),
+        "the Activate handler refuses a second mint in flight, as its first statement"
     );
     let open = js
         .find("async function openInviteModal() {")
         .expect("the mint opener exists");
     let open_body = &js[open..open + 400];
     assert!(
-        open_body.contains(
-            r#"if (inviteMinted && !byId("invite-overlay").classList.contains("hidden")) return;"#
-        ),
+        open_body.contains(r#"if (inviteLive()) return;"#),
         "a re-open while a code is on screen is a NO-OP: the open mint stays exactly as it is"
     );
     assert!(
@@ -211,9 +246,9 @@ fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
     // The visible exits reuse the SAME closers, never a second one.
     assert!(
         js.contains(
-            r#"byId("btn-invite-close").addEventListener("click", () => closeInviteModal());"#
+            r#"byId("btn-invite-close").addEventListener("click", () => inviteUserClose());"#
         ),
-        "the invite Close reuses that overlay's one dismissal"
+        "the invite Close reuses that overlay's one gesture closer"
     );
     assert!(
         js.contains(r#"byId("btn-redeem-close3").addEventListener("click", closeRedeemModal);"#),
@@ -344,9 +379,9 @@ fn na0766_the_name_gate_lives_in_the_single_assignment() {
     let js = ui_file("main.js");
     assert!(
         js.contains(
-            r#"  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;"#
+            r#"  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted || inviteInFlight;"#
         ),
-        "the ONE decision carries all four causes, the name among them"
+        "the ONE decision carries all five causes (004f: the mint in flight), the name among them"
     );
     // NA-0778 (004d / RULING_NA0778_009 R61): the name term is the REDEEM side's grammar -- the trim
     // still comes first (whitespace alone is empty) and the SAME regex constant the redeem gate

@@ -280,7 +280,7 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');return document.getElementById('invite-code').textContent;",
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE', inviteGen);return document.getElementById('invite-code').textContent;",
    "expect": "QSLI-1-NA0778SHOWONCETESTCODE"
   },
   {
@@ -316,7 +316,7 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');return document.getElementById('invite-code').textContent;",
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE', inviteGen);return document.getElementById('invite-code').textContent;",
    "expect": "QSLI-1-NA0778SHOWONCETESTCODE"
   },
   {
@@ -357,7 +357,7 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');return document.getElementById('invite-code').textContent;",
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE', inviteGen);return document.getElementById('invite-code').textContent;",
    "expect": "QSLI-1-NA0778SHOWONCETESTCODE"
   },
   {
@@ -393,12 +393,12 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE');var ov=document.getElementById('invite-overlay');ov.dispatchEvent(new MouseEvent('click',{bubbles:true}));return ov.className+'|'+document.getElementById('invite-code').textContent;",
+   "script": "inviteAdoptCode('QSLI-1-NA0778SHOWONCETESTCODE', inviteGen);var ov=document.getElementById('invite-overlay');ov.dispatchEvent(new MouseEvent('click',{bubbles:true}));return ov.className+'|'+document.getElementById('invite-code').textContent;",
    "expect": "overlay hidden|Your invite code will appear here after you activate."
   },
   {
    "op": "note",
-   "text": "A SCREEN TRANSITION closes UNCONDITIONALLY -- the autolock path (`show('scr-unlock')`) must never wait on the question with a live code on screen. Driven through `show()` itself and returned to main."
+   "text": "A SCREEN TRANSITION closes UNCONDITIONALLY -- the autolock path (`show('scr-unlock')`) closes the mint through the structural closer with no question and no refresh (the question was retired at 004c / R54; the refresh moved to the user gestures at 004f / R74 (c)). Driven through `show()` itself and returned to main."
   },
   {
    "op": "exec",
@@ -447,7 +447,7 @@
   },
   {
    "op": "note",
-   "text": "A fresh profile has sent nothing: the empty state, VERBATIM from the mockup, with 'Create one from Contacts' as a link; the Received group ships WITH ITS EXPLANATION (no readable record of redeemed codes exists -- STOP 003 E-a); the nudge is hidden with no contacts."
+   "text": "A fresh profile has sent nothing: the Sent group's one-line empty state (004c / R53: no page-level link, no explanation) with the group heading's own 'send invitation' link shown only while the group is empty; the Received group ships WITH ITS EXPLANATION (no readable record of redeemed codes exists -- STOP 003 E-a); the nudge is hidden with no contacts."
   },
   {
    "op": "read_text",
@@ -773,6 +773,15 @@
    "label": "the page's send link fired the surface-open trigger"
   },
   {
+   "op": "note",
+   "text": "004f / R74 (c): a sentinel waiting row is planted THROUGH THE RENDERER before Close; the gesture's refresh re-reads the empty profile and the row must be GONE. Red arm: the refresh removed from inviteUserClose -> the sentinel survives."
+  },
+  {
+   "op": "exec",
+   "script": "invitationsRows=[{invite_id:'SENTINEL-004F',label:'Sentinel',state:'active',created:Math.floor(Date.now()/1000)-60,expiry:Math.floor(Date.now()/1000)+3600,revocable:true}];invitationsRender();return String(document.querySelectorAll('#invitations-sent-rows tr').length)+'|'+(document.getElementById('invitations-sent-empty').classList.contains('hidden')?'hidden':'shown');",
+   "expect": "1|hidden"
+  },
+  {
    "op": "click",
    "sel": "#btn-invite-close"
   },
@@ -785,10 +794,10 @@
   },
   {
    "op": "poll_exec",
-   "script": "return document.getElementById('invitations-body').className;",
-   "expect": "pane-form",
+   "script": "return String(document.querySelectorAll('#invitations-sent-rows tr').length)+'|'+(document.getElementById('invitations-sent-empty').classList.contains('hidden')?'hidden':'shown');",
+   "expect": "0|shown",
    "poll": 10,
-   "label": "the page refreshed after the mint window closed"
+   "label": "the Close gesture refreshed the page: the planted sentinel row is gone (004f / R74 (c); the second reader's F2-16 made red-capable)"
   },
   {
    "op": "click",
@@ -825,6 +834,188 @@
    "prop": "className",
    "expect": "overlay hidden",
    "poll": 5
+  },
+  {
+   "op": "note",
+   "text": "004f / R74 (a): while a mint is LIVE (a code on screen, or in flight, in an open window) NO other opener does anything -- both redeem openers and the page's 'redeem invitation' link refuse; Escape then closes only the mint. Red arm: the refusal removed from the openers -> the redeem overlay shows over the live mint."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invitations-send"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "exec",
+   "script": "inviteAdoptCode('QSLI-1-NA0778LIVEMINTTESTCODE', inviteGen);openRedeemEntry();return document.getElementById('redeem-overlay').className+'|'+document.getElementById('invite-code').textContent;",
+   "expect": "overlay hidden|QSLI-1-NA0778LIVEMINTTESTCODE",
+   "label": "openRedeemEntry refused while a mint is live; the code intact"
+  },
+  {
+   "op": "exec",
+   "script": "openRedeemChooser();return document.getElementById('redeem-overlay').className;",
+   "expect": "overlay hidden",
+   "label": "openRedeemChooser refused while a mint is live"
+  },
+  {
+   "op": "exec",
+   "script": "document.getElementById('btn-invitations-redeem').click();return document.getElementById('redeem-overlay').className+'|'+document.getElementById('invite-code').textContent;",
+   "expect": "overlay hidden|QSLI-1-NA0778LIVEMINTTESTCODE",
+   "label": "the page's redeem link refused while a mint is live"
+  },
+  {
+   "op": "exec",
+   "script": "document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));return document.getElementById('invite-overlay').className+'|'+document.getElementById('redeem-overlay').className+'|'+document.getElementById('invite-code').textContent;",
+   "expect": "overlay hidden|overlay hidden|Your invite code will appear here after you activate.",
+   "label": "one Escape closes only the mint (the user's own gesture on it); the redeem overlay was never open"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the page rendered again after the gesture's refresh"
+  },
+  {
+   "op": "note",
+   "text": "004f / R74 (b), R79: a mint IN FLIGHT (the flag set by exec, as the Activate click sets it) makes the re-open a no-op (the field keeps its text), refuses a second Activate (no error box, no invoke), and makes Close, Escape and the scrim no-ops (the window stays open). Red arms: the flag dropped from inviteLive() -> the re-open clears the field; the in-flight return dropped from inviteUserClose -> Close closes the window in flight."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invitations-send"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "type",
+   "sel": "#invite-label",
+   "text": "InFlight"
+  },
+  {
+   "op": "exec",
+   "script": "inviteInFlight=true;openInviteModal();return document.getElementById('invite-label').value+'|'+document.getElementById('invite-overlay').className;",
+   "expect": "InFlight|overlay",
+   "label": "a re-open during the mint's round trip is a NO-OP: the field keeps its text"
+  },
+  {
+   "op": "exec",
+   "script": "document.getElementById('btn-invite-activate').disabled=false;document.getElementById('btn-invite-activate').click();return 'clicked';",
+   "expect": "clicked"
+  },
+  {
+   "op": "exec",
+   "script": "return document.getElementById('invite-error-mint').className+'|'+document.getElementById('invite-label').value;",
+   "expect": "hidden|InFlight",
+   "label": "a second Activate in flight is refused: no error box (no invoke ran), the field untouched"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 2,
+   "label": "Close during the round trip is a NO-OP: the window stays open"
+  },
+  {
+   "op": "exec",
+   "script": "document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));return document.getElementById('invite-overlay').className;",
+   "expect": "overlay",
+   "label": "Escape during the round trip is a NO-OP"
+  },
+  {
+   "op": "exec",
+   "script": "var ov=document.getElementById('invite-overlay');ov.dispatchEvent(new MouseEvent('click',{bubbles:true}));return ov.className;",
+   "expect": "overlay",
+   "label": "the scrim during the round trip is a NO-OP"
+  },
+  {
+   "op": "exec",
+   "script": "inviteInFlight=false;return String(inviteInFlight);",
+   "expect": "false"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5,
+   "label": "with the flight settled, Close closes"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the page rendered again after the gesture's refresh"
+  },
+  {
+   "op": "note",
+   "text": "R79: inviteAdoptCode is GENERATION-CHECKED -- an adopt with the overlay hidden, or under a stale generation, writes NOTHING into the slot and returns false. Red arm: the check removed -> the hidden slot carries the code."
+  },
+  {
+   "op": "exec",
+   "script": "var r=inviteAdoptCode('QSLI-1-NA0778STALECODE', inviteGen);return String(r)+'|'+document.getElementById('invite-overlay').className+'|'+document.getElementById('invite-code').textContent;",
+   "expect": "false|overlay hidden|Your invite code will appear here after you activate.",
+   "label": "an adopt with the overlay HIDDEN writes nothing into the slot"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invitations-send"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay",
+   "poll": 5
+  },
+  {
+   "op": "exec",
+   "script": "var r=inviteAdoptCode('QSLI-1-NA0778STALECODE', inviteGen-1);return String(r)+'|'+document.getElementById('invite-code').textContent+'|'+String(inviteMinted);",
+   "expect": "false|Your invite code will appear here after you activate.|false",
+   "label": "an adopt under a STALE generation writes nothing and latches nothing"
+  },
+  {
+   "op": "exec",
+   "script": "var r=inviteAdoptCode('QSLI-1-NA0778LIVECODE', inviteGen);return String(r)+'|'+document.getElementById('invite-code').textContent+'|'+String(inviteMinted);",
+   "expect": "true|QSLI-1-NA0778LIVECODE|true",
+   "label": "the live generation in the open window adopts (the positive half)"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-invite-close"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#invite-overlay",
+   "prop": "className",
+   "expect": "overlay hidden",
+   "poll": 5
+  },
+  {
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the page rendered again after the gesture's refresh"
   },
   {
    "op": "teardown"

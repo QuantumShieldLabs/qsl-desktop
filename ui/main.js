@@ -2494,6 +2494,16 @@ const INVITE_SOFT_CAP = 10;
 // deliberate act rather than a second click.
 const INVITE_SLOT_EMPTY = "Your invite code will appear here after you activate.";
 let inviteMinted = false;
+// NA-0778 (004f / RULING_NA0778_011 R74 (b), RULING_NA0778_012 R79): a mint IN FLIGHT -- set at the
+// Activate click after the label gate, cleared when the promise settles (adopt or failure). While it
+// is set the openers and the three user closers are no-ops (the code always lands in an OPEN window)
+// and Activate refuses a second mint. Bounded by the client's own timeout on the round trip.
+let inviteInFlight = false;
+// The window's GENERATION: advances at every open and every close. inviteAdoptCode writes only when the
+// generation the mint started under is still the live one AND the window is open; otherwise the code
+// is DISCARDED -- never written into a hidden node. The invitation then exists on the page as
+// "Waiting for reply", where Revoke is one click.
+let inviteGen = 0;
 // The two conditions that are FIXED for the lifetime of one open window. `capFull` is deliberately
 // NOT recomputed after a mint (ruling Q4 = A): recomputing it is what let the cap line APPEAR on
 // activation at the tenth invite, which is the one boundary where the window used to move.
@@ -2699,15 +2709,16 @@ function closeInviteModal() {
   const ov = byId("invite-overlay");
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
+  inviteGen += 1;
   inviteResetSlot();
-  // NA-0778 (004c / R53): a mint opened from the Invitations page (its "send invitation" link) closes
-  // back onto that page, which refreshes so the new row is listed. Reached only when the window WAS
-  // open (the early return above), so a screen transition without a mint costs nothing.
-  if (currentScreen === "scr-settings" && !byId("pane-invitations").classList.contains("hidden")) refreshInvitationsPane();
+  // NA-0778 (004f / R74 (c)): the R53 page refresh lives in inviteUserClose(), the three user gestures'
+  // closer, NOT here -- this structural closer is also show()'s, and a lock or a screen transition
+  // must never call into a sealed vault.
   byId("invite-label").value = "";
   byId("invite-label").readOnly = false;
   inviteId = null;
   inviteMinted = false;
+  inviteSyncActivate(); // NA-0778 (004f / R74 (d)): the hint follows the cleared field; nothing flashes on the next open
   clearInviteErrors();
   inviteShowMint();
 }
@@ -2724,7 +2735,12 @@ function closeInviteModal() {
 // gui-driver drives the PRODUCT'S OWN CODE with a synthetic code -- the same idiom `f_n` already
 // uses to reach the contacts render -- instead of a test re-implementing what the product does,
 // which would prove only that the test agrees with itself.
-function inviteAdoptCode(code) {
+function inviteAdoptCode(code, gen) {
+  // NA-0778 (004f / RULING_NA0778_012 R79): GENERATION-CHECKED. The code lands only in the window it
+  // was minted in, and only while that window is open. A stale generation (the window closed, or
+  // closed and re-opened, during the round trip) or a hidden overlay discards it: nothing is written
+  // into a hidden node (the first reader's F-01).
+  if (gen !== inviteGen || byId("invite-overlay").classList.contains("hidden")) return false;
   // ITEM 7: the code lands IN the slot that was already on screen. The box swaps `.empty` for
   // `.minted` -- a colour change, not a layout one, which is what lets item 6 hold.
   const box = byId("invite-code");
@@ -2742,6 +2758,7 @@ function inviteAdoptCode(code) {
   // change anything.
   byId("invite-label").readOnly = true;
   inviteSyncActivate();
+  return true;
 }
 
 function inviteResetSlot() {
@@ -2842,7 +2859,7 @@ function inviteSyncActivate() {
   const name = byId("invite-label").value.trim();
   const nameOk = name !== "" && REDEEM_NAME_RE.test(name);
   byId("invite-label-hint").classList.toggle("hidden", !(name !== "" && !nameOk));
-  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;
+  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted || inviteInFlight;
 }
 
 // NA-0778 (004c / RULING_NA0778_008 R54, completing R40): A LIVE MINT IS NEVER SILENTLY DISCARDED, and
@@ -2850,8 +2867,18 @@ function inviteSyncActivate() {
 // a re-open while a code is on screen (the keyboard's route behind the scrim) leaves the open mint
 // exactly as it is -- no reset, no question. Comments stay ABOVE this function: a pin reads a fixed
 // 400-byte window after its signature (D-05).
+// NA-0778 (004f / RULING_NA0778_011 R74 (a)): ONE predicate for "a mint is live" -- a code on screen
+// or a mint in flight, in a window that is open. It guards the no-op re-open below AND both redeem
+// openers: while a code is on screen NO other opener does anything -- R54's principle extended to
+// the second window (the second reader's F2-05: a redeem overlay stacked over a live mint let one
+// Escape discard the code).
+function inviteLive() {
+  return (inviteMinted || inviteInFlight) && !byId("invite-overlay").classList.contains("hidden");
+}
+
 async function openInviteModal() {
-  if (inviteMinted && !byId("invite-overlay").classList.contains("hidden")) return;
+  if (inviteLive()) return;
+  inviteGen += 1;
   clearInviteErrors();
   inviteEnterMintFresh();
   byId("btn-invite-activate").textContent = HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate";
@@ -2900,6 +2927,7 @@ async function adoptMinted(before) {
 }
 
 byId("btn-invite-activate").addEventListener("click", async (ev) => {
+  if (inviteInFlight) return; // NA-0778 (004f / R74 (b)): ONE mint at a time -- never a second invite_create in flight
   clearInviteErrors();
   const label = byId("invite-label").value.trim();
   // R61, belt and braces (the redeem handler's own shape): the commit refuses an illegal name
@@ -2907,6 +2935,8 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
   // keyboard event from being bypassed.
   if (label === "" || !REDEEM_NAME_RE.test(label)) { inviteSyncActivate(); return; }
   const btn = byId("btn-invite-activate");
+  inviteInFlight = true; // NA-0778 (004f / R74 (b)): in flight from here until the promise settles
+  const gen = inviteGen;
   // In-flight guard. Unconditional and deliberately so -- it is not a DECISION about whether the
   // control may be enabled, which is `inviteSyncActivate`'s single job, but a latch for the
   // duration of one call.
@@ -2947,11 +2977,13 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
     // A failed mint burns nothing, so the window returns to whatever the ONE decision says --
     // never to a bare `true`, which would have re-enabled it with an empty name.
     inviteSyncActivate();
+    inviteInFlight = false;
     renderInviteError("invite-error-mint", e && e.code, e && e.detail, "create");
     await inviteRefresh();
     return;
   }
-  inviteAdoptCode(code);
+  inviteInFlight = false;
+  if (!inviteAdoptCode(code, gen)) return; // the window is gone (R79): discarded; the invitation is on the page
   // v3: on success the link itself is the affordance and no note is needed; the note exists
   // only to say when the single gesture could NOT copy, and it points at the link.
   const note = byId("invite-copy-note");
@@ -3160,13 +3192,26 @@ railLinkKeys("btn-contacts-send");
 // NA-0778 (004c / RULING_NA0778_008 R54, the operator's flight ruling): THERE IS NO CLOSE CONFIRMATION.
 // After a mint, Close, Escape and the scrim simply close the window through the ONE closer, as they
 // did before 004. The Director's note stands in the record (an accidental close loses an unshared
-// code); the operator flew it and ruled.
-byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
+// code); the operator flew it and ruled. 004f adds the in-flight no-op and the page refresh at the
+// gesture (below), not at the closer.
+// NA-0778 (004f / RULING_NA0778_011 R74 (c), RULING_NA0778_012 R79): the THREE user gestures -- Close,
+// Escape, the scrim -- share this one gesture closer. A no-op while the window is hidden (Escape fires
+// everywhere) or a mint is in flight (the code must land in an OPEN window; the round trip is bounded).
+// Otherwise the ONE closer, THEN the R53 page refresh -- which lives here and not in closeInviteModal
+// so that show()'s structural close during a lock or a screen transition never calls a sealed vault.
+function inviteUserClose() {
+  const ov = byId("invite-overlay");
+  if (!ov || ov.classList.contains("hidden")) return;
+  if (inviteInFlight) return;
+  closeInviteModal();
+  if (currentScreen === "scr-settings" && !byId("pane-invitations").classList.contains("hidden")) refreshInvitationsPane();
+}
+byId("btn-invite-close").addEventListener("click", () => inviteUserClose());
 byId("invite-overlay").addEventListener("click", (ev) => {
-  if (ev.target === byId("invite-overlay")) closeInviteModal();
+  if (ev.target === byId("invite-overlay")) inviteUserClose();
 });
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") closeInviteModal();
+  if (ev.key === "Escape") inviteUserClose();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
@@ -3272,6 +3317,7 @@ function redeemShowSecurityFailure(code) {
 // pin reads `openRedeemChooser()` by its literal signature and requires the surface-open trigger
 // inside that body; the two share four lines by design and fire the same trigger AFTER painting.
 async function openRedeemEntry() {
+  if (inviteLive()) return; // NA-0778 (004f / R74 (a)): refused while a mint is live
   redeemClearError();
   byId("redeem-code").value = "";
   byId("redeem-name").value = "";
@@ -3282,6 +3328,7 @@ async function openRedeemEntry() {
 }
 
 async function openRedeemChooser() {
+  if (inviteLive()) return; // NA-0778 (004f / R74 (a)): refused while a mint is live
   redeemClearError();
   byId("redeem-code").value = "";
   byId("redeem-name").value = "";
