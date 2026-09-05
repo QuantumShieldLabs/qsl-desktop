@@ -727,18 +727,21 @@
   },
   {
    "op": "exec",
-   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;var i=document.getElementById('invite-label');i.value='Flight B';inviteSyncActivate();return JSON.stringify({activate:document.getElementById('btn-invite-activate').disabled,hint:document.getElementById('invite-label-hint').className,hintText:document.getElementById('invite-label-hint').textContent,value:i.value});",
-   "expect": "{\"activate\":true,\"hint\":\"hint\",\"hintText\":\"letters, numbers, - _ # only\",\"value\":\"Flight B\"}"
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;inviteInFlight=false;var i=document.getElementById('invite-label');i.value='Flight B';inviteSyncActivate();return JSON.stringify({noRelay:inviteNoRelay,capFull:inviteCapFull,minted:inviteMinted,inFlight:inviteInFlight,value:i.value,activate:document.getElementById('btn-invite-activate').disabled,hint:document.getElementById('invite-label-hint').className,hintText:document.getElementById('invite-label-hint').textContent});",
+   "expect": "{\"noRelay\":false,\"capFull\":false,\"minted\":false,\"inFlight\":false,\"value\":\"Flight B\",\"activate\":true,\"hint\":\"hint\",\"hintText\":\"letters, numbers, - _ # only\"}",
+   "label": "004i: a spaced name -- every gate input forced in the same script; Activate disabled by the NAME alone, the hint shown"
   },
   {
    "op": "exec",
-   "script": "var i=document.getElementById('invite-label');i.value='Flight-B';inviteSyncActivate();return JSON.stringify({activate:document.getElementById('btn-invite-activate').disabled,hint:document.getElementById('invite-label-hint').className,value:i.value});",
-   "expect": "{\"activate\":false,\"hint\":\"hint hidden\",\"value\":\"Flight-B\"}"
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;inviteInFlight=false;var i=document.getElementById('invite-label');i.value='Flight-B';inviteSyncActivate();return JSON.stringify({noRelay:inviteNoRelay,capFull:inviteCapFull,minted:inviteMinted,inFlight:inviteInFlight,value:i.value,activate:document.getElementById('btn-invite-activate').disabled,hint:document.getElementById('invite-label-hint').className});",
+   "expect": "{\"noRelay\":false,\"capFull\":false,\"minted\":false,\"inFlight\":false,\"value\":\"Flight-B\",\"activate\":false,\"hint\":\"hint hidden\"}",
+   "label": "004i: a legal name -- every gate input forced in the same script; Activate enabled, the hint hidden (the CI race of 33940568140 closed: a failure now names its term)"
   },
   {
    "op": "exec",
-   "script": "var i=document.getElementById('invite-label');i.value='Dana K';inviteSyncActivate();var a=document.getElementById('btn-invite-activate').disabled;i.value='Dana';inviteSyncActivate();return JSON.stringify({withSpace:a,legal:document.getElementById('btn-invite-activate').disabled,maxLength:i.maxLength,hint:document.getElementById('invite-label-hint').className});",
-   "expect": "{\"withSpace\":true,\"legal\":false,\"maxLength\":32,\"hint\":\"hint hidden\"}"
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;inviteInFlight=false;var i=document.getElementById('invite-label');i.value='Dana K';inviteSyncActivate();var a=document.getElementById('btn-invite-activate').disabled;i.value='Dana';inviteSyncActivate();return JSON.stringify({noRelay:inviteNoRelay,capFull:inviteCapFull,minted:inviteMinted,inFlight:inviteInFlight,value:i.value,withSpace:a,legal:document.getElementById('btn-invite-activate').disabled,maxLength:i.maxLength,hint:document.getElementById('invite-label-hint').className});",
+   "expect": "{\"noRelay\":false,\"capFull\":false,\"minted\":false,\"inFlight\":false,\"value\":\"Dana\",\"withSpace\":true,\"legal\":false,\"maxLength\":32,\"hint\":\"hint hidden\"}",
+   "label": "004i: a space then its removal, every gate input forced; the field's cap is the app's 32"
   },
   {
    "op": "note",
