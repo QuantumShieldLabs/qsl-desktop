@@ -923,9 +923,10 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
    pane's width cap is lifted so a wider window gives the table room; the form cap the settings
    window derives from is untouched. */
 #pane-invitations, #pane-invitations .pane-form { max-width: none; }
-.invitations-nudge { border-left: 3px solid var(--accent-fill); }
 .invitations-group-head { display: flex; align-items: baseline; gap: var(--sp-3); margin: 0 0 var(--sp-3); }
 .invitations-group-head h3 { margin: 0; }
+/* NA-0778 (004h / RULING_NA0778_014 R91, the operator's final flight ruling): "a little more padding above Sent" -- the first group head only, from the spacing tokens. */
+#invitations-body > .pane-sect:first-child > .invitations-group-head { padding-top: var(--sp-4); }
 .invitations-filters { display: flex; gap: var(--sp-1); margin-left: auto; }
 .invitations-chip { padding: 0 var(--sp-x10); border-radius: var(--radius); border: 1px solid var(--border); color: var(--fg-secondary); font-size: var(--fs-hint); line-height: 20px; cursor: pointer; }
 .invitations-chip.on { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent-text); }

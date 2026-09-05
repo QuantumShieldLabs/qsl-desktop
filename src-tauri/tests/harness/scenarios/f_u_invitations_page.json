@@ -469,11 +469,10 @@
    "literal": "This app doesn't yet keep a list of the codes you've redeemed. A contact you added with a code is in your Contacts list."
   },
   {
-   "op": "prop_eq",
-   "sel": "#invitations-nudge",
-   "prop": "className",
-   "expect": "callout invitations-nudge hidden",
-   "poll": 1
+   "op": "exec",
+   "script": "return String(document.getElementById('invitations-nudge'));",
+   "expect": "null",
+   "label": "the nudge node is ABSENT (004h / R91: the nudge removed; a removed feature has no arm -- its negative, asserted once)"
   },
   {
    "op": "exec",
@@ -685,25 +684,19 @@
   },
   {
    "op": "note",
-   "text": "THE NUDGE is built from the CONTACTS list: connected (or newly arrived) AND not verified -- the verified contact and the still-connecting one are not counted. One line, a Verify link per name."
-  },
-  {
-   "op": "read_tc",
-   "sel": "#invitations-nudge-text",
-   "literal": "2 connected contacts aren't verified yet. Verifying takes a minute on a call and is how you know it's really them."
+   "text": "004h / RULING_NA0778_014 R91: THE NUDGE IS REMOVED -- its rows are gone with it (a removed feature has no arm; its negative, the node's absence, is asserted once, above). The flow returns to the Contacts pane the way the removed Verify link did -- the same two calls, made directly -- so the R53 block that follows starts where it always did."
   },
   {
    "op": "exec",
-   "script": "var as=document.querySelectorAll('#invitations-nudge-links a');return JSON.stringify(Array.prototype.map.call(as,function(a){return [a.textContent,a.dataset.verify];}));",
-   "expect": "[[\"Verify Dana\",\"dana\"],[\"Verify Ben\",\"ben\"]]"
+   "script": "window.__r=null;enterMain().then(function(){showContactsPane();window.__r='main';});return 'started';",
+   "expect": "started"
   },
   {
-   "op": "note",
-   "text": "'Verify <name>' lands on the contact's detail in the Contacts pane -- the shipped verification surface. No verify pop-up exists in this build (STOP 004 premise P3)."
-  },
-  {
-   "op": "click",
-   "sel": "#invitations-nudge-links a[data-verify=\"dana\"]"
+   "op": "poll_exec",
+   "script": "return window.__r;",
+   "expect": "main",
+   "poll": 10,
+   "label": "back on the main screen, the Contacts pane"
   },
   {
    "op": "poll_visible",
@@ -715,13 +708,6 @@
    "prop": "className",
    "expect": "list-pane",
    "poll": 5
-  },
-  {
-   "op": "poll_exec",
-   "script": "return contactsSelected;",
-   "expect": "dana",
-   "poll": 10,
-   "label": "the Verify link selected the contact (after the handler's awaited navigation)"
   },
   {
    "op": "note",

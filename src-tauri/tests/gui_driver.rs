@@ -430,8 +430,8 @@ fn na0776_gui_t_build_identity_visible() {
 /// driven through the real surface (mockups 16 and 17; RULING_NA0778_004 R22/R23). The page's
 /// rows are rendered from SYNTHETIC records through the product's own renderer (the f_k / f_n
 /// idiom: no fixture relay exists, `ENG-0226`), so what is proven is the rendering, the
-/// id-binding and its failure arm, the entry points, the loading state, the nudge and its
-/// landing, the show-once copy, the close confirmation on all three gestures and the
+/// id-binding and its failure arm, the entry points, the loading state, the show-once copy,
+/// the close confirmation on all three gestures and the
 /// unconditional `show()` close -- not a live mint. Both arms are banked in STOP 004.
 #[test]
 #[ignore]

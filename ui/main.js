@@ -2213,7 +2213,6 @@ const INVITATIONS_STATE_TEXT = {
 };
 let invitationsFilter = "all";
 let invitationsRows = [];      // the last invite_list read, as delivered
-let invitationsContacts = [];  // {alias, name, ui, state} for the nudge, from the contacts refresh
 
 function invitationsKind(r, now) {
   if (r.state === "creating") return "failed";
@@ -2246,7 +2245,6 @@ function invitationsExpires(r, kind, now) {
 function invitationsSetLoading() {
   byId("invitations-loading").classList.remove("hidden");
   byId("invitations-body").classList.add("hidden");
-  byId("invitations-nudge").classList.add("hidden");
   byId("invitations-error").classList.add("hidden");
 }
 
@@ -2259,9 +2257,6 @@ async function refreshInvitationsPane() {
   } catch (e) {
     failure = e;
   }
-  // The nudge's source is the CONTACTS list, which carries the verified state; the shipped refresh
-  // publishes it to `contactsRows` / `contactsStatus`, and this reads those after it returns.
-  await refreshContacts();
   if (rows === null) {
     byId("invitations-loading").classList.add("hidden");
     // F-12: the shared vocabulary, so a code-less error cannot render as "[object Object]".
@@ -2269,12 +2264,6 @@ async function refreshInvitationsPane() {
     return;
   }
   invitationsRows = rows;
-  invitationsContacts = contactsRows.map((row) => ({
-    alias: row.alias,
-    name: contactDisplayName(row),
-    ui: contactUiState(row, contactsStatus[row.alias]),
-    state: row.state,
-  }));
   invitationsRender();
 }
 
@@ -2369,38 +2358,8 @@ function invitationsRender() {
   for (const chip of document.querySelectorAll("#invitations-filters .invitations-chip")) {
     chip.classList.toggle("on", chip.dataset.filter === invitationsFilter);
   }
-  invitationsRenderNudge();
   byId("invitations-loading").classList.add("hidden");
   byId("invitations-body").classList.remove("hidden");
-}
-
-function invitationsRenderNudge() {
-  // "N connected contacts aren't verified yet": CONNECTED by the session status the contacts
-  // refresh already reads (a new arrival counts -- it is connected and awaiting verification),
-  // and NOT VERIFIED by the contact record's own state -- a join the engine feeds today (RULING
-  // 004 R23). The Verify link lands on the contact's detail, which is the shipped verification
-  // surface (the code card and its compare hint); no verify pop-up exists in this build, so
-  // nothing pretends one does.
-  const unverified = invitationsContacts.filter(
-    (c) => (c.ui === "connected" || c.ui === "new") && c.state !== "verified"
-  );
-  const nudge = byId("invitations-nudge");
-  if (unverified.length === 0) { nudge.classList.add("hidden"); return; }
-  const n = unverified.length;
-  byId("invitations-nudge-text").textContent =
-    n + " connected contact" + (n === 1 ? " isn't" : "s aren't") +
-    " verified yet. Verifying takes a minute on a call and is how you know it's really them.";
-  const links = byId("invitations-nudge-links");
-  links.innerHTML = "";
-  unverified.forEach((c, i) => {
-    if (i > 0) links.appendChild(document.createTextNode(" · "));
-    const a = document.createElement("a");
-    a.className = "rm plain"; a.setAttribute("role", "button"); a.tabIndex = 0;
-    a.textContent = "Verify " + c.name; a.dataset.verify = c.alias;
-    bindKeyClick(a);
-    links.appendChild(a);
-  });
-  nudge.classList.remove("hidden");
 }
 
 // ⚠ THE ID, NEVER THE ROW (R22): the control carries the invitation id and the handler acts on
@@ -2442,17 +2401,6 @@ byId("invitations-filters").addEventListener("click", (ev) => {
   if (!chip) return;
   invitationsFilter = chip.dataset.filter;
   invitationsRender();
-});
-
-byId("invitations-nudge-links").addEventListener("click", async (ev) => {
-  const a = ev.target.closest("a[data-verify]");
-  if (!a) return;
-  await enterMain();
-  showContactsPane();
-  contactsSelected = a.dataset.verify;
-  contactsNewBadge.delete(contactsSelected);
-  renderContactsList();
-  renderContactDetail();
 });
 
 // NA-0778 (004c / RULING_NA0778_008 R53): the groups' own links -- shown only while a group has nothing
