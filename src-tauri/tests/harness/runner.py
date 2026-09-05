@@ -36,6 +36,12 @@
 #     `no such element`; a deliberately wrong expected text must miscompare.
 # 10. NO sleeps-and-hope: every wait is a bounded 1s poll with its count
 #     recorded in the verdict row.
+# 11. THE GATE RULE (NA-0778, RULING_NA0778_015 R96 -- the f_k lesson, CI run
+#     33940568140): an arm that asserts a PREDICATE controls EVERY input of that
+#     predicate in the SAME synchronous step and returns every term, so a red names
+#     its term. An arm that forces part of a gate's inputs and leaves the rest to
+#     the app's own async refresh is a race: the box's timing is not the runner's
+#     (the box could not reproduce the red; the runner's log was the arm).
 import sys, os, json, time, socket, signal, hashlib, subprocess, shutil
 from pathlib import Path
 
