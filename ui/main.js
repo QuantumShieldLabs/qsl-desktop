@@ -2974,6 +2974,7 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
   try {
     code = await mint;
   } catch (e) {
+    if (gen !== inviteGen) { inviteInFlight = false; return; } // NA-0778 (004g / RULING_NA0778_013 R85 (a)): a stale failure paints no error into a later window and calls nothing in the vault after a lock
     // A failed mint burns nothing, so the window returns to whatever the ONE decision says --
     // never to a bare `true`, which would have re-enabled it with an empty name.
     inviteSyncActivate();
@@ -2983,7 +2984,7 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
     return;
   }
   inviteInFlight = false;
-  if (!inviteAdoptCode(code, gen)) return; // the window is gone (R79): discarded; the invitation is on the page
+  if (!inviteAdoptCode(code, gen)) { inviteSyncActivate(); return; } // the window is gone (R79): discarded; the invitation is on the page; the next window's Activate re-decided (004g / R85 (b))
   // v3: on success the link itself is the affordance and no note is needed; the note exists
   // only to say when the single gesture could NOT copy, and it points at the link.
   const note = byId("invite-copy-note");

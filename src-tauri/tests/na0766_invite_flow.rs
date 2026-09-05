@@ -227,6 +227,16 @@ fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
         js.contains("if (inviteInFlight) return; // NA-0778 (004f / R74 (b)): ONE mint at a time"),
         "the Activate handler refuses a second mint in flight, as its first statement"
     );
+    // NA-0778 (004g / RULING_NA0778_013 R85): the two settle sites, PRESENCE pins (no driver arm is
+    // claimed for a rejecting mint -- the harness cannot mint, ENG-0226; the record says read-proven).
+    assert!(
+        js.contains("if (gen !== inviteGen) { inviteInFlight = false; return; }"),
+        "a stale failure clears the flag and returns before any error paints or any vault call (R85 (a))"
+    );
+    assert!(
+        js.contains("if (!inviteAdoptCode(code, gen)) { inviteSyncActivate(); return; }"),
+        "the stale-success return re-decides the next window's Activate (R85 (b))"
+    );
     let open = js
         .find("async function openInviteModal() {")
         .expect("the mint opener exists");
