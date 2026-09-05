@@ -40,6 +40,37 @@ impl Tempo {
     }
 }
 
+/// NA-0779 (`D-0048`): the debug log's LEVEL. Two positions; "events" is the default and
+/// is OMITTED from the file with the rest of the default setting.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DebugLogLevel {
+    #[default]
+    Events,
+    Detailed,
+}
+
+/// NA-0779 (`D-0048`): THE SWITCH -- a STORED SETTING, read at unlock, NEVER an environment
+/// variable (RULING_NA0779_002 R1/R3: it persists across restarts; the log's CONTENTS never
+/// do). NON-SECRET by construction: a bool and a two-member enum. OMITTED from the file while
+/// it holds the default (off / events) so every existing profile keeps its prior key set
+/// exactly -- the `self_alias` / `relay_url` / `tempo` pattern. The `deny_unknown_fields`
+/// downgrade property is inherited KNOWINGLY and unchanged (D609 R6).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(deny_unknown_fields)]
+pub struct DebugLogSetting {
+    #[serde(default)]
+    pub on: bool,
+    #[serde(default)]
+    pub level: DebugLogLevel,
+}
+
+impl DebugLogSetting {
+    fn is_default(&self) -> bool {
+        !self.on && self.level == DebugLogLevel::Events
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct AppSettings {
@@ -76,6 +107,11 @@ pub struct AppSettings {
     /// two-field arity and the visible control lands Lane C-era.
     #[serde(default, skip_serializing_if = "Tempo::is_default")]
     pub tempo: Tempo,
+    /// NA-0779 (`D-0048`): the debug log switch and level (see `DebugLogSetting`). Written
+    /// ONLY by `debug_log_control`, through this file's 0600 writer; `settings_set` keeps its
+    /// two-field arity.
+    #[serde(default, skip_serializing_if = "DebugLogSetting::is_default")]
+    pub debug_log: DebugLogSetting,
 }
 
 impl Default for AppSettings {
@@ -85,6 +121,7 @@ impl Default for AppSettings {
             self_alias: String::new(),
             relay_url: String::new(),
             tempo: Tempo::default(),
+            debug_log: DebugLogSetting::default(),
         }
     }
 }
@@ -255,6 +292,37 @@ mod tests {
         // And the blessed default really is the omitted one, stated as its own
         // assertion so a future default flip cannot pass this test silently.
         assert_eq!(AppSettings::default().tempo, Tempo::Instant);
+
+        // NA-0779 (`D-0048`): the debug log switch, added to the allowlist DELIBERATELY and
+        // NON-SECRET by construction (a bool and a two-member enum). The DEFAULT (off / events)
+        // is OMITTED, so the default-case assertion at the top of this test is untouched.
+        let with_log = AppSettings {
+            debug_log: DebugLogSetting {
+                on: true,
+                level: DebugLogLevel::Detailed,
+            },
+            ..Default::default()
+        };
+        let v = serde_json::to_value(&with_log).unwrap();
+        let keys: Vec<&str> = v.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec!["autolock_minutes", "debug_log"]);
+        assert_eq!(
+            v["debug_log"],
+            serde_json::json!({"on": true, "level": "detailed"})
+        );
+        // and the level ALONE (on=false, detailed) is not the default: it must persist too.
+        let level_only = AppSettings {
+            debug_log: DebugLogSetting {
+                on: false,
+                level: DebugLogLevel::Detailed,
+            },
+            ..Default::default()
+        };
+        let v = serde_json::to_value(&level_only).unwrap();
+        assert_eq!(
+            v["debug_log"],
+            serde_json::json!({"on": false, "level": "detailed"})
+        );
 
         let both = AppSettings {
             self_alias: "Vic".to_string(),

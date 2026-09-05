@@ -2865,13 +2865,17 @@ fn na0756_the_triggers_use_equality_and_the_timer_census_is_exact() {
         "trigger (b) rides the CHOOSER's opener, which is where BOTH retargeted entries land"
     );
     // ⚠ THE TIMER CENSUS, COUNTED AND NOT EYEBALLED. v1 pinned THREE and NA-0756 added none.
-    // NA-0763 adds exactly ONE — the liveness tick — so the exact count is now FOUR. It stays
-    // an EXACT equality on purpose: an unaccounted fifth timer must still fail this arm.
+    // NA-0763 adds exactly ONE -- the liveness tick -- so the exact count became FOUR. It stays
+    // an EXACT equality on purpose: an unaccounted timer must still fail this arm.
+    // NA-0779 (`D-0048`) ACCOUNTS FOR THE FIFTH: the Diagnostics pane's live-list poll
+    // (`dlPaneVisibility`, DL_POLL_MS), which runs ONLY while that pane is shown and is cleared
+    // when it hides -- not a standing interval, but the census counts call sites, so it is
+    // named here rather than hidden behind a setTimeout chain the census would not see.
     assert_eq!(
         js.matches("setInterval(").count(),
-        4,
-        "the timer census is EXACT — the four that exist are the unlock countdown, the erase \
-         countdown, the idle autolock and NA-0763's liveness tick"
+        5,
+        "the timer census is EXACT -- the five that exist are the unlock countdown, the erase \
+         countdown, the idle autolock, NA-0763's liveness tick and NA-0779's Diagnostics poll"
     );
 }
 

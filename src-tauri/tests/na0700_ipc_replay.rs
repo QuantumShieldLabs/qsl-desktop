@@ -392,6 +392,32 @@ fn all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes() {
     let u = ok(&wv, "unlock_attempt", json!({"passphrase": PASS}));
     assert_eq!(u["kind"], "unlocked", "UnlockDto: {u}");
 
+    // ---- NA-0779 (D-0048): the debug log's four commands (main.js keys: sinceSeq + max; action;
+    // name + fields; dir) -- real IPC, real State, through the generated context ------------
+    let r = ok(&wv, "debug_log_read", json!({"sinceSeq": 0, "max": 100}));
+    assert_eq!(r["on"], false, "ReadDto before the switch: {r}");
+    let c = ok(&wv, "debug_log_control", json!({"action": "on"}));
+    assert_eq!(c["on"], true, "DebugLogStateDto: {c}");
+    let e = ok(
+        &wv,
+        "debug_log_event",
+        json!({"name": "ui.autolock", "fields": {"decision": "zero_disabled"}}),
+    );
+    assert_eq!(
+        e, true,
+        "an events-level ui.* event enters while on (the default level)"
+    );
+    let x = ok(&wv, "debug_log_export", json!({"dir": null}));
+    assert!(
+        x["text"]
+            .as_str()
+            .unwrap_or("")
+            .starts_with("# app=qsl-desktop"),
+        "the export's bytes as text: {x}"
+    );
+    let c = ok(&wv, "debug_log_control", json!({"action": "off"}));
+    assert_eq!(c["on"], false);
+
     // ---- destroy (main.js:811 keys: passphrase + confirmPhrase) -----------
     ok(
         &wv,

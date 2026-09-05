@@ -121,10 +121,78 @@ class Runner:
         self.continue_on_fail = os.environ.get("QSLD_CONTINUE_ON_FAIL") == "1"
         target = os.environ.get("CARGO_TARGET_DIR") or str(REPO_ROOT / "target")
         self.binary = os.path.join(target, "debug", "qsl-desktop")
+        # NA-0779 (D-0048, kickoff L4): THE HARNESS CAPTURE. Per launch, the debug log is turned
+        # on (detailed) through the app's OWN command the first time scr-main is seen -- never by
+        # a pre-launch settings.json (that file is the S1/S2 launch-state discriminator, state.rs)
+        # and never by an environment variable (the switch is a setting by ruling) -- and
+        # exported into the run dir at teardown, beside verdict.jsonl, where the manifest freezes
+        # it with its sha. The export's footer digest is verified here, independently.
+        self.dl_armed = False
+        self.dl_captures = 0
 
     def note(self, msg):
         self.log_f.write(msg + "\n")
         self.log_f.flush()
+
+    def invoke_wait(self, cmd, args, slot, polls=20):
+        """Fire a Tauri command from the webview and poll its settled result (execute/sync
+        cannot await a promise). Returns (ok, value_or_error) or (None, reason) on a driver fault."""
+        script = ("window.%s=null; window.__TAURI__.core.invoke(%s, %s)"
+                  ".then(function(v){window.%s={ok:true,v:v};})"
+                  ".catch(function(e){window.%s={ok:false,e:String(e)};}); return 'fired';"
+                  % (slot, json.dumps(cmd), json.dumps(args), slot, slot))
+        rc, out = self.wd("execute", script)
+        if rc != 0:
+            return None, "execute rc=%d %s" % (rc, out.strip()[:80])
+        for _ in range(polls):
+            rc, out = self.wd("execute", "return window.%s ? JSON.stringify(window.%s) : null;" % (slot, slot))
+            if rc == 0:
+                try:
+                    v = json.loads(out)["value"]
+                except (ValueError, KeyError):
+                    v = None
+                if v:
+                    r = json.loads(v)
+                    return (r.get("ok"), r.get("v") if r.get("ok") else r.get("e"))
+            time.sleep(0.5)
+        return None, "no settled result after %d polls" % polls
+
+    def debug_log_arm(self):
+        if self.dl_armed or not self.session_live:
+            return
+        ok1, v1 = self.invoke_wait("debug_log_control", {"action": "on"}, "__qsld_dl_arm1")
+        ok2, v2 = self.invoke_wait("debug_log_control", {"action": "level_detailed"}, "__qsld_dl_arm2")
+        armed = bool(ok1) and bool(ok2) and isinstance(v2, dict) and v2.get("on") is True and v2.get("level") == "detailed"
+        self.dl_armed = armed
+        self.step("debug_log_armed", "on + detailed through debug_log_control",
+                  "on=%s level=%s" % (v2.get("on") if isinstance(v2, dict) else v1, v2.get("level") if isinstance(v2, dict) else v2), armed)
+
+    def debug_log_capture(self, n):
+        if not self.dl_armed or not self.session_live:
+            return
+        self.dl_armed = False
+        ok, v = self.invoke_wait("debug_log_export", {"dir": str(self.run)}, "__qsld_dl_export")
+        measured = "rc=%s" % ok
+        good = False
+        if ok and isinstance(v, dict) and v.get("path"):
+            path = Path(v["path"])
+            if path.exists() and path.parent == self.run:
+                raw = path.read_bytes()
+                i = raw.rfind(b"# sha256=")
+                body, footer = raw[:i], raw[i:].strip()
+                digest = hashlib.sha256(body).hexdigest().encode()
+                good = footer == b"# sha256=" + digest and hashlib.sha256(raw).hexdigest() == v.get("sha256")
+                self.dl_captures += 1
+                measured = "file=%s bytes=%d footer_ok=%s" % (path.name, len(raw), good)
+                evidence = [path.name]
+            else:
+                measured = "path=%r not in the run dir" % v.get("path")
+                evidence = None
+        else:
+            measured = "export failed: %r" % (v,)
+            evidence = None
+        self.step("debug_log_capture_launch%d" % n, "export written beside verdict.jsonl, footer sha256 recomputed EQUAL",
+                  measured, good, evidence=evidence)
 
     def step(self, sid, expected, measured, ok, evidence=None, hard=False):
         self.steps += 1
@@ -256,6 +324,7 @@ class Runner:
 
     def teardown(self, expect_session=True):
         if self.session_live and expect_session:
+            self.debug_log_capture(self.launches)
             rc, _ = self.wd("delete-session")
             self.note("delete_session_rc=%d" % rc)
             self.session_live = False
@@ -329,6 +398,8 @@ class Runner:
             if last == json.dumps(want):
                 self.step("poll_%s_%s" % (screen, "visible" if want == "screen" else "hidden"),
                           "className=%r" % want, "polls=%d" % (polls + 1), True)
+                if screen == "scr-main" and want == "screen":
+                    self.debug_log_arm()
                 return
             time.sleep(1)
             polls += 1
@@ -386,17 +457,19 @@ class Runner:
                           got == want, ["instrument: textContent property (hidden-safe presence-class read)"])
             elif op == "type":
                 el = self.find(st["sel"])
-                rc, _ = self.wd("sendkeys", el, st["text"])
+                text = st["text"].replace("{run_dir}", str(self.run))   # NA-0779: the export dir
+                rc, _ = self.wd("sendkeys", el, text)
                 got = self.prop(st["sel"], "value")
-                self.step("type %s" % st["sel"], st["text"], got,
-                          rc == 0 and got == json.dumps(st["text"]))
+                self.step("type %s" % st["sel"], text, got,
+                          rc == 0 and got == json.dumps(text))
             elif op == "clear_type":
                 el = self.find(st["sel"])
                 self.wd("clear", el)
-                rc, _ = self.wd("sendkeys", el, st["text"])
+                text = st["text"].replace("{run_dir}", str(self.run))   # NA-0779: the export dir
+                rc, _ = self.wd("sendkeys", el, text)
                 got = self.prop(st["sel"], "value")
-                self.step("clear_type %s" % st["sel"], st["text"], got,
-                          rc == 0 and got == json.dumps(st["text"]))
+                self.step("clear_type %s" % st["sel"], text, got,
+                          rc == 0 and got == json.dumps(text))
             elif op == "click":
                 if st.get("guard") == "destructive":
                     self.guard_destructive("click " + st["sel"])

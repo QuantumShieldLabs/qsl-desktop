@@ -113,6 +113,7 @@ function show(id) {
   closeRedeemModal();
   for (const s of SCREENS) byId(s).classList.toggle("hidden", s !== id);
   currentScreen = id;
+  if (id !== "scr-settings") dlPaneVisibility(false); // NA-0779 (`D-0048`)
   // Item 15 (R1): the backend disables the state-dependent menu entries
   // (File > Settings / Lock now) unless an unlocked surface is showing.
   // R-14: the measurement rides the same carrier.
@@ -243,6 +244,9 @@ function adoptSettings(cfg) {
   // (see `saveSettings` above, still two fields) — nothing in this lane writes
   // the knob, so an absent key is the blessed default rather than a loss.
   tickTempo = TICK_TEMPO[cfg.tempo] ? cfg.tempo : TICK_DEFAULT;
+  // NA-0779 (`D-0048`): the debug log's switch and level ride the same read.
+  dlAdopt(cfg.debug_log || null);
+  if (cfg.autolock_minutes === 0) dlEmit("ui.autolock", { decision: "zero_disabled" });
 }
 
 // ---- failed-attempts capture (binding D596 rule, unchanged) --------------
@@ -774,6 +778,7 @@ function isPlainReason(reason) {
 async function enterMain() {
   show("scr-main");
   refreshNotices();   // NA-0776 3.3: initial paint; not awaited, never blocking
+  dlRefreshSwitch();  // NA-0779 (`D-0048`): the pill reflects the stored switch after unlock
   // Slice B (D609 R4) kept: the footer reflects the ACTUAL relay config, never
   // a "future update" claim. NA-0752 adds the desk's answer beside it.
   //
@@ -923,6 +928,7 @@ async function openSettings(pane) {
   selectPane(pane);
   // NA-0778 (`D-0047`): the Invitations pane refreshes on open, before the other panes' reads.
   if (pane === "invitations") await refreshInvitationsPane();
+  if (pane === "diagnostics") await refreshDiagnosticsPane();
   await refreshIdentityPane();
   await refreshVaultPane();
   await refreshServerPane();
@@ -960,9 +966,10 @@ function selectPane(name) {
   for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
     b.classList.toggle("active", b.dataset.pane === name);
   }
-  for (const p of ["identity", "server", "vault", "invitations", "appearance", "notifications", "about"]) {
+  for (const p of ["identity", "server", "vault", "invitations", "diagnostics", "appearance", "notifications", "about"]) {
     byId("pane-" + p).classList.toggle("hidden", p !== name);
   }
+  dlPaneVisibility(name === "diagnostics"); // NA-0779 (`D-0048`): the live list polls only while shown
   // NA-0778 (`D-0047`, RULING_NA0778_004 R22): selecting the Invitations pane puts it in its
   // LOADING state synchronously; only a completed refresh replaces that with rows.
   if (name === "invitations") invitationsSetLoading();
@@ -971,6 +978,7 @@ for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
   b.addEventListener("click", () => {
     selectPane(b.dataset.pane);
     if (b.dataset.pane === "invitations") refreshInvitationsPane();
+    if (b.dataset.pane === "diagnostics") refreshDiagnosticsPane();
   });
 }
 
@@ -1939,15 +1947,27 @@ for (const ev of ["mousemove", "mousedown", "keydown", "wheel", "touchstart"]) {
   window.addEventListener(ev, () => { idleSince = Date.now(); }, { passive: true });
 }
 setInterval(async () => {
-  const onLockedSurface = currentScreen === "scr-main" || currentScreen === "scr-settings";
-  if (!onLockedSurface) return; // the wizard (and unlock itself) is exempt
   // Item 2b (E.3, BINDING encoded rule): at 0 the timer must NEVER fire —
   // without this guard the elapsed-time comparison below is satisfied
-  // immediately and the vault would lock the moment it unlocked.
+  // immediately and the vault would lock the moment it unlocked. NA-0779 moved it
+  // ABOVE the surface check (at 0 there is nothing to do on any surface) so it still
+  // precedes EVERY elapsed comparison, including the exempt-surface note below.
   if (autolockMinutes === 0) return;
+  const onLockedSurface = currentScreen === "scr-main" || currentScreen === "scr-settings";
+  if (!onLockedSurface) {
+    // NA-0779 (`D-0048`): the timer would have fired on an exempt surface -- recorded once, then reset.
+    if (Date.now() - idleSince >= autolockMinutes * 60 * 1000) {
+      idleSince = Date.now();
+      dlEmit("ui.autolock", { decision: "off_surface", idle_s: String(autolockMinutes * 60) });
+    }
+    return; // the wizard (and unlock itself) is exempt
+  }
   if (Date.now() - idleSince >= autolockMinutes * 60 * 1000) {
+    const idleS = Math.floor((Date.now() - idleSince) / 1000);
     idleSince = Date.now();
-    await invoke("lock_now"); // the one-call NA-0658 lock()
+    // NA-0779 (`D-0048`): the decision is recorded, then the lock carries its cause.
+    dlEmit("ui.autolock", { decision: "fired", idle_s: String(idleS) });
+    await invoke("lock_now", { cause: "autolock" }); // the one-call NA-0658 lock()
     await showUnlockScreen("main");
     // R-14: accent severity, not red-adjacent — being locked by the timer is
     // the protection working, not a failure. The helper resizes: this write
@@ -2106,6 +2126,7 @@ function tickMark() {
 }
 
 setInterval(async () => {
+  dlTickGate(tickGateOpen()); // NA-0779 (`D-0048`): ui.tick_gate on every CHANGE of the gate
   if (!tickGateOpen()) {
     // Locked, or no relay: no beat, and the schedule RESETS so an unlock does
     // not inherit a due-time computed in a previous session.
@@ -2780,6 +2801,9 @@ async function inviteRefresh() {
   // Activate after a mint, the explanation is redundant at exactly the moment it would have
   // appeared, and the cap stays enforced by the disabled control rather than by prose.
   inviteCapFull = live >= INVITE_SOFT_CAP;
+  // NA-0779 (`D-0048`): an offer refused by a fixed condition is recorded once per open.
+  if (inviteNoRelay) dlEmit("ui.guard_refused", { guard: "no_relay" });
+  if (inviteCapFull) dlEmit("ui.guard_refused", { guard: "cap_full" });
   inviteSyncActivate();
   byId("invite-no-relay").classList.toggle("hidden", !inviteNoRelay);
   return relayUrl;
@@ -2875,12 +2899,14 @@ async function adoptMinted(before) {
 }
 
 byId("btn-invite-activate").addEventListener("click", async (ev) => {
+  if (inviteInFlight) dlEmit("ui.guard_refused", { guard: "invite_in_flight" }); // NA-0779 (`D-0048`)
   if (inviteInFlight) return; // NA-0778 (004f / R74 (b)): ONE mint at a time -- never a second invite_create in flight
   clearInviteErrors();
   const label = byId("invite-label").value.trim();
   // R61, belt and braces (the redeem handler's own shape): the commit refuses an illegal name
   // independently of the button's state -- a gate that lives only in the enable path is one
   // keyboard event from being bypassed.
+  if (label === "" || !REDEEM_NAME_RE.test(label)) dlEmit("ui.guard_refused", { guard: "name_grammar" }); // NA-0779 (`D-0048`)
   if (label === "" || !REDEEM_NAME_RE.test(label)) { inviteSyncActivate(); return; }
   const btn = byId("btn-invite-activate");
   inviteInFlight = true; // NA-0778 (004f / R74 (b)): in flight from here until the promise settles
@@ -3151,6 +3177,7 @@ railLinkKeys("btn-contacts-send");
 function inviteUserClose() {
   const ov = byId("invite-overlay");
   if (!ov || ov.classList.contains("hidden")) return;
+  if (inviteInFlight) dlEmit("ui.guard_refused", { guard: "invite_in_flight" }); // NA-0779 (`D-0048`)
   if (inviteInFlight) return;
   closeInviteModal();
   if (currentScreen === "scr-settings" && !byId("pane-invitations").classList.contains("hidden")) refreshInvitationsPane();
@@ -3876,6 +3903,7 @@ let relayScanBusyRejects = 0;
 // without threading the source; it is recorded as a known bound rather than
 // designed around.
 async function relayScanOnce(ev) {
+  const dlT0 = Date.now(); // NA-0779 (`D-0048`): the beat's duration
   let marks = { why: ev.source, at: ev.at, scanned: 0, finished: 0, pending: 0,
                 attempted: 0, failed: 0, unlabelled: 0, changed: 0 };
   const quiet = ev && ev.source === "tick";
@@ -3893,6 +3921,7 @@ async function relayScanOnce(ev) {
     if (quiet) tickQuietDepth -= 1;
   }
   recordScanOutcome(ev, marks);
+  dlBeat(ev, marks, Date.now() - dlT0); // NA-0779 (`D-0048`): ui.tick_beat
   return marks;
 }
 
@@ -3900,6 +3929,7 @@ async function relayScan(ev) {
   if (relayScanBusy) {
     relayScanPending = ev;          // never stacks: one rerun, last request wins
     relayScanBusyRejects += 1;
+    dlEmit("ui.scan_busy", {}); // NA-0779 (`D-0048`)
     tickMark();
     return null;
   }
@@ -3921,6 +3951,7 @@ async function relayScan(ev) {
     relayScanPending = null;
     if (next) {
       relayScanRerunCount += 1;
+      dlEmit("ui.scan_rerun", { count: String(relayScanRerunCount) }); // NA-0779 (`D-0048`)
       marks = await relayScanOnce(next);
       // Triggers arriving during the rerun are DROPPED, deliberately: the rerun
       // has just re-read the same state they would ask about.
@@ -4064,3 +4095,162 @@ document.addEventListener("keydown", (ev) => {
   } catch (_) { /* no seam: the blessed tempo stands */ }
   await route();
 })();
+
+// ===== NA-0779 (spine `D-1422`, desktop `D-0048`): THE DEBUG LOG -- the pane, the pill, the ui.* sources =====
+// The switch and the level are a STORED SETTING (settings.json, the 0600 writer) read at unlock; this
+// file MIRRORS them so a ui.* event costs nothing while the log is off, and the backend is the truth on
+// every read. The list renders the SAME lines the export carries (no second view); the filter narrows the
+// DISPLAY only; Copy places exactly the export's bytes on the clipboard. RULING_NA0779_002 R2 (b), MEASURED:
+// `navigator.clipboard.writeText` works in this webview within a fresh activation -- NA-0778 measured it
+// (:2461) and the invite code's copy link relies on it; the export's bytes come from the backend in one
+// in-memory call, and the harness re-measures the whole gesture (f_v_debug_log_pane).
+const DL_POLL_MS = 500;
+const DL_CLIENT_CAP = 8192;
+const dl = { on: false, level: "events", paused: false, lastSeq: 0, lines: [], timer: null, filter: "" };
+let dlLastGate = null;
+
+function dlPill() {
+  const pill = byId("debug-log-pill");
+  if (!pill) return;
+  pill.textContent = dl.on ? ("LOG ON \u00b7 " + (dl.level === "detailed" ? "DETAILED" : "EVENTS")) : "";
+  pill.classList.toggle("hidden", !dl.on);
+}
+function dlAdopt(setting) {
+  const s = setting || { on: false, level: "events" };
+  dl.on = !!s.on;
+  dl.level = s.level === "detailed" ? "detailed" : "events";
+  dlPill();
+  const cb = byId("dl-on");
+  if (cb) cb.checked = dl.on;
+  const r = byId(dl.level === "detailed" ? "dl-level-detailed" : "dl-level-events");
+  if (r) r.checked = true;
+}
+async function dlRefreshSwitch() {
+  try {
+    const cfg = await tauriInvoke("settings_get");
+    dlAdopt(cfg.debug_log || null);
+  } catch (_) { /* the pill keeps its last state; the next read corrects it */ }
+}
+// The ui.* door. Fire-and-forget through the RAW invoke: no busy indicator, no await in a hot path. A
+// refusal (a name or value outside the closed vocabulary) is the backend's to record; nothing here retries.
+function dlEmit(name, fields) {
+  if (!dl.on) return;
+  tauriInvoke("debug_log_event", { name, fields }).catch(() => {});
+}
+function dlTickGate(open) {
+  if (open === dlLastGate) return;
+  dlLastGate = open;
+  const unlocked = currentScreen === "scr-main" || currentScreen === "scr-settings";
+  dlEmit("ui.tick_gate", { gate: open ? "open" : "closed", reason: open ? "none" : (unlocked ? "no_relay" : "locked") });
+}
+function dlBeat(ev, marks, durMs) {
+  const src = ["tick", "unlock", "surface_open", "manual"].includes(ev.source) ? ev.source : "manual";
+  const out = marks.attempted > 0 && marks.failed === marks.attempted ? "fail" : "ok";
+  dlEmit("ui.tick_beat", { source: src, out, dur_ms: String(durMs), contacts: String(marks.scanned) });
+}
+function dlRender() {
+  const el = byId("dl-log");
+  if (!el) return;
+  const f = dl.filter;
+  const shown = f ? dl.lines.filter((l) => l.line.includes(f)) : dl.lines;
+  el.textContent = shown.map((l) => l.line).join("\n");
+  if (!dl.paused) el.scrollTop = el.scrollHeight;
+}
+function dlCounts(r) {
+  const t = byId("dl-counts").querySelector(".status-text");
+  const since = r.since_unlock_ms == null ? "" : ", " + Math.floor(r.since_unlock_ms / 1000) + " s since unlock";
+  t.textContent = "In memory: " + r.buffered + " events, " + r.dropped + " dropped" + since + ".";
+}
+async function dlPoll() {
+  if (dl.paused) return;
+  let r;
+  try { r = await tauriInvoke("debug_log_read", { sinceSeq: dl.lastSeq, max: 2048 }); } catch (_) { return; }
+  if (r.reset) { dl.lines = []; dl.lastSeq = 0; }
+  for (const s of r.lines) { dl.lines.push(s); dl.lastSeq = s.seq; }
+  if (dl.lines.length > DL_CLIENT_CAP) dl.lines.splice(0, dl.lines.length - DL_CLIENT_CAP);
+  if (r.on !== dl.on || r.level !== dl.level) dlAdopt({ on: r.on, level: r.level });
+  dlCounts(r);
+  dlRender();
+}
+function dlPaneVisibility(visible) {
+  if (visible && !dl.timer) {
+    dl.lastSeq = 0;
+    dl.lines = [];
+    dlPoll();
+    dl.timer = setInterval(dlPoll, DL_POLL_MS);
+    byId("dl-live").classList.toggle("hidden", dl.paused);
+  }
+  if (!visible && dl.timer) {
+    clearInterval(dl.timer);
+    dl.timer = null;
+  }
+}
+async function refreshDiagnosticsPane() {
+  await dlRefreshSwitch();
+  const dir = byId("dl-export-dir");
+  if (dir && dir.value === "") {
+    try { dir.value = await tauriInvoke("home_dir"); } catch (_) { dir.value = ""; }
+  }
+  dlPaneVisibility(true);
+}
+// The switch by PUSH: any caller of debug_log_control (the pane, the harness, a future window)
+// moves the pill here at once -- the same carrier as the menu events above.
+if (window.__TAURI__.event && window.__TAURI__.event.listen) {
+  window.__TAURI__.event.listen("debug-log-switch", (ev) => { if (ev && ev.payload) dlAdopt(ev.payload); });
+}
+byId("dl-on").addEventListener("change", async () => {
+  try {
+    const r = await invoke("debug_log_control", { action: byId("dl-on").checked ? "on" : "off" });
+    dlAdopt(r);
+  } catch (_) { dlRefreshSwitch(); }
+});
+for (const id of ["dl-level-events", "dl-level-detailed"]) {
+  byId(id).addEventListener("change", async () => {
+    const action = byId("dl-level-detailed").checked ? "level_detailed" : "level_events";
+    try {
+      const r = await invoke("debug_log_control", { action });
+      dlAdopt(r);
+    } catch (_) { dlRefreshSwitch(); }
+  });
+}
+byId("btn-dl-pause").addEventListener("click", () => {
+  dl.paused = !dl.paused;
+  byId("btn-dl-pause").textContent = dl.paused ? "Resume" : "Pause";
+  byId("dl-live").classList.toggle("hidden", dl.paused);
+  if (!dl.paused) dlPoll();
+});
+byId("dl-filter").addEventListener("input", () => {
+  dl.filter = byId("dl-filter").value;
+  dlRender();
+});
+byId("btn-dl-clear").addEventListener("click", async () => {
+  try { await invoke("debug_log_control", { action: "clear" }); } catch (_) { /* the next poll shows the truth */ }
+  dl.lines = [];
+  dlRender();
+});
+function dlResult(text, danger) {
+  const p = byId("dl-export-result");
+  setStatusLine(p, danger ? "danger" : "neutral", text);
+  p.classList.remove("hidden");
+}
+byId("btn-dl-copy").addEventListener("click", async () => {
+  window.__qsld_dl_copy = "pending";
+  try {
+    const r = await tauriInvoke("debug_log_export", { dir: null });
+    await navigator.clipboard.writeText(r.text);
+    window.__qsld_dl_copy = "ok:" + r.sha256;
+    acknowledge(byId("btn-dl-copy"), "\u2713 Copied");
+  } catch (e) {
+    window.__qsld_dl_copy = "err:" + String(e);
+    dlResult("Copy didn't complete. Select the list and copy, or use Export.", false);
+  }
+});
+byId("btn-dl-export").addEventListener("click", async () => {
+  const dir = byId("dl-export-dir").value.trim();
+  try {
+    const r = await invoke("debug_log_export", { dir });
+    dlResult("Written: " + r.path + " (" + r.bytes + " bytes, sha256 " + r.sha256.slice(0, 16) + "\u2026)", false);
+  } catch (e) {
+    dlResult("Export failed: " + String(e), true);
+  }
+});

@@ -17,6 +17,7 @@
 //! in this very comment while it was being written.
 
 pub mod commands;
+pub mod debug_log;
 pub mod gateway;
 pub mod markers;
 pub mod paths;
@@ -256,6 +257,9 @@ fn ui_surface_changed<R: tauri::Runtime>(
     content_height: Option<f64>,
 ) {
     let unlocked = surface == "scr-main" || surface == "scr-settings";
+    // NA-0779 (`D-0048`): `ui.surface` -- the screen id (one of seven, refused otherwise), from
+    // the one place the front end already reports every transition.
+    debug_log::DebugLog::global().ui_surface(&surface);
     if let Some(h) = app.try_state::<MenuHandles<R>>() {
         let _ = h.settings.set_enabled(unlocked);
         let _ = h.lock_now.set_enabled(unlocked);
@@ -542,6 +546,10 @@ pub fn configure_builder<R: tauri::Runtime>(
             commands::invite_finish,
             commands::invite_revoke,
             commands::invite_clear,
+            commands::debug_log_read,
+            commands::debug_log_control,
+            commands::debug_log_event,
+            commands::debug_log_export,
             ui_surface_changed,
         ])
 }

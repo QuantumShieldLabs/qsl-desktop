@@ -237,6 +237,10 @@
   <footer id="status-line" class="status-line">No relay configured.</footer>
 </section>
 
+<!-- NA-0779 (D-0048): THE INDICATOR. A pill on EVERY screen while the log is on (RULING 002 R3: the
+     switch persists). It is a body-level element BESIDE the status footer, never a third source of the
+     footer's text (NA-0752's two-source line is untouched). -->
+<span id="debug-log-pill" class="dl-pill hidden" aria-live="polite">LOG ON</span>
 <section id="scr-settings" class="screen hidden">
   <div class="settings-layout">
     <nav class="rail">
@@ -256,6 +260,7 @@
       <button data-pane="server" class="cat">Relay</button>
       <button data-pane="vault" class="cat">Vault and Security</button>
       <button data-pane="invitations" class="cat">Invitations</button>
+      <button data-pane="diagnostics" class="cat">Diagnostics</button>
       <button data-pane="appearance" class="cat dim">Appearance</button>
       <button data-pane="notifications" class="cat dim">Notifications</button>
       <button data-pane="about" class="cat">About</button>
@@ -504,6 +509,50 @@
                  shows today; the toggle is the same rule as Sent's, applied to a group that is always empty. -->
             <div class="invitations-group-head"><h3>Received<span id="invitations-received-link" class="invitations-head-link"> — <a class="rm plain" id="btn-invitations-redeem" role="button" tabindex="0">redeem invitation</a></span></h3><span class="hint">codes you redeemed</span></div>
             <p id="invitations-received-note" class="invitations-empty">This app doesn't yet keep a list of the codes you've redeemed. A contact you added with a code is in your Contacts list.</p>
+          </div>
+        </div>
+      </div>
+      <!-- NA-0779 (spine D-1422, desktop D-0048): Settings > Diagnostics -- THE DEBUG LOG.
+           Layout authority: mockup 18b (docs/mockups/mockup-18b-diagnostics-pane.html, banked by sha;
+           RULING_NA0779_002 R2 (a)(b), R3). Colour from the shipped tokens only. The switch persists
+           across restarts; the log's contents never do. The list renders the SAME lines the export
+           carries -- there is no second, richer view. -->
+      <div id="pane-diagnostics" class="pane hidden">
+        <div class="pane-header"><div class="pane-head-row"><h2>Diagnostics</h2></div></div>
+        <p class="muted">A debug log of what this app does, for you and for the people who help you. It records event names, outcomes, reason codes, counters and timings. Never a name, a code, a token, an address or a message.</p>
+        <div class="pane-form">
+          <div class="pane-sect">
+            <h3>Debug log</h3>
+            <p class="hint">Off by default. The switch stays across restarts; what was logged never does: the log lives in memory, is cleared when the vault locks, and is wiped by Erase.</p>
+            <label class="inline"><input type="checkbox" id="dl-on"> Keep a debug log</label>
+            <div class="ctlrow dl-levelrow">
+              <span class="inline-label">Level</span>
+              <label class="inline"><input type="radio" name="dl-level" id="dl-level-events" value="events" checked> Events</label>
+              <label class="inline"><input type="radio" name="dl-level" id="dl-level-detailed" value="detailed"> Detailed</label>
+            </div>
+            <p class="hint">Events: transitions and outcomes. Detailed: every relay call, tick beat, pull, lease, frame, ratchet step and guard.</p>
+            <p id="dl-counts" class="status-line-quiet"><i class="icon"></i><span class="status-text">In memory: 0 events, 0 dropped.</span></p>
+          </div>
+          <div class="pane-sect">
+            <div class="pane-head-row"><h3>Live events <span id="dl-live" class="dl-live hidden">LIVE</span></h3>
+              <div class="ctlrow">
+                <input type="text" id="dl-filter" class="dl-filter" autocomplete="off" spellcheck="false" placeholder="filter: event name or code" aria-label="Filter the shown events">
+                <button id="btn-dl-pause" class="secondary">Pause</button>
+              </div>
+            </div>
+            <pre id="dl-log" class="dl-log" aria-label="Recent events"></pre>
+            <p class="hint">The filter narrows what this list shows. It never changes what is kept, exported or copied: those are always the whole log. While paused the list stops following; Resume jumps to the newest.</p>
+            <div class="ctlrow dl-exportrow">
+              <span class="inline-label">Export to</span>
+              <input type="text" id="dl-export-dir" class="full" autocomplete="off" spellcheck="false" aria-label="Export directory">
+            </div>
+            <div class="btnrow">
+              <button id="btn-dl-clear" class="secondary">Clear</button>
+              <button id="btn-dl-copy" class="secondary">Copy</button>
+              <button id="btn-dl-export" class="primary">Export</button>
+            </div>
+            <p id="dl-export-result" class="status-line-quiet hidden"><i class="icon"></i><span class="status-text"></span></p>
+            <p class="hint">Export writes one text file, named by the time and a random label, with a checksum on its last line. Copy places exactly the same bytes on the clipboard.</p>
           </div>
         </div>
       </div>

@@ -438,3 +438,13 @@ fn na0776_gui_t_build_identity_visible() {
 fn na0778_gui_u_invitations_page() {
     run_scenario("f_u_invitations_page");
 }
+
+/// NA-0779 (`D-0048`): Settings > Diagnostics -- the switch and the pill, the live list and its
+/// filter and pause, the Copy MEASUREMENT (`RULING_NA0779_002` R2 (b): the clipboard read back
+/// from the webview), the export through the button with its digest verified by the runner, and
+/// the switch's persistence across a relaunch. The runner's own capture (L4) also runs here.
+#[test]
+#[ignore]
+fn na0779_gui_v_debug_log_pane() {
+    run_scenario("f_v_debug_log_pane");
+}

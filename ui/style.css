@@ -1001,3 +1001,29 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
    relay needs attention, but the danger tier stays reserved for the erasure
    ceremony. Carried forward from NA-0763's ruling rather than reversed. */
 .status-line.is-trouble { color: var(--accent-text); }
+
+/* ---- NA-0779 (D-0048): Settings > Diagnostics, the debug log (mockup 18b; tokens only) ---- */
+.dl-levelrow { margin-top: var(--sp-2); }
+.dl-levelrow label.inline { margin: 0; }
+.dl-filter { width: 220px; font-family: ui-monospace, monospace; font-size: var(--fs-hint); }
+.dl-log {
+  font-family: ui-monospace, monospace; font-size: var(--fs-hint); line-height: 1.5;
+  color: var(--fg-secondary); background: var(--bg-inset);
+  border: 1px solid var(--border); border-radius: var(--radius-small);
+  padding: var(--sp-2) var(--sp-x10); margin: var(--sp-2) 0 0 0;
+  height: 220px; overflow: auto; white-space: pre; user-select: text;
+}
+.dl-live {
+  font-size: var(--fs-micro); font-weight: var(--fw-mid); letter-spacing: .04em;
+  border: 1px solid var(--accent-border); color: var(--accent-text); border-radius: var(--radius-small);
+  padding: 0 var(--sp-x6); margin-left: var(--sp-x6); vertical-align: middle;
+}
+.dl-exportrow { margin-top: var(--sp-3); }
+.dl-exportrow input { flex: 1; }
+/* the indicator: bottom-right of the window, over the footer's right end, on every screen */
+.dl-pill {
+  position: fixed; right: var(--sp-3); bottom: var(--sp-x6); z-index: 5;
+  font-size: var(--fs-micro); font-weight: var(--fw-mid); letter-spacing: .04em;
+  padding: var(--sp-1) var(--sp-2); border-radius: var(--radius-small);
+  background: var(--accent-bg); border: 1px solid var(--accent-border); color: var(--accent-text);
+}
