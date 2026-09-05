@@ -921,6 +921,8 @@ byId("contacts-rows").addEventListener("click", (ev) => {
 async function openSettings(pane) {
   show("scr-settings");
   selectPane(pane);
+  // NA-0778 (`D-0047`): the Invitations pane refreshes on open, before the other panes' reads.
+  if (pane === "invitations") await refreshInvitationsPane();
   await refreshIdentityPane();
   await refreshVaultPane();
   await refreshServerPane();
@@ -958,12 +960,18 @@ function selectPane(name) {
   for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
     b.classList.toggle("active", b.dataset.pane === name);
   }
-  for (const p of ["identity", "server", "vault", "appearance", "notifications", "about"]) {
+  for (const p of ["identity", "server", "vault", "invitations", "appearance", "notifications", "about"]) {
     byId("pane-" + p).classList.toggle("hidden", p !== name);
   }
+  // NA-0778 (`D-0047`, RULING_NA0778_004 R22): selecting the Invitations pane puts it in its
+  // LOADING state synchronously; only a completed refresh replaces that with rows.
+  if (name === "invitations") invitationsSetLoading();
 }
 for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
-  b.addEventListener("click", () => selectPane(b.dataset.pane));
+  b.addEventListener("click", () => {
+    selectPane(b.dataset.pane);
+    if (b.dataset.pane === "invitations") refreshInvitationsPane();
+  });
 }
 
 // ---- the Identity pane (existing identity_show surface ONLY) -------------
@@ -2174,6 +2182,240 @@ function mapErr(e, table) {
   return s;
 }
 
+// ---- NA-0778 (`D-0047`): SETTINGS > INVITATIONS -- THE REVIEW SURFACE (mockup 16) ---------------
+//
+// REFRESH-ON-OPEN, never polling (the 08-31 bank's decision 1, the same rule the mint's list took).
+// ⚠ RULING_NA0778_004 R22, BUILT IN RATHER THAN REMEMBERED: (1) the rows render ONLY after the data
+// has arrived -- `invitationsSetLoading` is the pane's state the moment it is selected, and only
+// `invitationsRender` replaces it; (2) the pane has NO editable field, so no loaded value can
+// overwrite anything a user typed (the hazard E-4 names in the Vault pane); (3) every row action
+// carries the invitation id in its own dataset and the handler reads THAT, never a row index, so a
+// re-render between the click and the call cannot retarget it.
+// ⚠ WHAT THE RECORD CAN SAY (RULING 004 R23, measured at the desktop's pinned qsc rev 63ece4fe, byte-identical to f32a4c20 for these verbs): Waiting (active, not yet
+// expired), Expired (the facade's read-time overlay, or active past its expiry by this clock),
+// Accepted (redeemed -- the operator's interim word), and the shipped "Didn't finish" for a
+// `creating` record. NOT drawn, because nothing in the record carries them: which contact an
+// invitation produced, whether that contact is verified, and when it connected. Revoked rows are
+// not rendered. An expired row carries NO action: the engine's `invite_clear` accepts a `creating`
+// record only (invite/mod.rs:985-999) and refuses every live state -- the mockup's "Clear" on an
+// expired row has no verb behind it and is FILED, not faked. NO TIMER anywhere in this module.
+// NA-0778 (`D-0047`, 004a / F-22): an anchor that plays a button answers Enter and Space. ONE binder for
+// every such control this pane creates (Revoke, Clear, the chips, the Verify links, the create link)
+// and for the rail links; the shipped copy link keeps its own handler.
+function bindKeyClick(el) {
+  el.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); el.click(); }
+  });
+}
+
+const INVITATIONS_STATE_TEXT = {
+  waiting: "Waiting for reply", accepted: "Accepted", expired: "Expired", failed: "Didn't finish",
+};
+let invitationsFilter = "all";
+let invitationsRows = [];      // the last invite_list read, as delivered
+
+function invitationsKind(r, now) {
+  if (r.state === "creating") return "failed";
+  if (r.state === "redeemed") return "accepted";
+  if (r.state === "expired") return "expired";
+  if (r.state === "active") return r.expiry > now ? "waiting" : "expired";
+  return null;                                   // revoked: never rendered
+}
+
+function invitationsDate(unix) {
+  if (!unix) return "—";
+  const d = new Date(unix * 1000);
+  const now = new Date();
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const yday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (sameDay(d, now)) return "Today, " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (sameDay(d, yday)) return "Yesterday";
+  const opts = { month: "short", day: "numeric" };
+  if (d.getFullYear() !== now.getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString([], opts);
+}
+
+function invitationsExpires(r, kind, now) {
+  if (kind === "waiting") return "In " + humanDuration(r.expiry - now);
+  if (kind === "expired") return invitationsDate(r.expiry);
+  return "";
+}
+
+function invitationsSetLoading() {
+  byId("invitations-loading").classList.remove("hidden");
+  byId("invitations-body").classList.add("hidden");
+  byId("invitations-error").classList.add("hidden");
+}
+
+async function refreshInvitationsPane() {
+  invitationsSetLoading();
+  let rows = null;
+  let failure = null;
+  try {
+    rows = await invoke("invite_list");
+  } catch (e) {
+    failure = e;
+  }
+  if (rows === null) {
+    byId("invitations-loading").classList.add("hidden");
+    // F-12: the shared vocabulary, so a code-less error cannot render as "[object Object]".
+    renderInviteError("invitations-error", failure && failure.code, failure && failure.detail, "list");
+    return;
+  }
+  invitationsRows = rows;
+  invitationsRender();
+}
+
+function invitationsRowEl(r, kind, now) {
+  const tr = document.createElement("tr");
+  tr.className = "invitations-row";
+  tr.dataset.inviteId = r.invite_id;
+  tr.dataset.kind = kind;
+  const name = document.createElement("td");
+  name.className = "invitations-name";
+  name.textContent = r.label ? r.label : "(no name)";
+  const state = document.createElement("td");
+  const s = document.createElement("span");
+  s.className = "invitations-state is-" + kind;
+  const dot = document.createElement("span");
+  dot.className = "invitations-dot";
+  s.append(dot, document.createTextNode(INVITATIONS_STATE_TEXT[kind]));
+  state.appendChild(s);
+  const when = document.createElement("td");
+  when.className = "invitations-when";
+  when.textContent = r.created ? "Sent " + invitationsDate(r.created) : "—";
+  const exp = document.createElement("td");
+  exp.className = "invitations-when";
+  exp.textContent = invitationsExpires(r, kind, now);
+  const act = document.createElement("td");
+  act.className = "invitations-actions";
+  if (kind === "waiting" && r.revocable) {
+    const a = document.createElement("a");
+    // the shipped Revoke idiom: plain, and the danger-LINK token
+    a.className = "rm plain link-danger"; a.setAttribute("role", "button"); a.tabIndex = 0;
+    a.textContent = "Revoke"; a.dataset.revoke = r.invite_id;
+    bindKeyClick(a);
+    act.appendChild(a);
+  } else if (kind === "failed") {
+    const a = document.createElement("a");
+    a.className = "rm plain"; a.setAttribute("role", "button"); a.tabIndex = 0;
+    a.textContent = "Clear"; a.dataset.clear = r.invite_id;
+    bindKeyClick(a);
+    act.appendChild(a);
+  }
+  tr.append(name, state, when, exp, act);
+  return tr;
+}
+
+// The rows the record yields, classified and ordered (newest first), with the clock they were
+// classified against.
+function invitationsClassified() {
+  const now = Math.floor(Date.now() / 1000);
+  return invitationsRows
+    .map((r) => ({ r, kind: invitationsKind(r, now), now }))
+    .filter((x) => x.kind !== null)
+    .sort((a, b) => (b.r.created || 0) - (a.r.created || 0));     // newest first
+}
+
+// The count line, from the classified set -- the ONE writer of `#invitations-sent-meta`.
+function invitationsRenderMeta(rows) {
+  const counts = { waiting: 0, accepted: 0, expired: 0, failed: 0 };
+  for (const x of rows) counts[x.kind] += 1;
+  const meta = [];
+  if (counts.waiting) meta.push(counts.waiting + " waiting");
+  if (counts.accepted) meta.push(counts.accepted + " accepted");
+  if (counts.expired) meta.push(counts.expired + " expired");
+  if (counts.failed) meta.push(counts.failed + " didn't finish");
+  byId("invitations-sent-meta").textContent = meta.join(" · ");
+}
+
+// NA-0778 (`D-0047`, 004a / RULING_NA0778_006 R38): A SUCCESSFUL REVOKE MOVES THE IN-MEMORY SET,
+// not only the DOM. The cold read found the set left as delivered, so any chip click re-rendered
+// the revoked row as "Waiting for reply" with a live Revoke. ONE function owns the update (the
+// handler's success branch calls it; the arm can exec it): the record is marked revoked, the
+// count line is re-rendered from the updated set, and the row -- already flipped to "Revoked"
+// where the user is looking -- is dropped on the next render (revoked rows never render).
+function invitationsMarkRevoked(id) {
+  for (const r of invitationsRows) if (r.invite_id === id) r.state = "revoked";
+  invitationsRenderMeta(invitationsClassified());
+}
+
+function invitationsRender() {
+  const rows = invitationsClassified();
+  invitationsRenderMeta(rows);
+  const host = byId("invitations-sent-rows");
+  host.innerHTML = "";
+  const shown = rows.filter((x) => invitationsFilter === "all" || x.kind === invitationsFilter);
+  for (const x of shown) host.appendChild(invitationsRowEl(x.r, x.kind, x.now));
+  byId("invitations-sent-empty").classList.toggle("hidden", rows.length > 0);
+  // R53: the Sent heading's own link shows ONLY while Sent has nothing to list.
+  byId("invitations-sent-link").classList.toggle("hidden", rows.length > 0);
+  // F-15a: a chip with no matching rows says so, instead of a header-only table.
+  byId("invitations-filter-empty").classList.toggle("hidden", !(rows.length > 0 && shown.length === 0));
+  byId("invitations-sent").classList.toggle("hidden", shown.length === 0);
+  byId("invitations-filters").classList.toggle("hidden", rows.length === 0);
+  for (const chip of document.querySelectorAll("#invitations-filters .invitations-chip")) {
+    chip.classList.toggle("on", chip.dataset.filter === invitationsFilter);
+  }
+  byId("invitations-loading").classList.add("hidden");
+  byId("invitations-body").classList.remove("hidden");
+}
+
+// ⚠ THE ID, NEVER THE ROW (R22): the control carries the invitation id and the handler acts on
+// that id; the row it repaints is looked up by the same id at that moment.
+byId("invitations-sent-rows").addEventListener("click", async (ev) => {
+  const t = ev.target;
+  const rev = t.dataset && t.dataset.revoke;
+  const clr = t.dataset && t.dataset.clear;
+  if (!rev && !clr) return;
+  byId("invitations-error").classList.add("hidden");
+  const id = rev || clr;
+  try {
+    if (rev) {
+      await invoke("invite_revoke", { inviteId: id });
+      // FLIP IN PLACE, with no timer: the row reads "Revoked" where the user is looking and leaves
+      // on the next refresh (revoked rows are never rendered). Visible success, then tidy.
+      const row = document.querySelector('#invitations-sent-rows tr[data-invite-id="' + CSS.escape(id) + '"]');
+      if (row) {
+        const s = row.querySelector(".invitations-state");
+        s.className = "invitations-state is-revoked";
+        s.lastChild.textContent = "Revoked";
+        row.dataset.kind = "revoked";
+        t.remove();
+      }
+      invitationsMarkRevoked(id);
+    } else {
+      await invoke("invite_clear", { inviteId: id });
+      invitationsRows = invitationsRows.filter((r) => r.invite_id !== id);
+      invitationsRender();
+    }
+  } catch (e) {
+    // The row is untouched: nothing flipped, nothing left. The shared vocabulary renders the line.
+    renderInviteError("invitations-error", e && e.code, e && e.detail, rev ? "revoke" : "clear");
+  }
+});
+
+byId("invitations-filters").addEventListener("click", (ev) => {
+  const chip = ev.target.closest(".invitations-chip");
+  if (!chip) return;
+  invitationsFilter = chip.dataset.filter;
+  invitationsRender();
+});
+
+// NA-0778 (004c / RULING_NA0778_008 R53): the groups' own links -- shown only while a group has nothing
+// to list -- open the existing windows: "send invitation" the mint (painted, then the surface-open
+// trigger, as the rail's send does), "redeem invitation" the code-entry view. The page-level
+// "Create one from Contacts" link is retired with the mockup's explanation.
+byId("btn-invitations-send").addEventListener("click", async () => {
+  await openInviteModal();
+  await relayScan({ source: "surface_open", at: Date.now() });
+});
+byId("btn-invitations-redeem").addEventListener("click", () => openRedeemEntry());
+for (const chip of document.querySelectorAll("#invitations-filters .invitations-chip")) bindKeyClick(chip);
+bindKeyClick(byId("btn-invitations-send"));
+bindKeyClick(byId("btn-invitations-redeem"));
+
 // ---- NA-0755 v2 (D-0036): THE INVITE SURFACE — THE SINGLE-VIEW MINT AND THE LIST ----
 //
 // Supersedes the v1 two-step modal, which the operator flew and which came back RED.
@@ -2200,6 +2442,16 @@ const INVITE_SOFT_CAP = 10;
 // deliberate act rather than a second click.
 const INVITE_SLOT_EMPTY = "Your invite code will appear here after you activate.";
 let inviteMinted = false;
+// NA-0778 (004f / RULING_NA0778_011 R74 (b), RULING_NA0778_012 R79): a mint IN FLIGHT -- set at the
+// Activate click after the label gate, cleared when the promise settles (adopt or failure). While it
+// is set the openers and the three user closers are no-ops (the code always lands in an OPEN window)
+// and Activate refuses a second mint. Bounded by the client's own timeout on the round trip.
+let inviteInFlight = false;
+// The window's GENERATION: advances at every open and every close. inviteAdoptCode writes only when the
+// generation the mint started under is still the live one AND the window is open; otherwise the code
+// is DISCARDED -- never written into a hidden node. The invitation then exists on the page as
+// "Waiting for reply", where Revoke is one click.
+let inviteGen = 0;
 // The two conditions that are FIXED for the lifetime of one open window. `capFull` is deliberately
 // NOT recomputed after a mint (ruling Q4 = A): recomputing it is what let the cap line APPEAR on
 // activation at the tenth invite, which is the one boundary where the window used to move.
@@ -2378,6 +2630,7 @@ function inviteErrorLine(code, detail, verb) {
   const shown = c === "other" && d ? d : c || "unknown";
   return { banner: verb === "revoke" ? "Couldn't revoke the invite"
          : verb === "clear" ? "Couldn't remove the invite"
+         : verb === "list" ? "Couldn't read your invitations"
          // NA-0756 (R387 §S2c): without this arm a redeem fell through to the CREATE string.
          : verb === "redeem" ? "Couldn't add the contact"
          : "Couldn't create the invite",
@@ -2404,11 +2657,16 @@ function closeInviteModal() {
   const ov = byId("invite-overlay");
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
+  inviteGen += 1;
   inviteResetSlot();
+  // NA-0778 (004f / R74 (c)): the R53 page refresh lives in inviteUserClose(), the three user gestures'
+  // closer, NOT here -- this structural closer is also show()'s, and a lock or a screen transition
+  // must never call into a sealed vault.
   byId("invite-label").value = "";
   byId("invite-label").readOnly = false;
   inviteId = null;
   inviteMinted = false;
+  inviteSyncActivate(); // NA-0778 (004f / R74 (d)): the hint follows the cleared field; nothing flashes on the next open
   clearInviteErrors();
   inviteShowMint();
 }
@@ -2425,7 +2683,12 @@ function closeInviteModal() {
 // gui-driver drives the PRODUCT'S OWN CODE with a synthetic code -- the same idiom `f_n` already
 // uses to reach the contacts render -- instead of a test re-implementing what the product does,
 // which would prove only that the test agrees with itself.
-function inviteAdoptCode(code) {
+function inviteAdoptCode(code, gen) {
+  // NA-0778 (004f / RULING_NA0778_012 R79): GENERATION-CHECKED. The code lands only in the window it
+  // was minted in, and only while that window is open. A stale generation (the window closed, or
+  // closed and re-opened, during the round trip) or a hidden overlay discards it: nothing is written
+  // into a hidden node (the first reader's F-01).
+  if (gen !== inviteGen || byId("invite-overlay").classList.contains("hidden")) return false;
   // ITEM 7: the code lands IN the slot that was already on screen. The box swaps `.empty` for
   // `.minted` -- a colour change, not a layout one, which is what lets item 6 hold.
   const box = byId("invite-code");
@@ -2443,6 +2706,7 @@ function inviteAdoptCode(code) {
   // change anything.
   byId("invite-label").readOnly = true;
   inviteSyncActivate();
+  return true;
 }
 
 function inviteResetSlot() {
@@ -2533,12 +2797,36 @@ async function inviteRefresh() {
 //   already minted  -- ITEM 12: one invite per window.
 // ⚠ The emptiness test TRIMS first, so a field holding only spaces is empty. That matches how
 // the label has always been READ at mint time, so the gate and the mint cannot disagree.
+// NA-0778 (004d / RULING_NA0778_009 R61): the name term is the REDEEM side's grammar, not emptiness
+// alone -- the engine's channel_label_ok refuses a label outside [A-Za-z0-9_#-] at the INVITER's
+// accept (contacts_provision_from_invite), so a name with a space minted an invitation that could
+// never be accepted, silently. The one decision keeps its shape (four causes, one assignment); the
+// hint beneath the field shows only while the typed name is non-empty and illegal; the value the
+// user typed is never rewritten here.
 function inviteSyncActivate() {
-  const nameOk = byId("invite-label").value.trim() !== "";
-  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;
+  const name = byId("invite-label").value.trim();
+  const nameOk = name !== "" && REDEEM_NAME_RE.test(name);
+  byId("invite-label-hint").classList.toggle("hidden", !(name !== "" && !nameOk));
+  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted || inviteInFlight;
+}
+
+// NA-0778 (004c / RULING_NA0778_008 R54, completing R40): A LIVE MINT IS NEVER SILENTLY DISCARDED, and
+// with the close confirmation retired by the operator's flight ruling the guard's action is a NO-OP:
+// a re-open while a code is on screen (the keyboard's route behind the scrim) leaves the open mint
+// exactly as it is -- no reset, no question. Comments stay ABOVE this function: a pin reads a fixed
+// 400-byte window after its signature (D-05).
+// NA-0778 (004f / RULING_NA0778_011 R74 (a)): ONE predicate for "a mint is live" -- a code on screen
+// or a mint in flight, in a window that is open. It guards the no-op re-open below AND both redeem
+// openers: while a code is on screen NO other opener does anything -- R54's principle extended to
+// the second window (the second reader's F2-05: a redeem overlay stacked over a live mint let one
+// Escape discard the code).
+function inviteLive() {
+  return (inviteMinted || inviteInFlight) && !byId("invite-overlay").classList.contains("hidden");
 }
 
 async function openInviteModal() {
+  if (inviteLive()) return;
+  inviteGen += 1;
   clearInviteErrors();
   inviteEnterMintFresh();
   byId("btn-invite-activate").textContent = HAS_CLIPBOARD_ITEM ? "Activate & Copy" : "Activate";
@@ -2587,9 +2875,16 @@ async function adoptMinted(before) {
 }
 
 byId("btn-invite-activate").addEventListener("click", async (ev) => {
+  if (inviteInFlight) return; // NA-0778 (004f / R74 (b)): ONE mint at a time -- never a second invite_create in flight
   clearInviteErrors();
   const label = byId("invite-label").value.trim();
+  // R61, belt and braces (the redeem handler's own shape): the commit refuses an illegal name
+  // independently of the button's state -- a gate that lives only in the enable path is one
+  // keyboard event from being bypassed.
+  if (label === "" || !REDEEM_NAME_RE.test(label)) { inviteSyncActivate(); return; }
   const btn = byId("btn-invite-activate");
+  inviteInFlight = true; // NA-0778 (004f / R74 (b)): in flight from here until the promise settles
+  const gen = inviteGen;
   // In-flight guard. Unconditional and deliberately so -- it is not a DECISION about whether the
   // control may be enabled, which is `inviteSyncActivate`'s single job, but a latch for the
   // duration of one call.
@@ -2627,14 +2922,17 @@ byId("btn-invite-activate").addEventListener("click", async (ev) => {
   try {
     code = await mint;
   } catch (e) {
+    if (gen !== inviteGen) { inviteInFlight = false; return; } // NA-0778 (004g / RULING_NA0778_013 R85 (a)): a stale failure paints no error into a later window and calls nothing in the vault after a lock
     // A failed mint burns nothing, so the window returns to whatever the ONE decision says --
     // never to a bare `true`, which would have re-enabled it with an empty name.
     inviteSyncActivate();
+    inviteInFlight = false;
     renderInviteError("invite-error-mint", e && e.code, e && e.detail, "create");
     await inviteRefresh();
     return;
   }
-  inviteAdoptCode(code);
+  inviteInFlight = false;
+  if (!inviteAdoptCode(code, gen)) { inviteSyncActivate(); return; } // the window is gone (R79): discarded; the invitation is on the page; the next window's Activate re-decided (004g / R85 (b))
   // v3: on success the link itself is the affordance and no note is needed; the note exists
   // only to say when the single gesture could NOT copy, and it points at the link.
   const note = byId("invite-copy-note");
@@ -2807,16 +3105,32 @@ byId("invite-rows").addEventListener("click", async (ev) => {
 
 // ITEM 1: the Contacts pane's link is the ONE route to the list. It opens the overlay on the list
 // view directly, so the user lands where the link said they would.
-byId("btn-contacts-review").addEventListener("click", async () => {
-  clearInviteErrors();
-  byId("invite-overlay").classList.remove("hidden");
-  await inviteRefresh();
-  await renderInviteList();
-  inviteShowList();
+// NA-0778 (`D-0047`) -- THE INVITATIONS BLOCK'S THREE ENTRY POINTS (mockup 17, blessed 2026-09-01).
+// ⚠ ENTRY POINTS, NOT SECOND FLOWS: each lands on a surface that already ships. `review` is a
+// SCREEN transition to Settings > Invitations (so `show()` closes both overlays on the way, as it
+// does for every transition); `redeem` opens the redeem overlay ON ITS CODE-ENTRY VIEW, through the
+// chooser's own opener so the finish scan that rides that opener (R387 S6) still fires; `send`
+// opens the mint through `openInviteModal`, the ONE path that enters the mint fresh.
+// ⚠ NAMED CONSEQUENCE, not carried silently: the overlay's own list view is no longer reachable
+// from any control -- the page is the review surface now. Its markup, its renderer and the pins on
+// them are LEFT IN PLACE (outside this lane's ordered edit set); retiring them is a small item.
+function railLinkKeys(id) { bindKeyClick(byId(id)); }
+byId("btn-contacts-review").addEventListener("click", () => openSettings("invitations"));
+// NA-0778 (`D-0047`, 004a / RULING_NA0778_006 R39): PAINT FIRST, THEN SCAN, for both links. The cold
+// read found `redeem` awaiting the chooser's opener -- which paints the CHOOSER and only then awaits
+// the surface-open scan -- so with a relay configured the chooser sat on screen for the scan's
+// whole round trip; and `send` entered the mint WITHOUT the surface-open trigger "+" fires. Now
+// `redeem` opens the code-entry view through its own opener (the view painted and the overlay
+// shown BEFORE the await), and `send` paints the mint and THEN fires the same trigger, so P2's
+// property -- every surface-open feeds the one handler -- is evenly true again.
+byId("btn-contacts-redeem").addEventListener("click", () => openRedeemEntry());
+byId("btn-contacts-send").addEventListener("click", async () => {
+  await openInviteModal();
+  await relayScan({ source: "surface_open", at: Date.now() });
 });
-byId("btn-contacts-review").addEventListener("keydown", (ev) => {
-  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); byId("btn-contacts-review").click(); }
-});
+railLinkKeys("btn-contacts-review");
+railLinkKeys("btn-contacts-redeem");
+railLinkKeys("btn-contacts-send");
 // NA-0765 (`D-0042`): the Chats "+" and its listener retire together — adding people is
 // a Contacts act. `#btn-contacts-add` and the welcome button carry the flow.
 // NA-0766 (`D-0043`) -- ITEMS 2, 3 and 4. The corner X and the Back are gone from this overlay
@@ -2824,12 +3138,29 @@ byId("btn-contacts-review").addEventListener("keydown", (ev) => {
 // is also what Escape and the scrim call -- so the visible exit and the invisible ones cannot
 // drift apart. NA-0765 wired the X to that same closer for exactly this reason; the property
 // survives its control.
-byId("btn-invite-close").addEventListener("click", () => closeInviteModal());
+// NA-0778 (004c / RULING_NA0778_008 R54, the operator's flight ruling): THERE IS NO CLOSE CONFIRMATION.
+// After a mint, Close, Escape and the scrim simply close the window through the ONE closer, as they
+// did before 004. The Director's note stands in the record (an accidental close loses an unshared
+// code); the operator flew it and ruled. 004f adds the in-flight no-op and the page refresh at the
+// gesture (below), not at the closer.
+// NA-0778 (004f / RULING_NA0778_011 R74 (c), RULING_NA0778_012 R79): the THREE user gestures -- Close,
+// Escape, the scrim -- share this one gesture closer. A no-op while the window is hidden (Escape fires
+// everywhere) or a mint is in flight (the code must land in an OPEN window; the round trip is bounded).
+// Otherwise the ONE closer, THEN the R53 page refresh -- which lives here and not in closeInviteModal
+// so that show()'s structural close during a lock or a screen transition never calls a sealed vault.
+function inviteUserClose() {
+  const ov = byId("invite-overlay");
+  if (!ov || ov.classList.contains("hidden")) return;
+  if (inviteInFlight) return;
+  closeInviteModal();
+  if (currentScreen === "scr-settings" && !byId("pane-invitations").classList.contains("hidden")) refreshInvitationsPane();
+}
+byId("btn-invite-close").addEventListener("click", () => inviteUserClose());
 byId("invite-overlay").addEventListener("click", (ev) => {
-  if (ev.target === byId("invite-overlay")) closeInviteModal();
+  if (ev.target === byId("invite-overlay")) inviteUserClose();
 });
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") closeInviteModal();
+  if (ev.key === "Escape") inviteUserClose();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
@@ -2930,7 +3261,23 @@ function redeemShowSecurityFailure(code) {
   redeemShow("redeem-failed");
 }
 
+// NA-0778 (`D-0047`, 004a / R39): the code-entry landing's OWN opener. It is the chooser opener with
+// the view swapped, and it is a second function rather than a parameter BECAUSE the trigger-census
+// pin reads `openRedeemChooser()` by its literal signature and requires the surface-open trigger
+// inside that body; the two share four lines by design and fire the same trigger AFTER painting.
+async function openRedeemEntry() {
+  if (inviteLive()) return; // NA-0778 (004f / R74 (a)): refused while a mint is live
+  redeemClearError();
+  byId("redeem-code").value = "";
+  byId("redeem-name").value = "";
+  redeemSyncConnect();
+  redeemShow("redeem-form");
+  byId("redeem-overlay").classList.remove("hidden");
+  await relayScan({ source: "surface_open", at: Date.now() });
+}
+
 async function openRedeemChooser() {
+  if (inviteLive()) return; // NA-0778 (004f / R74 (a)): refused while a mint is live
   redeemClearError();
   byId("redeem-code").value = "";
   byId("redeem-name").value = "";
@@ -3073,7 +3420,11 @@ let contactsOutstanding = 0;
 /// blocked > CHANGED > new-badge > connected > fault > connecting.
 function contactUiState(row, st) {
   if (row.blocked) return "blocked";                       // dominates CHANGED (R4)
-  if (row.state === "CHANGED") return "changed";           // dominates Active (R4)
+  // NA-0778 (004a / RULING_NA0778_006 R42, F-14): the WIRE FORM. The gateway emits the facade's
+  // lowercase "changed" (commands.rs contact_state_wire); this arm compared the upstream
+  // UPPERCASE and was unreachable from live data -- the MITM tell, dead since NA-0764. Every
+  // comparison of a contact record's `state` in this file is censused in STOP 004a.
+  if (row.state === "changed") return "changed";           // dominates Active (R4)
   if (contactsNewBadge.has(row.alias)) return "new";
   if (st && st.state === "active") return "connected";
   if (st && CONTACT_FAULT_REASONS.indexOf(st.reason) !== -1) return "attention";

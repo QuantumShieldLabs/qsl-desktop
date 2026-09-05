@@ -202,40 +202,49 @@
    "sel": "#btn-rail-contacts"
   },
   {
+   "op": "note",
+   "text": "NA-0778 (`D-0047`) -- ITEM 1 RE-AIMED AT MOCKUP 17. The link reads 'review' under the non-clickable 'Invitations' label and it lands on Settings > Invitations (the mockup-16 page), a SCREEN transition; the overlay's own list view is no longer reachable from any control, so the two reads of its empty state and its slot line are retired with the route. Returning to Contacts is the settings rail's own button."
+  },
+  {
    "op": "read_tc",
    "sel": "#btn-contacts-review",
-   "literal": "review invites"
+   "literal": "review"
   },
   {
    "op": "click",
    "sel": "#btn-contacts-review"
   },
   {
+   "op": "poll_visible",
+   "screen": "scr-settings"
+  },
+  {
    "op": "prop_eq",
-   "sel": "#invite-list-view",
+   "sel": "#pane-invitations",
    "prop": "className",
-   "expect": "",
+   "expect": "pane",
    "poll": 5
   },
   {
-   "op": "read_text",
-   "sel": "#invite-list-empty .muted",
-   "literal": "No open invites."
-  },
-  {
-   "op": "read_text",
-   "sel": "#invite-slots",
-   "literal": "0 of 10 slots used — codes expire on their own"
+   "op": "poll_exec",
+   "script": "return document.getElementById('invitations-body').className;",
+   "expect": "pane-form",
+   "poll": 10,
+   "label": "the page renders after its data"
   },
   {
    "op": "click",
-   "sel": "#btn-invite-close"
+   "sel": "#btn-rail-contacts-s"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
   },
   {
    "op": "prop_eq",
-   "sel": "#invite-overlay",
+   "sel": "#pane-contacts",
    "prop": "className",
-   "expect": "overlay hidden",
+   "expect": "list-pane",
    "poll": 5
   },
   {
@@ -714,7 +723,29 @@
   },
   {
    "op": "note",
-   "text": "⚠ AND NO ERROR TEXT APPEARS FOR THE NAME CAUSE — item 10 says the disabled control is the WHOLE enforcement. ⚠ MY FIRST FORM OF THIS STEP ASSERTED THAT NO HINT WAS VISIBLE AND THE INSTRUMENT CAUGHT IT: the no-relay hint IS legitimately on screen here, because the harness genuinely has no relay (`ENG-0226`), and that is a DIFFERENT cause with a message of its own. The property actually ordered is that the NAME cause adds nothing — so it is measured as what it is: the VISIBLE SET must be identical with an empty name and with a valid one. Corrected against the measurement rather than guessed a second time."
+   "text": "NA-0778 (004d / RULING_NA0778_009 R61) -- THE CREATE FIELD ENFORCES THE REDEEM SIDE's GRAMMAR. A name with a space minted an invitation every accept of which failed at the inviter's provisioning (the engine's channel_label_ok), silently, forever. Now: 'Flight B' -> Activate disabled and the muted hint visible, the typed value UNTOUCHED; 'Flight-B' -> enabled, the hint hidden; the field carries the app's 32-character cap."
+  },
+  {
+   "op": "exec",
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;inviteInFlight=false;var i=document.getElementById('invite-label');i.value='Flight B';inviteSyncActivate();return JSON.stringify({noRelay:inviteNoRelay,capFull:inviteCapFull,minted:inviteMinted,inFlight:inviteInFlight,value:i.value,activate:document.getElementById('btn-invite-activate').disabled,hint:document.getElementById('invite-label-hint').className,hintText:document.getElementById('invite-label-hint').textContent});",
+   "expect": "{\"noRelay\":false,\"capFull\":false,\"minted\":false,\"inFlight\":false,\"value\":\"Flight B\",\"activate\":true,\"hint\":\"hint\",\"hintText\":\"letters, numbers, - _ # only\"}",
+   "label": "004i: a spaced name -- every gate input forced in the same script; Activate disabled by the NAME alone, the hint shown"
+  },
+  {
+   "op": "exec",
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;inviteInFlight=false;var i=document.getElementById('invite-label');i.value='Flight-B';inviteSyncActivate();return JSON.stringify({noRelay:inviteNoRelay,capFull:inviteCapFull,minted:inviteMinted,inFlight:inviteInFlight,value:i.value,activate:document.getElementById('btn-invite-activate').disabled,hint:document.getElementById('invite-label-hint').className});",
+   "expect": "{\"noRelay\":false,\"capFull\":false,\"minted\":false,\"inFlight\":false,\"value\":\"Flight-B\",\"activate\":false,\"hint\":\"hint hidden\"}",
+   "label": "004i: a legal name -- every gate input forced in the same script; Activate enabled, the hint hidden (the CI race of 33940568140 closed: a failure now names its term)"
+  },
+  {
+   "op": "exec",
+   "script": "inviteNoRelay=false;inviteCapFull=false;inviteMinted=false;inviteInFlight=false;var i=document.getElementById('invite-label');i.value='Dana K';inviteSyncActivate();var a=document.getElementById('btn-invite-activate').disabled;i.value='Dana';inviteSyncActivate();return JSON.stringify({noRelay:inviteNoRelay,capFull:inviteCapFull,minted:inviteMinted,inFlight:inviteInFlight,value:i.value,withSpace:a,legal:document.getElementById('btn-invite-activate').disabled,maxLength:i.maxLength,hint:document.getElementById('invite-label-hint').className});",
+   "expect": "{\"noRelay\":false,\"capFull\":false,\"minted\":false,\"inFlight\":false,\"value\":\"Dana\",\"withSpace\":true,\"legal\":false,\"maxLength\":32,\"hint\":\"hint hidden\"}",
+   "label": "004i: a space then its removal, every gate input forced; the field's cap is the app's 32"
+  },
+  {
+   "op": "note",
+   "text": "⚠ NO ERROR TEXT FOR THE EMPTY-NAME CAUSE -- item 10 says the disabled control is the WHOLE enforcement there. NA-0778 (004d / RULING_NA0778_009 R61) adds the ILLEGAL-name cause, which DOES carry a muted hint: see the rows above. ⚠ AND NO ERROR TEXT APPEARS FOR THE NAME CAUSE — item 10 says the disabled control is the WHOLE enforcement. ⚠ MY FIRST FORM OF THIS STEP ASSERTED THAT NO HINT WAS VISIBLE AND THE INSTRUMENT CAUGHT IT: the no-relay hint IS legitimately on screen here, because the harness genuinely has no relay (`ENG-0226`), and that is a DIFFERENT cause with a message of its own. The property actually ordered is that the NAME cause adds nothing — so it is measured as what it is: the VISIBLE SET must be identical with an empty name and with a valid one. Corrected against the measurement rather than guessed a second time."
   },
   {
    "op": "exec",
@@ -732,7 +763,7 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-AQHJuXa0gk6i0eK0m24Au9eZAAAAAGqT0t0AG2h0dHBzOi8vcmVsYXkuZXhhbXBsZS5uZXQ6ODQ0Mwa');return document.getElementById('invite-code').classList.contains('minted')?'minted':'not-minted';",
+   "script": "inviteAdoptCode('QSLI-1-AQHJuXa0gk6i0eK0m24Au9eZAAAAAGqT0t0AG2h0dHBzOi8vcmVsYXkuZXhhbXBsZS5uZXQ6ODQ0Mwa', inviteGen);return document.getElementById('invite-code').classList.contains('minted')?'minted':'not-minted';",
    "expect": "minted"
   },
   {
@@ -783,7 +814,7 @@
   },
   {
    "op": "exec",
-   "script": "inviteAdoptCode('QSLI-1-CAPBOUNDARYTESTCODE');return 'adopted';",
+   "script": "inviteAdoptCode('QSLI-1-CAPBOUNDARYTESTCODE', inviteGen);return 'adopted';",
    "expect": "adopted"
   },
   {
@@ -861,7 +892,7 @@
   {
    "op": "exec",
    "script": "var a=document.getElementById('btn-contacts-review');return JSON.stringify({tag:a.tagName,text:a.textContent,deco:getComputedStyle(a).textDecorationLine,hint:!!document.querySelector('.contacts-hint')});",
-   "expect": "{\"tag\":\"A\",\"text\":\"review invites\",\"deco\":\"none\",\"hint\":false}"
+   "expect": "{\"tag\":\"A\",\"text\":\"review\",\"deco\":\"none\",\"hint\":false}"
   },
   {
    "op": "teardown"

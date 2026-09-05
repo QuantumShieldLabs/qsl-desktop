@@ -170,7 +170,7 @@ fn na0766_i1_one_exit_per_modal_by_element() {
 fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
     let js = ui_file("main.js");
     for (overlay, closer) in [
-        ("invite-overlay", "closeInviteModal()"),
+        ("invite-overlay", "inviteUserClose()"),
         ("redeem-overlay", "closeRedeemModal()"),
     ] {
         let scrim = format!(
@@ -181,9 +181,73 @@ fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
             "{overlay}'s scrim still reaches its one closer"
         );
     }
+    // NA-0778 (004c / RULING_NA0778_008 R54): the close confirmation of 004a was RETIRED by the operator's
+    // flight ruling, and the needles return to the ONE closer. NA-0778 (004f / RULING_NA0778_011 R74 (c),
+    // RULING_NA0778_012 R79): the three user gestures reach it through ONE gesture closer,
+    // `inviteUserClose()` -- a no-op while the window is hidden or a mint is in flight, then
+    // `closeInviteModal()`, then the R53 page refresh (moved OUT of the structural closer, which is
+    // also show()'s). What 004a added is kept where it still holds: a re-open of a live mint (the
+    // keyboard's route behind the scrim) is a NO-OP, never a reset -- pinned below as the guard's
+    // first statement, now the ONE predicate `inviteLive()` that both redeem openers share (R74 (a)).
     assert!(
-        js.contains("if (ev.key === \"Escape\") closeInviteModal();"),
-        "Escape still closes the invite overlay"
+        js.contains("if (ev.key === \"Escape\") inviteUserClose();"),
+        "Escape still closes the invite overlay, through the one gesture closer"
+    );
+    let gesture = js
+        .find("function inviteUserClose() {")
+        .expect("the gesture closer exists");
+    let gesture_body = &js[gesture..gesture + 400];
+    assert!(
+        gesture_body.contains("if (inviteInFlight) return;")
+            && gesture_body.contains("closeInviteModal();")
+            && gesture_body.contains("refreshInvitationsPane();"),
+        "the gesture closer is a no-op in flight, reaches the ONE closer, then refreshes the page"
+    );
+    let closer = js
+        .find("function closeInviteModal() {")
+        .expect("the one closer exists");
+    let closer_body = &js[closer..js[closer..].find("\n}\n").expect("the closer ends") + closer];
+    assert!(
+        !closer_body.contains("refreshInvitationsPane"),
+        "the structural closer (also show()'s) never calls into the vault: the refresh is the gesture's"
+    );
+    assert!(
+        js.matches("if (inviteLive()) return;").count() == 3,
+        "the ONE predicate guards exactly three openers: the mint's re-open and both redeem openers"
+    );
+    assert!(
+        js.contains("return (inviteMinted || inviteInFlight) && !byId(\"invite-overlay\").classList.contains(\"hidden\");"),
+        "inviteLive() is a code on screen OR a mint in flight, in an open window"
+    );
+    assert!(
+        js.contains("if (gen !== inviteGen || byId(\"invite-overlay\").classList.contains(\"hidden\")) return false;"),
+        "inviteAdoptCode is generation-checked: a stale generation or a hidden overlay discards the code"
+    );
+    assert!(
+        js.contains("if (inviteInFlight) return; // NA-0778 (004f / R74 (b)): ONE mint at a time"),
+        "the Activate handler refuses a second mint in flight, as its first statement"
+    );
+    // NA-0778 (004g / RULING_NA0778_013 R85): the two settle sites, PRESENCE pins (no driver arm is
+    // claimed for a rejecting mint -- the harness cannot mint, ENG-0226; the record says read-proven).
+    assert!(
+        js.contains("if (gen !== inviteGen) { inviteInFlight = false; return; }"),
+        "a stale failure clears the flag and returns before any error paints or any vault call (R85 (a))"
+    );
+    assert!(
+        js.contains("if (!inviteAdoptCode(code, gen)) { inviteSyncActivate(); return; }"),
+        "the stale-success return re-decides the next window's Activate (R85 (b))"
+    );
+    let open = js
+        .find("async function openInviteModal() {")
+        .expect("the mint opener exists");
+    let open_body = &js[open..open + 400];
+    assert!(
+        open_body.contains(r#"if (inviteLive()) return;"#),
+        "a re-open while a code is on screen is a NO-OP: the open mint stays exactly as it is"
+    );
+    assert!(
+        !js.contains("inviteRequestClose") && !js.contains("invite-close-confirm"),
+        "the retired question leaves no needle behind (a comment cannot re-plant it)"
     );
     assert!(
         js.contains("if (ev.key === \"Escape\") closeRedeemModal();"),
@@ -192,9 +256,9 @@ fn na0766_i2_escape_and_scrim_keep_their_one_closer() {
     // The visible exits reuse the SAME closers, never a second one.
     assert!(
         js.contains(
-            r#"byId("btn-invite-close").addEventListener("click", () => closeInviteModal());"#
+            r#"byId("btn-invite-close").addEventListener("click", () => inviteUserClose());"#
         ),
-        "the invite Close reuses that overlay's one dismissal"
+        "the invite Close reuses that overlay's one gesture closer"
     );
     assert!(
         js.contains(r#"byId("btn-redeem-close3").addEventListener("click", closeRedeemModal);"#),
@@ -212,9 +276,37 @@ fn na0766_i7_review_invites_is_a_link_not_a_button() {
     let css = ui_file("style.css");
     let js = ui_file("main.js");
 
+    // NA-0778 (`D-0047`) RE-AIM AT MOCKUP 17: the single link became a NON-CLICKABLE label with
+    // three links beneath it. The property is unchanged -- anchors on the shipped plain idiom,
+    // lowercase, no count -- and the label is pinned as a paragraph, not an anchor.
     assert!(
-        html.contains(r#"<a class="rm plain" id="btn-contacts-review" role="button" tabindex="0">review invites</a>"#),
-        "the link ships as an ANCHOR on the shipped plain text-link idiom, lowercase, no count"
+        html.contains(
+            r#"<p id="contacts-invitations-label" class="contacts-inv-label">Invitations</p>"#
+        ),
+        "the label is a paragraph, not a link: blue is for what is clickable"
+    );
+    for (id, text) in [
+        ("btn-contacts-review", "review"),
+        ("btn-contacts-redeem", "redeem"),
+        ("btn-contacts-send", "send"),
+    ] {
+        assert!(
+            html.contains(&format!(
+                r#"<a class="rm plain" id="{id}" role="button" tabindex="0">{text}</a>"#
+            )),
+            "the `{text}` link ships as an ANCHOR on the shipped plain text-link idiom, lowercase, no count"
+        );
+    }
+    // NA-0778 (004a / F-07): the no-badge check reads the BLOCK's own slice, so it discriminates --
+    // the first form tested a selector string that cannot occur in markup, and a whole-file needle.
+    let block = view_slice(&html, "contacts-invitations", "contacts-rows");
+    assert!(
+        block.contains(r#"id="btn-contacts-send""#),
+        "non-vacuity: the slice is the invitations block"
+    );
+    assert!(
+        !block.contains(r#"class="count""#) && !block.contains("<span class=\"count"),
+        "no count badge inside the block (mockup 17 v2)"
     );
     // By ELEMENT: there is no button element carrying this id anywhere.
     assert!(
@@ -297,13 +389,33 @@ fn na0766_the_name_gate_lives_in_the_single_assignment() {
     let js = ui_file("main.js");
     assert!(
         js.contains(
-            r#"  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted;"#
+            r#"  byId("btn-invite-activate").disabled = inviteNoRelay || inviteCapFull || !nameOk || inviteMinted || inviteInFlight;"#
         ),
-        "the ONE decision carries all four causes, the name among them"
+        "the ONE decision carries all five causes (004f: the mint in flight), the name among them"
+    );
+    // NA-0778 (004d / RULING_NA0778_009 R61): the name term is the REDEEM side's grammar -- the trim
+    // still comes first (whitespace alone is empty) and the SAME regex constant the redeem gate
+    // uses decides legality, so the two fields cannot drift apart. The typed value is never
+    // rewritten by the gate.
+    assert!(
+        js.contains(r#"const name = byId("invite-label").value.trim();"#)
+            && js.contains(r#"const nameOk = name !== "" && REDEEM_NAME_RE.test(name);"#),
+        "the name term trims first and applies the redeem side's grammar through the shared constant"
+    );
+    let gate = js
+        .find("function inviteSyncActivate() {")
+        .expect("the one gate exists");
+    let gate_body = &js[gate..];
+    let gate_end = gate_body.find("\n}\n").expect("it ends");
+    assert!(
+        !gate_body[..gate_end].contains(r#"byId("invite-label").value ="#),
+        "the gate never rewrites what the user typed"
     );
     assert!(
-        js.contains(r#"const nameOk = byId("invite-label").value.trim() !== "";"#),
-        "and the emptiness test TRIMS first, so whitespace alone is empty"
+        js.contains(
+            r#"if (label === "" || !REDEEM_NAME_RE.test(label)) { inviteSyncActivate(); return; }"#
+        ),
+        "and the commit handler refuses an illegal name independently of the button"
     );
     assert_eq!(
         js.matches(r#"byId("btn-invite-activate").disabled ="#)

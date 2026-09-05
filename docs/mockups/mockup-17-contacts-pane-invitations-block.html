@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!--
+  Mockup 17 — the Contacts pane's invitations block.
+  Operator intent (2026-09-01): "review invites" becomes a non-clickable "Invitations"
+  label; directly below it, three text links: review · redeem · send.
+  - review -> opens the Invitations page (blessed mockup 16); carries the waiting count
+  - redeem -> opens the existing enter-a-code dialog
+  - send   -> opens the SAME create-invite flow as "+" (an entry point, not a second flow)
+  If blessed, this supersedes the ENTRY-POINT paragraph of RBANK_invitations_page_rulings
+  (single "Invitations" link with count); the page design itself is unchanged.
+  MOCKUP — layout authority only; colours from shipped tokens; palette non-binding.
+  v2: no count badge; links separated by small muted dots. v3: links closer together (6px);
+  empty state reads "No contacts yet" / "Press + or use a link above" on two lines.
+  v4: landings ruled -- review -> Settings > Invitations; redeem -> redeem window; send ->
+  create window; + -> chooser.
+  Status: v4 BLESSED by the operator 2026-09-01 ("This looks good, bank it").
+  Entry-point authority for the Contacts pane; the page itself is mockup 16.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup 17 — Contacts pane invitations block</title>
+<style>
+:root{
+  --bg:#1D1D1F; --bg-raised:#252528; --fg:#E8E8E8; --fg-secondary:#A8A8A8; --fg-muted:#7A7A7A;
+  --border:#3A3A3E; --accent-text:#8FBAF0; --accent-fill:#3D7BC4; --accent-fill-text:#FFFFFF;
+  --rail-active-bg:#2E3B4E; --radius-small:6px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#141416;color:var(--fg);font:13.5px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:flex;flex-direction:column;align-items:center;gap:18px;padding:24px}
+.win{width:560px;background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.menubar{display:flex;gap:16px;padding:6px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--fg-secondary)}
+.shell{display:grid;grid-template-columns:52px 1fr;min-height:250px}
+.rail{display:flex;flex-direction:column;align-items:center;padding-top:12px;gap:8px;border-right:1px solid var(--border)}
+.rail-btn{width:36px;height:36px;border-radius:var(--radius-small);display:grid;place-items:center;color:var(--fg-muted)}
+.rail-btn.active{background:var(--rail-active-bg);color:var(--accent-text)}
+.pane{padding:0 16px}
+.head{display:flex;align-items:center;justify-content:space-between;min-height:44px}
+.head h2{margin:0;font-size:16px;font-weight:600}
+.head .plus{color:var(--fg-muted);font-size:20px;line-height:1}
+.inv{margin:2px 0 14px}
+.inv .lbl{color:var(--fg);font-size:13.5px;margin:0 0 4px}
+.inv .links{display:flex;gap:6px;align-items:baseline}
+.inv .sep{color:var(--fg-muted);font-size:13px}
+.inv a{color:var(--accent-text);text-decoration:none;font-size:13px}
+.empty{color:var(--fg-muted);font-size:13px;line-height:1.5;max-width:34ch}
+.notes{width:560px;color:#B9B9BE;font-size:12.5px;line-height:1.55}
+.notes b{color:#E8E8E8}
+</style>
+</head>
+<body>
+
+<div class="win">
+  <div class="menubar"><span>File</span><span>Edit</span><span>View</span><span>Help</span></div>
+  <div class="shell">
+    <div class="rail">
+      <div class="rail-btn" title="Chats">&#x1F5E8;</div>
+      <div class="rail-btn active" title="Contacts">&#x1F465;</div>
+    </div>
+    <div class="pane">
+      <div class="head"><h2>Contacts</h2><span class="plus">+</span></div>
+      <div class="inv">
+        <p class="lbl">Invitations</p>
+        <div class="links">
+          <a href="#">review</a><span class="sep">·</span><a href="#">redeem</a><span class="sep">·</span><a href="#">send</a>
+        </div>
+      </div>
+      <p class="empty">No contacts yet<br>Press + or use a link above</p>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <b>Behaviour, operator-ruled landings.</b> "Invitations" is a label, not a link (blue only when clickable).
+  <b>review</b> &rarr; Settings &gt; Invitations (the mockup-16 page, which lives in Settings; this link navigates there).
+  <b>redeem</b> &rarr; the redeem/paste-an-invite window, directly.
+  <b>send</b> &rarr; the create-an-invite window, directly.
+  <b>+</b> &rarr; the chooser (unchanged). The three links are direct shortcuts past the chooser; the flows themselves are the existing ones — entry points, not second flows.
+  If blessed, this supersedes the entry-point paragraph in the mockup-16 bank; the page itself is unchanged.
+</div>
+</body>
+</html>

@@ -4,6 +4,8 @@
 //! ⚠ NA-0764: this figure read SIX until this lane counted it. The header was written
 //! when there were six flows and was never re-derived as flows were added, so it had
 //! drifted by eight — the same stale-count class this tree files elsewhere. Corrected
+//! ⚠ NA-0778: it has drifted AGAIN -- twenty-one flows (a..u) at this edit. The prose is
+//! not the instrument; `na0776_scenario_orphan_gate.rs` is, and it counts both forms.
 //! here rather than left for a reader to trust. Ignored-by-default is the honest
 //! local shape: the rows are VISIBLE as "ignored" in every plain `cargo test`,
 //! never fake-green. Their real execution is
@@ -379,6 +381,8 @@ fn na0774_gui_p_tick_quiet_busy() {
 ///      stated anchor (RBANK T4), not merely internal agreement.
 /// `top` is a PROXY for baseline: getBoundingClientRect exposes no baseline, and
 /// top-equality implies baseline-equality only because R2 unifies the type (MINOR-8).
+/// NA-0778: a NINTH pane heading (Settings > Invitations) joins the set; the scenario now
+/// measures TEN sites and asserts that count.
 /// The frame is cross-screen: #scr-main and #scr-settings are never co-rendered.
 #[test]
 #[ignore]
@@ -420,4 +424,17 @@ fn na0776_gui_s_webview_relocated() {
 #[ignore]
 fn na0776_gui_t_build_identity_visible() {
     run_scenario("f_t_build_identity");
+}
+
+/// NA-0778 (`D-0047`) -- THE INVITATIONS PAGE, THE CONTACTS-PANE BLOCK AND THE SHOW-ONCE DIALOG,
+/// driven through the real surface (mockups 16 and 17; RULING_NA0778_004 R22/R23). The page's
+/// rows are rendered from SYNTHETIC records through the product's own renderer (the f_k / f_n
+/// idiom: no fixture relay exists, `ENG-0226`), so what is proven is the rendering, the
+/// id-binding and its failure arm, the entry points, the loading state, the show-once copy,
+/// the close confirmation on all three gestures and the
+/// unconditional `show()` close -- not a live mint. Both arms are banked in STOP 004.
+#[test]
+#[ignore]
+fn na0778_gui_u_invitations_page() {
+    run_scenario("f_u_invitations_page");
 }

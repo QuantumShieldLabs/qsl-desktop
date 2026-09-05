@@ -46,6 +46,8 @@ records cite them by filename.
 | `mockup-13a-verify-modal.html` | Verify as a modal overlay | current (chat era) |
 | `mockup-14-invite-create.html` | Create an invite (modal, steps 1–3 + reject) | current (chat era) |
 | `mockup-15-add-contact.html` | Add a contact (redeem invite) | current (chat era) |
+| `mockup-16-invitations-page.html` | Settings › Invitations — sent and received invitations with their state; the Contacts-pane entry point (superseded by 17) | blessed 2026-08-31 (v6); layout authority for NA-0778; its "Connected" states and its Clear-on-expired action have no engine source at 0b87209b — see desktop `D-0047`; R53 (the empty states, the per-group links) and R54 (the show-once line, no close confirmation) superseded this file's SHOW-ONCE header and its page-level empty state; operator flight rulings 2026-09-04, `D-0047`; R91 removed the nudge line (the operator's final flight ruling 2026-09-05, `D-0047`) |
+| `mockup-17-contacts-pane-invitations-block.html` | Contacts pane: the non-clickable "Invitations" label with review · redeem · send | blessed 2026-09-01 (v4); entry-point authority for NA-0778; supersedes the single-link entry point of mockup 16's note 1 |
 | `MOCKUP_channel_established_verify_banner.html` | Channel-established verify banner, States 0/1/2 | ratified 2026-08-01; success path only — failure states in the companion below |
 | `MOCKUP_channel_establish_FAILURE_STATES.html` | Channel establishment failure states S-F1..S-F5 | ruled 2026-08-08; companion to the banner mockup |
 | `MOCKUP_fingerprint_two_tier_RATIFIED.html` | Fingerprint two-tier display: 30-digit voice form + 256-bit hex | ratified 2026-08-01; format reference for 07/07b/13/13a |

@@ -178,9 +178,23 @@
            `invite_list` call that feeds it are now DEAD. They are left in place because removing
            them is outside the ordered edit set; nothing reads them, and no live coupling depends
            on them. -->
-      <a class="rm plain" id="btn-contacts-review" role="button" tabindex="0">review invites</a>
+      <!-- NA-0778 (`D-0047`) -- THE INVITATIONS BLOCK (mockup 17, blessed 2026-09-01). The single
+           link above became a NON-CLICKABLE label with three text links beneath it: review, redeem,
+           send. The label is `--fg`, never blue: blue is for what is clickable. The three are ENTRY
+           POINTS, not second flows -- each lands on a surface that already ships (Settings >
+           Invitations, the code-entry view, the mint) and "+" still opens the chooser. No count
+           badge, by the mockup's own v2 note. The links reuse `a.rm.plain`; the separators are
+           muted dots; the gap is the shipped 6px token. -->
+      <div id="contacts-invitations" class="contacts-inv">
+        <p id="contacts-invitations-label" class="contacts-inv-label">Invitations</p>
+        <div class="contacts-inv-links">
+          <a class="rm plain" id="btn-contacts-review" role="button" tabindex="0">review</a><span class="contacts-inv-sep" aria-hidden="true">&middot;</span><a class="rm plain" id="btn-contacts-redeem" role="button" tabindex="0">redeem</a><span class="contacts-inv-sep" aria-hidden="true">&middot;</span><a class="rm plain" id="btn-contacts-send" role="button" tabindex="0">send</a>
+        </div>
+      </div>
+      <!-- NA-0778 (004c / RULING_NA0778_008 R52, the operator's flight ruling): the empty state sits DIRECTLY
+           BELOW the three links, not at the bottom of the column. -->
+      <p id="contacts-empty" class="empty-note hidden">No contacts yet<br>Press + or use a link above</p>
       <div id="contacts-rows"></div>
-      <p id="contacts-empty" class="empty-note hidden">No contacts yet. Use + to invite someone or enter a code.</p>
     </section>
     <main class="content-pane welcome">
       <svg class="welcome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><rect x="9" y="10" width="6" height="5" rx="1"/><path d="M10 10V8a2 2 0 0 1 4 0v2"/></svg>
@@ -241,6 +255,7 @@
       <button data-pane="identity" class="cat active">Identity</button>
       <button data-pane="server" class="cat">Relay</button>
       <button data-pane="vault" class="cat">Vault and Security</button>
+      <button data-pane="invitations" class="cat">Invitations</button>
       <button data-pane="appearance" class="cat dim">Appearance</button>
       <button data-pane="notifications" class="cat dim">Notifications</button>
       <button data-pane="about" class="cat">About</button>
@@ -448,6 +463,50 @@
           </div>
         </div>
       </div>
+      <!-- NA-0778 (`D-0047`) -- SETTINGS > INVITATIONS (mockup 16, blessed 2026-08-31; layout
+           authority only, every colour a shipped token). RULING_NA0778_004 R22's constraint, built
+           in: the pane renders its rows ONLY after its data has arrived (the loading line until
+           then), writes back into NO editable field (it has none), and binds every row action to an
+           invitation id, never to a row position. R23: the Sent rows carry Waiting / Expired /
+           Accepted from the record; the date is the MINT time, labelled "Sent"; the mockup's two
+           "Connected" states and its connected-at date have NO source until the engine records
+           which contact an invitation produced, and are not drawn. The Received group ships WITH
+           ITS EXPLANATION: the engine keeps no readable record of redeemed codes (the 08-31 bank's
+           own rule for that case). An expired row carries no action: the engine's `invite_clear`
+           accepts a `creating` record only and refuses every live state. The pane's copy keeps the
+           mockup's straight apostrophes because the empty state is pinned VERBATIM to it. -->
+      <div id="pane-invitations" class="pane hidden">
+        <div class="pane-header"><div class="pane-head-row"><h2>Invitations</h2></div></div>
+        <p class="muted">Invitations you've sent and codes you've redeemed. The names here are the ones you typed — they're stored on this device and never sent anywhere.</p>
+        <p id="invitations-loading" class="hint">Loading&hellip;</p>
+        <div id="invitations-error" class="hidden">
+          <div class="status-banner status-accent"><i class="icon"></i><span class="status-text"></span></div>
+          <p class="hint" style="margin:var(--sp-2) 0 0 0;"></p>
+        </div>
+        <div id="invitations-body" class="pane-form hidden">
+          <div class="pane-sect">
+            <div class="invitations-group-head">
+              <!-- NA-0778 (004c / RULING_NA0778_008 R53, the operator's flight ruling; supersedes mockup 16's empty
+                   state and its page-level link): each group carries its OWN link, shown only while that group has
+                   nothing to list. Sent: "send invitation" opens the Invite-someone window. -->
+              <h3>Sent<span id="invitations-sent-link" class="invitations-head-link hidden"> — <a class="rm plain" id="btn-invitations-send" role="button" tabindex="0">send invitation</a></span></h3><span id="invitations-sent-meta" class="hint"></span>
+              <div id="invitations-filters" class="invitations-filters hidden"><a class="invitations-chip on" role="button" tabindex="0" data-filter="all">All</a><a class="invitations-chip" role="button" tabindex="0" data-filter="waiting">Waiting</a><a class="invitations-chip" role="button" tabindex="0" data-filter="accepted">Accepted</a><a class="invitations-chip" role="button" tabindex="0" data-filter="expired">Expired</a></div>
+            </div>
+            <p id="invitations-sent-empty" class="invitations-empty hidden">You haven't sent any invitations yet.</p>
+            <p id="invitations-filter-empty" class="hint hidden">No invitations match this filter.</p>
+            <table id="invitations-sent" class="invitations-table hidden">
+              <thead><tr><th>Name</th><th>Status</th><th>Sent</th><th>Expires</th><th></th></tr></thead>
+              <tbody id="invitations-sent-rows"></tbody>
+            </table>
+          </div>
+          <div class="pane-sect">
+            <!-- R53: Received has nothing to list until the engine records redeemed codes (ENG-B), so its link
+                 shows today; the toggle is the same rule as Sent's, applied to a group that is always empty. -->
+            <div class="invitations-group-head"><h3>Received<span id="invitations-received-link" class="invitations-head-link"> — <a class="rm plain" id="btn-invitations-redeem" role="button" tabindex="0">redeem invitation</a></span></h3><span class="hint">codes you redeemed</span></div>
+            <p id="invitations-received-note" class="invitations-empty">This app doesn't yet keep a list of the codes you've redeemed. A contact you added with a code is in your Contacts list.</p>
+          </div>
+        </div>
+      </div>
       <div id="pane-appearance" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>Appearance</h2></div></div><p class="muted">Not yet — coming in a later update.</p></div>
       <div id="pane-notifications" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>Notifications</h2></div></div><p class="muted">Not yet — coming in a later update.</p></div>
       <div id="pane-about" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>About</h2></div></div><p id="about-name" class="sect-status"></p><p id="about-text" class="hint"></p></div>
@@ -509,7 +568,14 @@
            gap. ITEM 9 — the private-note hint line beneath the field is DELETED: the
            parenthetical says the same thing, in the place the eye already is. -->
       <span class="field-label" id="invite-label-caption">Who is this invite for?&nbsp;&nbsp;&nbsp;&nbsp;<span class="field-note-accent">(stored only on this device)</span></span>
-      <input type="text" id="invite-label" class="full" autocomplete="off" spellcheck="false" placeholder="e.g. Dana" aria-labelledby="invite-label-caption">
+      <!-- NA-0778 (004d / RULING_NA0778_009 R61): the create field enforces the SAME grammar as the redeem
+           field (the engine's channel_label_ok: letters, digits, - _ #; no space) and the app's shipped name
+           cap of 32 (the onboarding, settings and rename fields' value -- the redeem field carries none).
+           Activate stays disabled while the typed name is illegal; the muted hint beneath the field shows
+           only then; what the user typed is NEVER rewritten. Without this, a name with a space minted an
+           invitation every accept of which failed at provisioning, silently, forever (candidate (e)). -->
+      <input type="text" id="invite-label" class="full" maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. Dana" aria-labelledby="invite-label-caption">
+      <p class="hint hidden" id="invite-label-hint">letters, numbers, - _ # only</p>
 
       <!-- The meta row sits ABOVE the code and names it: LEFT is "Invite for: <note>" when a note
            was given, else plain "Invite code"; RIGHT carries the expiry. The row, the box and the
@@ -528,7 +594,11 @@
         <!-- ITEM 13 — UNCHANGED AND DELIBERATELY SO. The cycle (click → "copied" → revert →
              reusable) was measured already shipped exactly as ordered; this lane's obligation is
              to carry it UNBROKEN through the restructure, which is what `I5` pins. -->
+        <!-- NA-0778 (004c / RULING_NA0778_008 R54, the operator's flight ruling; supersedes the 08-31 bank's
+             coupled change): the show-once line is exactly this sentence, on the LEFT of the copy link's row,
+             present from open (NA-0766 item 6). There is no close confirmation. -->
         <div class="copy-row">
+          <span class="hint" id="invite-show-once">Warning: this is the only time you&rsquo;ll see the code.</span>
           <a class="rm plain" id="btn-invite-copy" role="button" tabindex="0">copy code</a>
         </div>
         <p class="hint hidden" id="invite-copy-note"></p>
@@ -595,6 +665,8 @@
          sibling. Returning to the chooser is Close then "+". ⚠ Escape and the scrim are UNTOUCHED
          and still reach `closeInviteModal()`, which is what keeps Close and Escape from ever
          being able to disagree. -->
+    <!-- NA-0778 (004c / R54): the close confirmation that stood here was RETIRED by the operator's flight
+         ruling -- after a mint, Close, Escape and the scrim simply close the window. -->
     <div class="block"><button class="secondary full" id="btn-invite-close">Close</button></div>
   </div>
 </div>
