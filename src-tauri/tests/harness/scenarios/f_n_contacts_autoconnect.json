@@ -1,604 +1,604 @@
 {
-  "scenario": "na0764_gui_n_contacts_autoconnect",
-  "destructive": false,
-  "steps": [
-    {
-      "op": "note",
-      "text": "NA-0764 (D-1405; desktop D-0041) -- THE CONTACTS SURFACE. Instruments I1', I2', I3, I4-behaviour, I5, I6' and I8. \u26a0 THE DESKTOP HARNESS HAS NO FIXTURE RELAY (ENG-0226, open), so nothing here completes a real handshake. The auto-connect PATH is proven against the engine on a real loopback relay at qsl-protocol's na0764_m3_empty_slot_accept; end to end it is proven only by the operator's two-machine flight. What IS driven here is every decision the front end makes, with its inputs planted."
-    },
-    {
-      "op": "launch"
-    },
-    {
-      "op": "note",
-      "text": "A vault, so the run reaches an unlocked surface where the Contacts pane lives."
-    },
-    {
-      "op": "type",
-      "sel": "#vault-pass",
-      "text": "correct horse battery staple"
-    },
-    {
-      "op": "type",
-      "sel": "#vault-confirm",
-      "text": "correct horse battery staple"
-    },
-    {
-      "op": "prop_eq",
-      "sel": "#btn-vault-create",
-      "prop": "disabled",
-      "expect": false,
-      "poll": 5
-    },
-    {
-      "op": "click",
-      "sel": "#btn-vault-create"
-    },
-    {
-      "op": "poll_visible",
-      "screen": "scr-wizard-identity"
-    },
-    {
-      "op": "type",
-      "sel": "#alias-input",
-      "text": "Contacts Rig"
-    },
-    {
-      "op": "prop_eq",
-      "sel": "#btn-identity-done",
-      "prop": "disabled",
-      "expect": false,
-      "poll": 5
-    },
-    {
-      "op": "click",
-      "sel": "#btn-identity-done"
-    },
-    {
-      "op": "poll_visible",
-      "screen": "scr-main"
-    },
-    {
-      "op": "note",
-      "text": "THE PANE OPENS FROM THE RAIL. Before Lane C this button revealed a stub note; it now opens a real surface, and the retired revealer is sealed at design_polish.rs."
-    },
-    {
-      "op": "click",
-      "sel": "#btn-rail-contacts"
-    },
-    {
-      "op": "find_count",
-      "sel": "#pane-contacts",
-      "expect": 1
-    },
-    {
-      "op": "exec",
-      "script": "return byId(\"pane-contacts\").classList.contains(\"hidden\") ? \"hidden\" : \"shown\";",
-      "expect": "shown"
-    },
-    {
-      "op": "note",
-      "text": "I5 (empty half) \u2014 NA-0765 (`D-0042`). Nothing is selected and the list is empty, so the detail pane shows the WELCOME PANEL, not the bare sentence it shipped with. \u26a0 ONE welcome element is reused rather than a second one rendered into the detail body: a duplicate `.welcome-title` inside `#scr-main` would make the read census's single-match selector AMBIGUOUS rather than red, which is the worse failure of the two."
-    },
-    {
-      "op": "find_count",
-      "sel": "#scr-main .welcome-title",
-      "expect": 1
-    },
-    {
-      "op": "read_text",
-      "sel": "#welcome-sub",
-      "literal": "Add a contact to start your first conversation."
-    },
-    {
-      "op": "read_text",
-      "sel": "#btn-add-contact",
-      "literal": "Add your first contact"
-    },
-    {
-      "op": "note",
-      "text": "I1 \u2014 THE RAIL ROUND TRIP, BOTH DIRECTIONS, INDEFINITELY. \u26a0\u26a0 The shipped defect was NOT 'the highlight fails to move': the Chats button carried a HARD-CODED `active` and nothing ever moved it, so opening Contacts left the rail SELECTING THE PANE YOU HAD LEFT. Each step therefore asserts BOTH buttons in one value \u2014 a highlight stuck on Chats and a highlight lit on both are distinct wrong strings, and a one-button check would pass on the second."
-    },
-    {
-      "op": "exec",
-      "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
-      "expect": "false,true"
-    },
-    {
-      "op": "click",
-      "sel": "#btn-rail-chats-m"
-    },
-    {
-      "op": "exec",
-      "script": "return byId('pane-contacts').classList.contains('hidden') ? 'hidden' : 'shown';",
-      "expect": "hidden"
-    },
-    {
-      "op": "exec",
-      "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
-      "expect": "true,false"
-    },
-    {
-      "op": "click",
-      "sel": "#btn-rail-contacts"
-    },
-    {
-      "op": "exec",
-      "script": "return byId('pane-contacts').classList.contains('hidden') ? 'hidden' : 'shown';",
-      "expect": "shown"
-    },
-    {
-      "op": "exec",
-      "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
-      "expect": "false,true"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 AND AGAIN, because 'switches back once' and 'switches indefinitely' are different claims and the shipped build would have passed the first."
-    },
-    {
-      "op": "click",
-      "sel": "#btn-rail-chats-m"
-    },
-    {
-      "op": "click",
-      "sel": "#btn-rail-contacts"
-    },
-    {
-      "op": "exec",
-      "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
-      "expect": "false,true"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0\u26a0 SUPERSEDE ANY IN-FLIGHT REFRESH BEFORE PLANTING, AND SAY WHY. `showContactsPane()` fires an async `refreshContacts()` that awaits real IPC, so it resolves AFTER the planting step below. The first version of this scenario raced exactly there: planted rows were asserted PRESENT and were gone two steps later. That was the PRODUCT racing (cold read C-12), and it is now cured in main.js by a generation guard. Bumping the generation here is how the test uses that same cure to make its own setup deterministic, rather than hoping the timing holds."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0764 = { realRefresh: refreshContacts }; contactsRefreshGen += 1; refreshContacts = function(){ return Promise.resolve(); }; return 'refresh-held';",
-      "expect": "refresh-held"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 AND THE STUB IS STILL SILENT. Opening the pane must not reveal the message that said the pane did not exist."
-    },
-    {
-      "op": "prop_eq",
-      "sel": "#stub-note",
-      "prop": "className",
-      "expect": "hint stub-gap hidden",
-      "poll": 3
-    },
-    {
-      "op": "note",
-      "text": "I3 -- STATES RENDER, ALL SIX, per ruling R4's table. The rows and statuses are PLANTED so every state is reachable: a real rig cannot produce a CHANGED peer or a storage fault on demand. NA-0778 (004a / RULING_NA0778_006 R42): the planted states carry the WIRE forms the gateway emits (pinned / unverified / changed, lowercase), so the arm exercises the live code path; the uppercase plants had been keeping a dead comparison green. Each assertion reads the state the RENDERER chose, not the input it was given."
-    },
-    {
-      "op": "exec",
-      "script": "contactsRows = [{alias:'dana', display_name:null, blocked:false, state:'pinned', fingerprint:{full:'a'.repeat(64), voice:'849301265709214773805516209447'}, device_count:1},{alias:'aud', display_name:null, blocked:false, state:'pinned', fingerprint:null, device_count:1},{alias:'aliza', display_name:null, blocked:false, state:'unverified', fingerprint:null, device_count:1},{alias:'marcus', display_name:null, blocked:false, state:'changed', fingerprint:null, device_count:1},{alias:'pat', display_name:null, blocked:false, state:'unverified', fingerprint:null, device_count:1},{alias:'oldpeer', display_name:null, blocked:true, state:'changed', fingerprint:null, device_count:1}];contactsStatus = {dana:{state:'active',reason:'handshake'}, aud:{state:'active',reason:'handshake'},aliza:{state:'inactive',reason:'missing_seed'}, marcus:{state:'active',reason:'handshake'},pat:{state:'inactive',reason:'unsafe_parent'}, oldpeer:{state:'active',reason:'handshake'}};contactsNewBadge.clear(); contactsNewBadge.add('dana');contactsOutstanding = 0; renderContactsList(); renderContactDetail();return String(document.querySelectorAll('.contact-row').length);",
-      "expect": "6"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0\u26a0 THE ARM THIS LANE EXISTS FOR: `missing_seed` renders CONNECTING, never a fault. The desktop never sets QSC_QSP_SEED, so this is what EVERY not-yet-connected contact answers. Classifying it as a fault would ship 'This connection has a storage problem' on the commonest state in the app and would leave Connecting... with no reachable member at all."
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"aliza\"]').dataset.uiState;",
-      "expect": "connecting"
-    },
-    {
-      "op": "note",
-      "text": "And a genuine structural fault DOES render as a fault -- so the arm above is a classification, not a blanket."
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"pat\"]').dataset.uiState;",
-      "expect": "attention"
-    },
-    {
-      "op": "note",
-      "text": "CHANGED dominates Active (R4): the peer-key-changed signal is the MITM tell and an Active session must not bury it."
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"marcus\"]').dataset.uiState;",
-      "expect": "changed"
-    },
-    {
-      "op": "note",
-      "text": "And blocked dominates CHANGED (R4)."
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"oldpeer\"]').dataset.uiState;",
-      "expect": "blocked"
-    },
-    {
-      "op": "note",
-      "text": "The verify-first badge outranks plain Connected -- an auto-created contact must not look settled before anyone compared a code."
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"dana\"]').dataset.uiState;",
-      "expect": "new"
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"aud\"]').dataset.uiState;",
-      "expect": "connected"
-    },
-    {
-      "op": "note",
-      "text": "THE ROW WORD IS THE BLESSED COPY, read as RENDERED."
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').textContent;",
-      "expect": "new \u2014 verify"
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"marcus\"] .contact-word').textContent;",
-      "expect": "check identity"
-    },
-    {
-      "op": "note",
-      "text": "I8 -- THE BADGE CLEARS ON OPEN, and the ack is IN MEMORY ONLY (ruling sec 5 forbids new persistence for it)."
-    },
-    {
-      "op": "click",
-      "sel": ".contact-row[data-alias=\"dana\"]"
-    },
-    {
-      "op": "exec",
-      "script": "return String(contactsNewBadge.has('dana'));",
-      "expect": "false"
-    },
-    {
-      "op": "note",
-      "text": "And the row leaves the new state, so the nudge is genuinely spent rather than merely un-flagged."
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelector('.contact-row[data-alias=\"dana\"]').dataset.uiState;",
-      "expect": "connected"
-    },
-    {
-      "op": "note",
-      "text": "THE DETAIL RENDERS THE RATIFIED TIER-1 CODE: 30 digits in 6 groups of 5. \u26a0 The blessed mockup showed 'QF3K-92MB-7A', which is NEITHER ratified tier and about half the display strength; it was a placeholder, and the ratified voice form is what ships (STOP 002 D-B)."
-    },
-    {
-      "op": "click",
-      "sel": ".contact-row[data-alias=\"dana\"]"
-    },
-    {
-      "op": "exec",
-      "script": "return byId('contact-detail-body').querySelector('.contact-code').textContent;",
-      "expect": "84930 12657 09214 77380 55162 09447"
-    },
-    {
-      "op": "note",
-      "text": "I2 \u2014 DETAIL COMPLETENESS, BY ELEMENT. \u26a0\u26a0 THIS IS THE INSTRUMENT WHOSE ABSENCE LET THE GAP SHIP: the review that passed the defective build checked for STRINGS where the claim was ELEMENTS, so a pane missing its rename control and its section structure read as complete. Every row below counts NODES in the rendered DOM."
-    },
-    {
-      "op": "exec",
-      "script": "contactsSelected='dana'; renderContactsList(); renderContactDetail(); return byId('contact-detail-body').querySelector('.contact-detail-name').textContent;",
-      "expect": "dana"
-    },
-    {
-      "op": "find_count",
-      "sel": "#contact-detail-body .pane-form",
-      "expect": 1
-    },
-    {
-      "op": "find_count",
-      "sel": "#contact-detail-body .contact-code-card",
-      "expect": 1
-    },
-    {
-      "op": "find_count",
-      "sel": "#contact-rename-input",
-      "expect": 1
-    },
-    {
-      "op": "find_count",
-      "sel": "#btn-contact-rename",
-      "expect": 1
-    },
-    {
-      "op": "find_count",
-      "sel": "#contact-detail-body .contact-detail-kv",
-      "expect": 1
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 THE SECTIONS ARE COUNTED, not merely present. A connected contact draws THREE: the name you gave them, the code, and the connection. The hairlines come from `.pane-sect + .pane-sect`, so the rule count follows the section count and cannot drift to a trailing rule."
-    },
-    {
-      "op": "exec",
-      "script": "return String(document.querySelectorAll('#contact-detail-body .pane-sect').length);",
-      "expect": "3"
-    },
-    {
-      "op": "exec",
-      "script": "return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent + '|' + document.querySelectorAll('#contact-detail-body .field-label')[1].textContent + '|' + document.querySelectorAll('#contact-detail-body .field-label')[2].textContent;",
-      "expect": "Their name|Verification code|Connection"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 NO BLOCKING CONTROL, IN ANY STATE \u2014 A RULING, NOT AN OMISSION (R-1 = Option A). Measured at this pin: the honest symmetric pair exists in the engine and is NOT in the facade, and the one verb the desktop CAN reach is one-way and sets the primary device to REVOKED, which nothing exposed restores \u2014 so the blessed 'restores the connection you already had' would be FALSE. A control whose copy is measurably untrue does not ship. `ENG-0248` names the missing pair."
-    },
-    {
-      "op": "exec",
-      "script": "contactsSelected='oldpeer'; renderContactDetail(); return document.querySelectorAll('#contact-detail-body button').length + '|' + byId('contact-detail-body').querySelector('.contact-detail-state').textContent;",
-      "expect": "0|Blocked"
-    },
-    {
-      "op": "note",
-      "text": "STATE-DEPENDENT SECTION ORDER, which the blessed layout chooses deliberately: a CONNECTED contact leads with the name you gave them, a NEW one leads with the code you are being asked to compare."
-    },
-    {
-      "op": "exec",
-      "script": "contactsSelected='dana'; renderContactDetail(); return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent;",
-      "expect": "Their name"
-    },
-    {
-      "op": "exec",
-      "script": "contactsNewBadge.add('dana'); renderContactDetail(); return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent + '|' + byId('contact-detail-body').querySelector('.contact-detail-state').textContent;",
-      "expect": "Verification code|New contact \u2014 verify identity"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 AND THE LIST ROW STAYS SHORT. Only the DETAIL title lengthens; the row keeps the two-word form, which is the operator's own ruling on that pair and is easy to break by editing one table and not the other."
-    },
-    {
-      "op": "exec",
-      "script": "renderContactsList(); return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').textContent;",
-      "expect": "new \u2014 verify"
-    },
-    {
-      "op": "exec",
-      "script": "contactsNewBadge.delete('dana'); renderContactsList(); renderContactDetail(); return 'restored';",
-      "expect": "restored"
-    },
-    {
-      "op": "note",
-      "text": "I3 \u2014 RENAME, ROUND TRIP. \u26a0\u26a0 THE INVARIANT UNDER TEST IS THAT `alias` IS THE KEY AND THE TYPED NAME IS ONLY A LABEL. `alias` keys the contact store, the identity pin and the live session, so a rename that RE-KEYED would reach all three while looking reasonable. The call is intercepted so its ARGUMENT SHAPE is measured, not merely its effect."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0765 = { calls: [], realInvoke: invoke }; invoke = function(cmd, args) { window.__na0765.calls.push({cmd: cmd, args: args}); return Promise.resolve(null); }; contactsSelected='dana'; renderContactDetail(); return 'stubbed';",
-      "expect": "stubbed"
-    },
-    {
-      "op": "clear_type",
-      "sel": "#contact-rename-input",
-      "text": "Dana from choir"
-    },
-    {
-      "op": "click",
-      "sel": "#btn-contact-rename"
-    },
-    {
-      "op": "poll_exec",
-      "script": "return String(window.__na0765.calls.filter(function(c){return c.cmd==='contact_set_display_name';}).length);",
-      "expect": "1"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 THE KEY IS THE ALIAS, AND THE LABEL IS THE LABEL. If these two were swapped the app would still look right on screen and would be re-keying identity underneath."
-    },
-    {
-      "op": "exec",
-      "script": "var c=window.__na0765.calls.filter(function(x){return x.cmd==='contact_set_display_name';})[0]; return c.args.alias + '|' + c.args.displayName;",
-      "expect": "dana|Dana from choir"
-    },
-    {
-      "op": "note",
-      "text": "AND THE STORED ALIAS IS UNCHANGED once the new label renders: the row's key is still what every verb receives, while the NAME on screen is the one the user chose."
-    },
-    {
-      "op": "exec",
-      "script": "contactsRows.find(function(r){return r.alias==='dana';}).display_name='Dana from choir'; renderContactsList(); renderContactDetail(); var row=document.querySelector('.contact-row[data-alias=\"dana\"]'); return row.dataset.alias + '|' + row.querySelector('.contact-name').textContent + '|' + byId('contact-detail-body').querySelector('.contact-detail-name').textContent;",
-      "expect": "dana|Dana from choir|Dana from choir"
-    },
-    {
-      "op": "exec",
-      "script": "invoke = window.__na0765.realInvoke; return 'restored';",
-      "expect": "restored"
-    },
-    {
-      "op": "note",
-      "text": "I5 (has-contacts half) \u2014 the SAME welcome panel, and the button wording is the only difference. Deselecting is the ordinary way a user reaches this: the pane is open, nothing is chosen."
-    },
-    {
-      "op": "exec",
-      "script": "contactsSelected=null; renderContactsList(); renderContactDetail(); return byId('pane-contact-detail').classList.contains('hidden') ? 'detail-hidden' : 'detail-shown';",
-      "expect": "detail-hidden"
-    },
-    {
-      "op": "read_text",
-      "sel": "#welcome-sub",
-      "literal": "Select a contact, or add another."
-    },
-    {
-      "op": "read_text",
-      "sel": "#btn-add-contact",
-      "literal": "Add a contact"
-    },
-    {
-      "op": "note",
-      "text": "NA-0766 (`D-0043`) \u2014 ITEM 1 RE-AIM. The 0/1/n outstanding-count line is RETIRED from the Contacts pane: it becomes a plain blue text link reading exactly 'review' (NA-0778 re-aimed it to mockup 17: the word under the non-clickable 'Invitations' label), lowercase, never underlined, carrying NO count (the operator's variant-B ruling, taken knowingly). \u26a0 ALWAYS VISIBLE by ruling Q2 = (A) \u2014 a navigation control that vanishes at zero is the clutter this lane removes, and an empty 'Your invites' screen must stay reachable. So the count states this seal used to drive no longer exist to drive; what replaces them is the ONE state the link now has."
-    },
-    {
-      "op": "exec",
-      "script": "var a=document.getElementById('btn-contacts-review');return JSON.stringify({present:!!a,tag:a?a.tagName:null,text:a?a.textContent:null,visible:a?a.getClientRects().length>0:false});",
-      "expect": "{\"present\":true,\"tag\":\"A\",\"text\":\"review\",\"visible\":true}"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 AND IT DOES NOT MOVE WITH THE COUNT \u2014 driven at zero and at four, the two states the retired line rendered differently. The old line hid at zero; the link does not."
-    },
-    {
-      "op": "exec",
-      "script": "contactsOutstanding=0;renderContactsList();var a=document.getElementById('btn-contacts-review');return a.getClientRects().length>0?'visible':'hidden';",
-      "expect": "visible"
-    },
-    {
-      "op": "exec",
-      "script": "contactsOutstanding=4;renderContactsList();var a=document.getElementById('btn-contacts-review');return JSON.stringify({vis:a.getClientRects().length>0,text:a.textContent});",
-      "expect": "{\"vis\":true,\"text\":\"review\"}"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 AND THE RETIRED ELEMENT IS GONE, not merely emptied \u2014 pinned as an ABSENCE so it cannot quietly return."
-    },
-    {
-      "op": "find_count",
-      "sel": ".contacts-hint",
-      "expect": 0
-    },
-    {
-      "op": "note",
-      "text": "I4 BEHAVIOUR -- THE FOOTER'S PRECEDENCE, WITH THE CORRECTED RED ARM (cold read C-08). The obvious arm -- an unknown reason in the QUIET case -- passes even when the chain is wrong, because the defect only shows under trouble. The arm that matters is an unknown reason WHILE the tick is in trouble: the please-report tripwire must still win."
-    },
-    {
-      "op": "exec",
-      "script": "return statusFooterLine(null, 'https://r.example:8443', true);",
-      "expect": "Relay: unknown \u00b7 Vault: unlocked \u00b7 Auto-lock: 60 min"
-    },
-    {
-      "op": "exec",
-      "script": "return statusFooterLine('unrecognized', 'https://r.example:8443', true);",
-      "expect": "Relay: unknown \u00b7 Vault: unlocked \u00b7 Auto-lock: 60 min"
-    },
-    {
-      "op": "note",
-      "text": "Storage and locked likewise outrank an outage -- and an outage and a storage fault are CORRELATED, both following a bad restart or a moved vault, so this is the case that actually happens."
-    },
-    {
-      "op": "exec",
-      "script": "return statusFooterLine('missing_home', 'https://r.example:8443', true);",
-      "expect": "Relay: unknown \u00b7 Vault: storage error \u00b7 Auto-lock: 60 min"
-    },
-    {
-      "op": "exec",
-      "script": "return statusFooterLine('vault_locked', 'https://r.example:8443', true);",
-      "expect": "Relay: configured \u00b7 Vault: locked \u00b7 Auto-lock: 60 min"
-    },
-    {
-      "op": "note",
-      "text": "The outage arm renders ONLY in the otherwise-Ready case -- which is exactly where it belongs."
-    },
-    {
-      "op": "note",
-      "text": "NA-0779 (18c L6; RBANK_status_footer_todo F2/F3): statusFooterLine now returns the STATUS BAR's left text in state words -- the outage reads 'Relay: unreachable', and with no outage an address with no measured success reads 'configured', never 'connected' (F3) and never the address itself."
-    },
-    {
-      "op": "exec",
-      "script": "return statusFooterLine('missing_seed', 'https://r.example:8443', true);",
-      "expect": "Relay: unreachable \u00b7 Vault: unlocked \u00b7 Auto-lock: 60 min"
-    },
-    {
-      "op": "exec",
-      "script": "return statusFooterLine('missing_seed', 'https://r.example:8443', false);",
-      "expect": "Relay: configured \u00b7 Vault: unlocked \u00b7 Auto-lock: 60 min"
-    },
-    {
-      "op": "note",
-      "text": "I1'/I2' -- THE AUTO-CONNECT CLASS DECIDES CORRECTLY. `invoke` is stubbed so the class's INPUTS are planted and its CALLS are recorded; the relay itself is out of reach here (ENG-0226) and is measured in qsl-protocol instead. The recorded calls are the instrument."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0764 = { calls: [], realInvoke: invoke };invoke = function(cmd, args) { window.__na0764.calls.push({cmd: cmd, args: args}); if (cmd === 'relay_config_get') return Promise.resolve({relay_url: 'https://r.example:8443'}); if (cmd === 'invite_list') return Promise.resolve([  {invite_id:'inv-active', state:'active', expiry: Math.floor(Date.now()/1000)+3600, label:'Matt2'},  {invite_id:'inv-revoked', state:'revoked', expiry: Math.floor(Date.now()/1000)+3600, label:'Gone'},  {invite_id:'inv-redeemed', state:'redeemed', expiry: Math.floor(Date.now()/1000)+3600, label:'Done'},  {invite_id:'inv-expired', state:'active', expiry: Math.floor(Date.now()/1000)-10, label:'Old'},  {invite_id:'inv-nolabel', state:'active', expiry: Math.floor(Date.now()/1000)+3600, label:null}]); if (cmd === 'invite_accept') return Promise.resolve(null); return Promise.resolve(null); };return 'stubbed';",
-      "expect": "stubbed"
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0764.marks = null;return autoConnectClass({why:'tick',at:Date.now(),scanned:0,finished:0,pending:0,attempted:0,failed:0,unlabelled:0}) .then(function(m){ window.__na0764.marks = m; return 'done'; });",
-      "expect": "done"
-    },
-    {
-      "op": "note",
-      "text": "I1' -- EXACTLY ONE accept, and it is the ACTIVE, UNEXPIRED, LABELLED invite."
-    },
-    {
-      "op": "exec",
-      "script": "return String(window.__na0764.calls.filter(function(c){return c.cmd==='invite_accept';}).length);",
-      "expect": "1"
-    },
-    {
-      "op": "exec",
-      "script": "return window.__na0764.calls.filter(function(c){return c.cmd==='invite_accept';})[0].args.inviteId;",
-      "expect": "inv-active"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 AND THE ALIAS IS THE INVITE'S OWN LABEL (R1), not the invite id. Passing the id would provision a contact named after a routing token."
-    },
-    {
-      "op": "exec",
-      "script": "return window.__na0764.calls.filter(function(c){return c.cmd==='invite_accept';})[0].args.alias;",
-      "expect": "Matt2"
-    },
-    {
-      "op": "note",
-      "text": "I2' -- A REVOKED INVITE'S SLOT IS NEVER ACCEPTED. Nor is a redeemed one, nor an expired one. This is the arm that keeps a killed code from being quietly re-honoured by the tick."
-    },
-    {
-      "op": "exec",
-      "script": "return window.__na0764.calls.filter(function(c){return c.cmd==='invite_accept' && (c.args.inviteId==='inv-revoked'||c.args.inviteId==='inv-redeemed'||c.args.inviteId==='inv-expired');}).length.toString();",
-      "expect": "0"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 THE UNLABELLED INVITE IS SKIPPED AND COUNTED, NOT SILENTLY DROPPED. The mint's own caption calls the label OPTIONAL, so a blessed GUI flow produces invites with no alias to provision under. The tally makes the gap observable; its disposition is the operator's and is declared at STOP 2."
-    },
-    {
-      "op": "exec",
-      "script": "return String(window.__na0764.marks.unlabelled);",
-      "expect": "1"
-    },
-    {
-      "op": "note",
-      "text": "An EMPTY slot is a no-op: nobody redeemed, so nothing finished and no badge was minted. This is the case the tick meets on almost every beat."
-    },
-    {
-      "op": "exec",
-      "script": "return String(window.__na0764.marks.finished);",
-      "expect": "0"
-    },
-    {
-      "op": "exec",
-      "script": "return String(contactsNewBadge.has('Matt2'));",
-      "expect": "false"
-    },
-    {
-      "op": "note",
-      "text": "I5 -- REFRESH ON A SCAN THAT CHANGED STATE, and ONLY then. The refresh is observed through a counter on the real render path rather than by watching the DOM, so the arm cannot pass on an unrelated repaint."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0764.renders = 0; refreshContacts = function(){ window.__na0764.renders += 1; return Promise.resolve(); };recordScanOutcome({source:'tick',at:Date.now()},{why:'tick',scanned:1,finished:0,pending:1,attempted:1,failed:0,unlabelled:0});return String(window.__na0764.renders);",
-      "expect": "0"
-    },
-    {
-      "op": "exec",
-      "script": "recordScanOutcome({source:'tick',at:Date.now()},{why:'tick',scanned:1,finished:1,pending:1,attempted:1,failed:0,unlabelled:0});return String(window.__na0764.renders);",
-      "expect": "1"
-    },
-    {
-      "op": "note",
-      "text": "RESTORE the stubs so nothing downstream inherits them."
-    },
-    {
-      "op": "exec",
-      "script": "invoke = window.__na0764.realInvoke; refreshContacts = window.__na0764.realRefresh; return 'restored';",
-      "expect": "restored"
-    },
-    {
-      "op": "teardown"
-    }
-  ]
+ "scenario": "na0764_gui_n_contacts_autoconnect",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "note",
+   "text": "NA-0764 (D-1405; desktop D-0041) -- THE CONTACTS SURFACE. Instruments I1', I2', I3, I4-behaviour, I5, I6' and I8. ⚠ THE DESKTOP HARNESS HAS NO FIXTURE RELAY (ENG-0226, open), so nothing here completes a real handshake. The auto-connect PATH is proven against the engine on a real loopback relay at qsl-protocol's na0764_m3_empty_slot_accept; end to end it is proven only by the operator's two-machine flight. What IS driven here is every decision the front end makes, with its inputs planted."
+  },
+  {
+   "op": "launch"
+  },
+  {
+   "op": "note",
+   "text": "A vault, so the run reaches an unlocked surface where the Contacts pane lives."
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "correct horse battery staple"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "correct horse battery staple"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "Contacts Rig"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "THE PANE OPENS FROM THE RAIL. Before Lane C this button revealed a stub note; it now opens a real surface, and the retired revealer is sealed at design_polish.rs."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "find_count",
+   "sel": "#pane-contacts",
+   "expect": 1
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"pane-contacts\").classList.contains(\"hidden\") ? \"hidden\" : \"shown\";",
+   "expect": "shown"
+  },
+  {
+   "op": "note",
+   "text": "I5 (empty half) — NA-0765 (`D-0042`). Nothing is selected and the list is empty, so the detail pane shows the WELCOME PANEL, not the bare sentence it shipped with. ⚠ ONE welcome element is reused rather than a second one rendered into the detail body: a duplicate `.welcome-title` inside `#scr-main` would make the read census's single-match selector AMBIGUOUS rather than red, which is the worse failure of the two."
+  },
+  {
+   "op": "find_count",
+   "sel": "#scr-main .welcome-title",
+   "expect": 1
+  },
+  {
+   "op": "read_text",
+   "sel": "#welcome-sub",
+   "literal": "Add a contact to start your first conversation."
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-add-contact",
+   "literal": "Add your first contact"
+  },
+  {
+   "op": "note",
+   "text": "I1 — THE RAIL ROUND TRIP, BOTH DIRECTIONS, INDEFINITELY. ⚠⚠ The shipped defect was NOT 'the highlight fails to move': the Chats button carried a HARD-CODED `active` and nothing ever moved it, so opening Contacts left the rail SELECTING THE PANE YOU HAD LEFT. Each step therefore asserts BOTH buttons in one value — a highlight stuck on Chats and a highlight lit on both are distinct wrong strings, and a one-button check would pass on the second."
+  },
+  {
+   "op": "exec",
+   "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
+   "expect": "false,true"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-chats-m"
+  },
+  {
+   "op": "exec",
+   "script": "return byId('pane-contacts').classList.contains('hidden') ? 'hidden' : 'shown';",
+   "expect": "hidden"
+  },
+  {
+   "op": "exec",
+   "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
+   "expect": "true,false"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "exec",
+   "script": "return byId('pane-contacts').classList.contains('hidden') ? 'hidden' : 'shown';",
+   "expect": "shown"
+  },
+  {
+   "op": "exec",
+   "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
+   "expect": "false,true"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND AGAIN, because 'switches back once' and 'switches indefinitely' are different claims and the shipped build would have passed the first."
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-chats-m"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-rail-contacts"
+  },
+  {
+   "op": "exec",
+   "script": "return [byId('btn-rail-chats-m').classList.contains('active'), byId('btn-rail-contacts').classList.contains('active')].join(',');",
+   "expect": "false,true"
+  },
+  {
+   "op": "note",
+   "text": "⚠⚠ SUPERSEDE ANY IN-FLIGHT REFRESH BEFORE PLANTING, AND SAY WHY. `showContactsPane()` fires an async `refreshContacts()` that awaits real IPC, so it resolves AFTER the planting step below. The first version of this scenario raced exactly there: planted rows were asserted PRESENT and were gone two steps later. That was the PRODUCT racing (cold read C-12), and it is now cured in main.js by a generation guard. Bumping the generation here is how the test uses that same cure to make its own setup deterministic, rather than hoping the timing holds."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0764 = { realRefresh: refreshContacts }; contactsRefreshGen += 1; refreshContacts = function(){ return Promise.resolve(); }; return 'refresh-held';",
+   "expect": "refresh-held"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND THE STUB IS STILL SILENT. Opening the pane must not reveal the message that said the pane did not exist."
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#stub-note",
+   "prop": "className",
+   "expect": "hint stub-gap hidden",
+   "poll": 3
+  },
+  {
+   "op": "note",
+   "text": "I3 -- STATES RENDER, ALL SIX, per ruling R4's table. The rows and statuses are PLANTED so every state is reachable: a real rig cannot produce a CHANGED peer or a storage fault on demand. NA-0778 (004a / RULING_NA0778_006 R42): the planted states carry the WIRE forms the gateway emits (pinned / unverified / changed, lowercase), so the arm exercises the live code path; the uppercase plants had been keeping a dead comparison green. Each assertion reads the state the RENDERER chose, not the input it was given."
+  },
+  {
+   "op": "exec",
+   "script": "contactsRows = [{alias:'dana', display_name:null, blocked:false, state:'pinned', fingerprint:{full:'a'.repeat(64), voice:'849301265709214773805516209447'}, device_count:1},{alias:'aud', display_name:null, blocked:false, state:'pinned', fingerprint:null, device_count:1},{alias:'aliza', display_name:null, blocked:false, state:'unverified', fingerprint:null, device_count:1},{alias:'marcus', display_name:null, blocked:false, state:'changed', fingerprint:null, device_count:1},{alias:'pat', display_name:null, blocked:false, state:'unverified', fingerprint:null, device_count:1},{alias:'oldpeer', display_name:null, blocked:true, state:'changed', fingerprint:null, device_count:1}];contactsStatus = {dana:{state:'active',reason:'handshake'}, aud:{state:'active',reason:'handshake'},aliza:{state:'inactive',reason:'missing_seed'}, marcus:{state:'active',reason:'handshake'},pat:{state:'inactive',reason:'unsafe_parent'}, oldpeer:{state:'active',reason:'handshake'}};contactsNewBadge.clear(); contactsNewBadge.add('dana');contactsOutstanding = 0; renderContactsList(); renderContactDetail();return String(document.querySelectorAll('.contact-row').length);",
+   "expect": "6"
+  },
+  {
+   "op": "note",
+   "text": "⚠⚠ THE ARM THIS LANE EXISTS FOR: `missing_seed` renders CONNECTING, never a fault. The desktop never sets QSC_QSP_SEED, so this is what EVERY not-yet-connected contact answers. Classifying it as a fault would ship 'This connection has a storage problem' on the commonest state in the app and would leave Connecting... with no reachable member at all."
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"aliza\"]').dataset.uiState;",
+   "expect": "connecting"
+  },
+  {
+   "op": "note",
+   "text": "And a genuine structural fault DOES render as a fault -- so the arm above is a classification, not a blanket."
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"pat\"]').dataset.uiState;",
+   "expect": "attention"
+  },
+  {
+   "op": "note",
+   "text": "CHANGED dominates Active (R4): the peer-key-changed signal is the MITM tell and an Active session must not bury it."
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"marcus\"]').dataset.uiState;",
+   "expect": "changed"
+  },
+  {
+   "op": "note",
+   "text": "And blocked dominates CHANGED (R4)."
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"oldpeer\"]').dataset.uiState;",
+   "expect": "blocked"
+  },
+  {
+   "op": "note",
+   "text": "The verify-first badge outranks plain Connected -- an auto-created contact must not look settled before anyone compared a code."
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"dana\"]').dataset.uiState;",
+   "expect": "new"
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"aud\"]').dataset.uiState;",
+   "expect": "connected"
+  },
+  {
+   "op": "note",
+   "text": "THE ROW WORD IS THE BLESSED COPY, read as RENDERED."
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').textContent;",
+   "expect": "new — verify"
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"marcus\"] .contact-word').textContent;",
+   "expect": "check identity"
+  },
+  {
+   "op": "note",
+   "text": "I8 -- THE BADGE CLEARS ON OPEN, and the ack is IN MEMORY ONLY (ruling sec 5 forbids new persistence for it)."
+  },
+  {
+   "op": "click",
+   "sel": ".contact-row[data-alias=\"dana\"]"
+  },
+  {
+   "op": "exec",
+   "script": "return String(contactsNewBadge.has('dana'));",
+   "expect": "false"
+  },
+  {
+   "op": "note",
+   "text": "And the row leaves the new state, so the nudge is genuinely spent rather than merely un-flagged."
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"dana\"]').dataset.uiState;",
+   "expect": "connected"
+  },
+  {
+   "op": "note",
+   "text": "THE DETAIL RENDERS THE RATIFIED TIER-1 CODE: 30 digits in 6 groups of 5. ⚠ The blessed mockup showed 'QF3K-92MB-7A', which is NEITHER ratified tier and about half the display strength; it was a placeholder, and the ratified voice form is what ships (STOP 002 D-B)."
+  },
+  {
+   "op": "click",
+   "sel": ".contact-row[data-alias=\"dana\"]"
+  },
+  {
+   "op": "exec",
+   "script": "return byId('contact-detail-body').querySelector('.contact-code').textContent;",
+   "expect": "84930 12657 09214 77380 55162 09447"
+  },
+  {
+   "op": "note",
+   "text": "I2 — DETAIL COMPLETENESS, BY ELEMENT. ⚠⚠ THIS IS THE INSTRUMENT WHOSE ABSENCE LET THE GAP SHIP: the review that passed the defective build checked for STRINGS where the claim was ELEMENTS, so a pane missing its rename control and its section structure read as complete. Every row below counts NODES in the rendered DOM."
+  },
+  {
+   "op": "exec",
+   "script": "contactsSelected='dana'; renderContactsList(); renderContactDetail(); return byId('contact-detail-body').querySelector('.contact-detail-name').textContent;",
+   "expect": "dana"
+  },
+  {
+   "op": "find_count",
+   "sel": "#contact-detail-body .pane-form",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#contact-detail-body .contact-code-card",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#contact-rename-input",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#btn-contact-rename",
+   "expect": 1
+  },
+  {
+   "op": "find_count",
+   "sel": "#contact-detail-body .contact-detail-kv",
+   "expect": 1
+  },
+  {
+   "op": "note",
+   "text": "⚠ THE SECTIONS ARE COUNTED, not merely present. A connected contact draws THREE: the name you gave them, the code, and the connection. The hairlines come from `.pane-sect + .pane-sect`, so the rule count follows the section count and cannot drift to a trailing rule."
+  },
+  {
+   "op": "exec",
+   "script": "return String(document.querySelectorAll('#contact-detail-body .pane-sect').length);",
+   "expect": "3"
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent + '|' + document.querySelectorAll('#contact-detail-body .field-label')[1].textContent + '|' + document.querySelectorAll('#contact-detail-body .field-label')[2].textContent;",
+   "expect": "Their name|Verification code|Connection"
+  },
+  {
+   "op": "note",
+   "text": "⚠ NO BLOCKING CONTROL, IN ANY STATE — A RULING, NOT AN OMISSION (R-1 = Option A). Measured at this pin: the honest symmetric pair exists in the engine and is NOT in the facade, and the one verb the desktop CAN reach is one-way and sets the primary device to REVOKED, which nothing exposed restores — so the blessed 'restores the connection you already had' would be FALSE. A control whose copy is measurably untrue does not ship. `ENG-0248` names the missing pair."
+  },
+  {
+   "op": "exec",
+   "script": "contactsSelected='oldpeer'; renderContactDetail(); return document.querySelectorAll('#contact-detail-body button').length + '|' + byId('contact-detail-body').querySelector('.contact-detail-state').textContent;",
+   "expect": "0|Blocked"
+  },
+  {
+   "op": "note",
+   "text": "STATE-DEPENDENT SECTION ORDER, which the blessed layout chooses deliberately: a CONNECTED contact leads with the name you gave them, a NEW one leads with the code you are being asked to compare."
+  },
+  {
+   "op": "exec",
+   "script": "contactsSelected='dana'; renderContactDetail(); return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent;",
+   "expect": "Their name"
+  },
+  {
+   "op": "exec",
+   "script": "contactsNewBadge.add('dana'); renderContactDetail(); return document.querySelectorAll('#contact-detail-body .field-label')[0].textContent + '|' + byId('contact-detail-body').querySelector('.contact-detail-state').textContent;",
+   "expect": "Verification code|New contact — verify identity"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND THE LIST ROW STAYS SHORT. Only the DETAIL title lengthens; the row keeps the two-word form, which is the operator's own ruling on that pair and is easy to break by editing one table and not the other."
+  },
+  {
+   "op": "exec",
+   "script": "renderContactsList(); return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').textContent;",
+   "expect": "new — verify"
+  },
+  {
+   "op": "exec",
+   "script": "contactsNewBadge.delete('dana'); renderContactsList(); renderContactDetail(); return 'restored';",
+   "expect": "restored"
+  },
+  {
+   "op": "note",
+   "text": "I3 — RENAME, ROUND TRIP. ⚠⚠ THE INVARIANT UNDER TEST IS THAT `alias` IS THE KEY AND THE TYPED NAME IS ONLY A LABEL. `alias` keys the contact store, the identity pin and the live session, so a rename that RE-KEYED would reach all three while looking reasonable. The call is intercepted so its ARGUMENT SHAPE is measured, not merely its effect."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0765 = { calls: [], realInvoke: invoke }; invoke = function(cmd, args) { window.__na0765.calls.push({cmd: cmd, args: args}); return Promise.resolve(null); }; contactsSelected='dana'; renderContactDetail(); return 'stubbed';",
+   "expect": "stubbed"
+  },
+  {
+   "op": "clear_type",
+   "sel": "#contact-rename-input",
+   "text": "Dana from choir"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-contact-rename"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(window.__na0765.calls.filter(function(c){return c.cmd==='contact_set_display_name';}).length);",
+   "expect": "1"
+  },
+  {
+   "op": "note",
+   "text": "⚠ THE KEY IS THE ALIAS, AND THE LABEL IS THE LABEL. If these two were swapped the app would still look right on screen and would be re-keying identity underneath."
+  },
+  {
+   "op": "exec",
+   "script": "var c=window.__na0765.calls.filter(function(x){return x.cmd==='contact_set_display_name';})[0]; return c.args.alias + '|' + c.args.displayName;",
+   "expect": "dana|Dana from choir"
+  },
+  {
+   "op": "note",
+   "text": "AND THE STORED ALIAS IS UNCHANGED once the new label renders: the row's key is still what every verb receives, while the NAME on screen is the one the user chose."
+  },
+  {
+   "op": "exec",
+   "script": "contactsRows.find(function(r){return r.alias==='dana';}).display_name='Dana from choir'; renderContactsList(); renderContactDetail(); var row=document.querySelector('.contact-row[data-alias=\"dana\"]'); return row.dataset.alias + '|' + row.querySelector('.contact-name').textContent + '|' + byId('contact-detail-body').querySelector('.contact-detail-name').textContent;",
+   "expect": "dana|Dana from choir|Dana from choir"
+  },
+  {
+   "op": "exec",
+   "script": "invoke = window.__na0765.realInvoke; return 'restored';",
+   "expect": "restored"
+  },
+  {
+   "op": "note",
+   "text": "I5 (has-contacts half) — the SAME welcome panel, and the button wording is the only difference. Deselecting is the ordinary way a user reaches this: the pane is open, nothing is chosen."
+  },
+  {
+   "op": "exec",
+   "script": "contactsSelected=null; renderContactsList(); renderContactDetail(); return byId('pane-contact-detail').classList.contains('hidden') ? 'detail-hidden' : 'detail-shown';",
+   "expect": "detail-hidden"
+  },
+  {
+   "op": "read_text",
+   "sel": "#welcome-sub",
+   "literal": "Select a contact, or add another."
+  },
+  {
+   "op": "read_text",
+   "sel": "#btn-add-contact",
+   "literal": "Add a contact"
+  },
+  {
+   "op": "note",
+   "text": "NA-0766 (`D-0043`) — ITEM 1 RE-AIM. The 0/1/n outstanding-count line is RETIRED from the Contacts pane: it becomes a plain blue text link reading exactly 'review' (NA-0778 re-aimed it to mockup 17: the word under the non-clickable 'Invitations' label), lowercase, never underlined, carrying NO count (the operator's variant-B ruling, taken knowingly). ⚠ ALWAYS VISIBLE by ruling Q2 = (A) — a navigation control that vanishes at zero is the clutter this lane removes, and an empty 'Your invites' screen must stay reachable. So the count states this seal used to drive no longer exist to drive; what replaces them is the ONE state the link now has."
+  },
+  {
+   "op": "exec",
+   "script": "var a=document.getElementById('btn-contacts-review');return JSON.stringify({present:!!a,tag:a?a.tagName:null,text:a?a.textContent:null,visible:a?a.getClientRects().length>0:false});",
+   "expect": "{\"present\":true,\"tag\":\"A\",\"text\":\"review\",\"visible\":true}"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND IT DOES NOT MOVE WITH THE COUNT — driven at zero and at four, the two states the retired line rendered differently. The old line hid at zero; the link does not."
+  },
+  {
+   "op": "exec",
+   "script": "contactsOutstanding=0;renderContactsList();var a=document.getElementById('btn-contacts-review');return a.getClientRects().length>0?'visible':'hidden';",
+   "expect": "visible"
+  },
+  {
+   "op": "exec",
+   "script": "contactsOutstanding=4;renderContactsList();var a=document.getElementById('btn-contacts-review');return JSON.stringify({vis:a.getClientRects().length>0,text:a.textContent});",
+   "expect": "{\"vis\":true,\"text\":\"review\"}"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND THE RETIRED ELEMENT IS GONE, not merely emptied — pinned as an ABSENCE so it cannot quietly return."
+  },
+  {
+   "op": "find_count",
+   "sel": ".contacts-hint",
+   "expect": 0
+  },
+  {
+   "op": "note",
+   "text": "I4 BEHAVIOUR -- THE FOOTER'S PRECEDENCE, WITH THE CORRECTED RED ARM (cold read C-08). The obvious arm -- an unknown reason in the QUIET case -- passes even when the chain is wrong, because the defect only shows under trouble. The arm that matters is an unknown reason WHILE the tick is in trouble: the please-report tripwire must still win."
+  },
+  {
+   "op": "exec",
+   "script": "return statusFooterLine(null, 'https://r.example:8443', true);",
+   "expect": "Relay: unknown · Vault: unlocked · Auto-lock: 60 min"
+  },
+  {
+   "op": "exec",
+   "script": "return statusFooterLine('unrecognized', 'https://r.example:8443', true);",
+   "expect": "Relay: unknown · Vault: unlocked · Auto-lock: 60 min"
+  },
+  {
+   "op": "note",
+   "text": "Storage and locked likewise outrank an outage -- and an outage and a storage fault are CORRELATED, both following a bad restart or a moved vault, so this is the case that actually happens."
+  },
+  {
+   "op": "exec",
+   "script": "return statusFooterLine('missing_home', 'https://r.example:8443', true);",
+   "expect": "Relay: unknown · Vault: storage error · Auto-lock: 60 min"
+  },
+  {
+   "op": "exec",
+   "script": "return statusFooterLine('vault_locked', 'https://r.example:8443', true);",
+   "expect": "Relay: configured · Vault: locked · Auto-lock: 60 min"
+  },
+  {
+   "op": "note",
+   "text": "The outage arm renders ONLY in the otherwise-Ready case -- which is exactly where it belongs."
+  },
+  {
+   "op": "note",
+   "text": "NA-0779 (18c L6; RBANK_status_footer_todo F2/F3): statusFooterLine now returns the STATUS BAR's left text in state words -- the outage reads 'Relay: unreachable', and with no outage an address with no measured success reads 'configured', never 'connected' (F3) and never the address itself."
+  },
+  {
+   "op": "exec",
+   "script": "return statusFooterLine('missing_seed', 'https://r.example:8443', true);",
+   "expect": "Relay: unreachable · Vault: unlocked · Auto-lock: 60 min"
+  },
+  {
+   "op": "exec",
+   "script": "return statusFooterLine('missing_seed', 'https://r.example:8443', false);",
+   "expect": "Relay: configured · Vault: unlocked · Auto-lock: 60 min"
+  },
+  {
+   "op": "note",
+   "text": "I1'/I2' -- THE AUTO-CONNECT CLASS DECIDES CORRECTLY. `invoke` is stubbed so the class's INPUTS are planted and its CALLS are recorded; the relay itself is out of reach here (ENG-0226) and is measured in qsl-protocol instead. The recorded calls are the instrument."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0764 = { calls: [], realInvoke: invoke };invoke = function(cmd, args) { window.__na0764.calls.push({cmd: cmd, args: args}); if (cmd === 'relay_config_get') return Promise.resolve({relay_url: 'https://r.example:8443'}); if (cmd === 'invite_list') return Promise.resolve([  {invite_id:'inv-active', state:'active', expiry: Math.floor(Date.now()/1000)+3600, label:'Matt2'},  {invite_id:'inv-revoked', state:'revoked', expiry: Math.floor(Date.now()/1000)+3600, label:'Gone'},  {invite_id:'inv-redeemed', state:'redeemed', expiry: Math.floor(Date.now()/1000)+3600, label:'Done'},  {invite_id:'inv-expired', state:'active', expiry: Math.floor(Date.now()/1000)-10, label:'Old'},  {invite_id:'inv-nolabel', state:'active', expiry: Math.floor(Date.now()/1000)+3600, label:null}]); if (cmd === 'invite_accept') return Promise.resolve(null); return Promise.resolve(null); };return 'stubbed';",
+   "expect": "stubbed"
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0764.marks = null;return autoConnectClass({why:'tick',at:Date.now(),scanned:0,finished:0,pending:0,attempted:0,failed:0,unlabelled:0}) .then(function(m){ window.__na0764.marks = m; return 'done'; });",
+   "expect": "done"
+  },
+  {
+   "op": "note",
+   "text": "I1' -- EXACTLY ONE accept, and it is the ACTIVE, UNEXPIRED, LABELLED invite."
+  },
+  {
+   "op": "exec",
+   "script": "return String(window.__na0764.calls.filter(function(c){return c.cmd==='invite_accept';}).length);",
+   "expect": "1"
+  },
+  {
+   "op": "exec",
+   "script": "return window.__na0764.calls.filter(function(c){return c.cmd==='invite_accept';})[0].args.inviteId;",
+   "expect": "inv-active"
+  },
+  {
+   "op": "note",
+   "text": "⚠ AND THE ALIAS IS THE INVITE'S OWN LABEL (R1), not the invite id. Passing the id would provision a contact named after a routing token."
+  },
+  {
+   "op": "exec",
+   "script": "return window.__na0764.calls.filter(function(c){return c.cmd==='invite_accept';})[0].args.alias;",
+   "expect": "Matt2"
+  },
+  {
+   "op": "note",
+   "text": "I2' -- A REVOKED INVITE'S SLOT IS NEVER ACCEPTED. Nor is a redeemed one, nor an expired one. This is the arm that keeps a killed code from being quietly re-honoured by the tick."
+  },
+  {
+   "op": "exec",
+   "script": "return window.__na0764.calls.filter(function(c){return c.cmd==='invite_accept' && (c.args.inviteId==='inv-revoked'||c.args.inviteId==='inv-redeemed'||c.args.inviteId==='inv-expired');}).length.toString();",
+   "expect": "0"
+  },
+  {
+   "op": "note",
+   "text": "⚠ THE UNLABELLED INVITE IS SKIPPED AND COUNTED, NOT SILENTLY DROPPED. The mint's own caption calls the label OPTIONAL, so a blessed GUI flow produces invites with no alias to provision under. The tally makes the gap observable; its disposition is the operator's and is declared at STOP 2."
+  },
+  {
+   "op": "exec",
+   "script": "return String(window.__na0764.marks.unlabelled);",
+   "expect": "1"
+  },
+  {
+   "op": "note",
+   "text": "An EMPTY slot is a no-op: nobody redeemed, so nothing finished and no badge was minted. This is the case the tick meets on almost every beat."
+  },
+  {
+   "op": "exec",
+   "script": "return String(window.__na0764.marks.finished);",
+   "expect": "0"
+  },
+  {
+   "op": "exec",
+   "script": "return String(contactsNewBadge.has('Matt2'));",
+   "expect": "false"
+  },
+  {
+   "op": "note",
+   "text": "I5 -- REFRESH ON A SCAN THAT CHANGED STATE, and ONLY then. The refresh is observed through a counter on the real render path rather than by watching the DOM, so the arm cannot pass on an unrelated repaint."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0764.renders = 0; refreshContacts = function(){ window.__na0764.renders += 1; return Promise.resolve(); };recordScanOutcome({source:'tick',at:Date.now()},{why:'tick',scanned:1,finished:0,pending:1,attempted:1,failed:0,unlabelled:0});return String(window.__na0764.renders);",
+   "expect": "0"
+  },
+  {
+   "op": "exec",
+   "script": "recordScanOutcome({source:'tick',at:Date.now()},{why:'tick',scanned:1,finished:1,pending:1,attempted:1,failed:0,unlabelled:0});return String(window.__na0764.renders);",
+   "expect": "1"
+  },
+  {
+   "op": "note",
+   "text": "RESTORE the stubs so nothing downstream inherits them."
+  },
+  {
+   "op": "exec",
+   "script": "invoke = window.__na0764.realInvoke; refreshContacts = window.__na0764.realRefresh; return 'restored';",
+   "expect": "restored"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
 }
