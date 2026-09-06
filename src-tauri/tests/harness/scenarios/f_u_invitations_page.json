@@ -1004,6 +1004,34 @@
    "label": "the page rendered again after the gesture's refresh"
   },
   {
+   "op": "note",
+   "text": "NA-0779 (D-0048 004c I12; the operator's second-flight finding, the Director's position ONE NAME PER PERSON): an ACCEPTED invitation's Sent row shows the contact's CURRENT name, looked up by `contact.alias === invite.label` (the desktop's only accept path provisions the contact under the invite's own label, NA-0764 R1; the alias is immutable, NA-0765 A3). The record is never rewritten. The arm on fixture rows: i2 (accepted, label 'dana') follows the contact 'dana'; i1 (PENDING, label 'Marcus') keeps its label although a contact 'Marcus' exists; i3 (accepted, label 'Priya') has no exact-alias contact and keeps its label. A rename moves i2 alone; a cleared name shows the alias (which IS the label); a gone contact falls back to the label."
+  },
+  {
+   "op": "poll_exec",
+   "script": "var now=Math.floor(Date.now()/1000);invitationsRows=[{invite_id:'i1',state:'active',expiry:now+6*86400,revocable:true,label:'Marcus',created:now-600},{invite_id:'i2',state:'redeemed',expiry:now+86400,revocable:false,label:'dana',created:now-2*86400},{invite_id:'i3',state:'redeemed',expiry:now+86400,revocable:false,label:'Priya',created:now-3*86400}];invitationsContacts=[{alias:'dana',display_name:'Dana R.',blocked:false,state:'pinned'},{alias:'Marcus',display_name:'Marcus Q.',blocked:false,state:'pinned'}];invitationsFilter='all';invitationsRender();function nm(id){var tr=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"'+id+'\"]');return tr?tr.querySelector('.invitations-name').textContent:'none';}return nm('i2')+'|'+nm('i1')+'|'+nm('i3');",
+   "expect": "Dana R.|Marcus|Priya"
+  },
+  {
+   "op": "poll_exec",
+   "script": "invitationsContacts[0].display_name='Dana Rivera';invitationsRender();function nm(id){var tr=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"'+id+'\"]');return tr?tr.querySelector('.invitations-name').textContent:'none';}return nm('i2')+'|'+nm('i1')+'|'+nm('i3');",
+   "expect": "Dana Rivera|Marcus|Priya"
+  },
+  {
+   "op": "poll_exec",
+   "script": "invitationsContacts[0].display_name=null;invitationsRender();function nm(id){var tr=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"'+id+'\"]');return tr?tr.querySelector('.invitations-name').textContent:'none';}return nm('i2')+'|'+nm('i1');",
+   "expect": "dana|Marcus"
+  },
+  {
+   "op": "poll_exec",
+   "script": "invitationsContacts=[];invitationsRender();function nm(id){var tr=document.querySelector('#invitations-sent-rows tr[data-invite-id=\"'+id+'\"]');return tr?tr.querySelector('.invitations-name').textContent:'none';}return nm('i2')+'|'+nm('i1')+'|'+nm('i3');",
+   "expect": "dana|Marcus|Priya"
+  },
+  {
+   "op": "note",
+   "text": "the live loader: refreshInvitationsPane reads contact_list beside invite_list on every open of the pane (refresh-on-open), so a rename made in Contacts is shown on the next open; a refused contact_list (a locked vault, a fault) leaves the labels to speak. The engine's rename itself is NA-0765's, measured there."
+  },
+  {
    "op": "teardown"
   }
  ]

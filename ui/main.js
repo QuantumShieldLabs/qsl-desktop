@@ -2277,6 +2277,22 @@ const INVITATIONS_STATE_TEXT = {
 };
 let invitationsFilter = "all";
 let invitationsRows = [];      // the last invite_list read, as delivered
+// NA-0779 (D-0048 004c I12, the operator's second-flight finding; the Director's position: ONE NAME PER PERSON): the
+// contacts read beside the invitations, for the Sent list's DISPLAY only. An accepted invitation names the contact it
+// became through its `label`: the desktop's only accept path provisions the contact under `alias := the invite's own
+// label` (NA-0764 R1, `autoConnectClass`), and the alias is immutable -- a rename writes `display_name` beside it
+// (NA-0765 A3). MEASURED before this was written: neither record carries an id, a route token or a hash of the other
+// (InviteRecord: invite_id/cap/expiry/relay_ep/state/revoke_token/created_unix/label; ContactSummary: alias/fingerprint/
+// pinned/blocked/state/display_name/device_count). So the lookup is `contact.alias === invite.label`, exact; the record
+// is never rewritten; a pending invitation keeps its label; an accepted one whose contact is gone falls back to it.
+let invitationsContacts = [];  // the contact_list read beside invite_list, display-side only
+function invitationsDisplayName(r, kind) {
+  if (kind === "accepted" && r.label) {
+    const c = invitationsContacts.find((x) => x && x.alias === r.label);
+    if (c) return contactDisplayName(c);
+  }
+  return r.label ? r.label : "(no name)";
+}
 
 function invitationsKind(r, now) {
   if (r.state === "creating") return "failed";
@@ -2328,6 +2344,8 @@ async function refreshInvitationsPane() {
     return;
   }
   invitationsRows = rows;
+  // I12: the contacts beside the invitations; a refusal (a locked vault, a fault) leaves the labels to speak.
+  try { invitationsContacts = await invoke("contact_list"); } catch (_) { invitationsContacts = []; }
   invitationsRender();
 }
 
@@ -2338,7 +2356,7 @@ function invitationsRowEl(r, kind, now) {
   tr.dataset.kind = kind;
   const name = document.createElement("td");
   name.className = "invitations-name";
-  name.textContent = r.label ? r.label : "(no name)";
+  name.textContent = invitationsDisplayName(r, kind);
   const state = document.createElement("td");
   const s = document.createElement("span");
   s.className = "invitations-state is-" + kind;
