@@ -261,6 +261,42 @@
    "text": "I2 SECOND HALF -- LOCKED ACROSS THE WINDOW => ZERO TICK SCANS. The count is sampled at the lock, a BOUNDED window of real elapsed time is then measured on the page's own clock (many seam-beats' worth of opportunity), and the delta must be EXACTLY zero."
   },
   {
+   "op": "note",
+   "text": "RULING_NA0779_005 R2, F-04: gw.command's `out` is the SEMANTIC outcome -- a probe against the relay this flow configured (a name that never answers) must read out=fail with the closed reason relay_unreachable, never out=ok. The tick itself probes no relay while there are no contacts (connect_status per contact is its call), so the probe is provoked here through the app's own relay_probe command, and the ring read through debug_log_read (the runner armed the log at Detailed on scr-main). Placed BEFORE this flow's own lock: F-02 empties the ring at lock by design."
+  },
+  {
+   "op": "exec",
+   "script": "window.__qsld_f04=null; window.__qsld_probe='pending'; invoke('relay_probe', {address:'https://relay.invalid', token:null, caPath:null}).then(function(r){ window.__qsld_probe='ok:'+JSON.stringify(r); }).catch(function(e){ window.__qsld_probe='err:'+String(e); }); return 'fired';"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return window.__qsld_probe!=='pending';",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return String(window.__qsld_probe).slice(0,80);"
+  },
+  {
+   "op": "poll_exec",
+   "script": "window.__qsld_f04=null; tauriInvoke('debug_log_read', {sinceSeq:0, max:2048}).then(function(r){ var ls=r.lines.map(function(s){return s.line;}); var probes=ls.filter(function(l){return l.indexOf('c.name=relay_probe')>=0;}); window.__qsld_f04={probes:probes.length, fail:probes.filter(function(l){return l.indexOf('out=fail reason=relay_unreachable')>=0;}).length, ok:probes.filter(function(l){return l.indexOf('out=ok')>=0;}).length}; }).catch(function(e){ window.__qsld_f04={err:String(e)}; }); return true;",
+   "expect": true
+  },
+  {
+   "op": "poll_exec",
+   "script": "var f=window.__qsld_f04; return !!f && f.probes>0;",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify(window.__qsld_f04);"
+  },
+  {
+   "op": "poll_exec",
+   "script": "var f=window.__qsld_f04; return !!f && f.probes>0 && f.fail===f.probes && f.ok===0;",
+   "expect": true
+  },
+  {
    "op": "exec",
    "script": "window.__na0763.locked = false; invoke(\"lock_now\").then(function(){ return showUnlockScreen(\"main\"); })   .then(function(){ window.__na0763.locked = true; })   .catch(function(e){ window.__na0763.err = \"lock: \" + String((e && e.message) || e); }); return \"kicked\";",
    "expect": "kicked"

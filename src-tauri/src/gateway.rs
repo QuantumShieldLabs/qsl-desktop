@@ -12,9 +12,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 /// NA-0779 (`D-0048`): what `gw.command` may learn from a command's RETURN VALUE -- an outcome
-/// and, for a failure, the error's code (looked up in the engine's closed reason vocabulary by
-/// the log; free text never enters). Implemented for `Result<_, E: Display>` (the outcome is the
-/// variant) and, one by one, for the plain types the gateway's closures return (always `ok`).
+/// and, for a failure, the error's code (looked up in the closed reason vocabulary by the log;
+/// free text never enters). RULING_NA0779_005 R2 F-04: the outcome is SEMANTIC, not the `Result`
+/// variant -- `Ok(t)` is whatever `t` says of itself, so a rejected passphrase, an unreachable
+/// relay or an unfinished handshake reads `out=fail` with a closed reason. Every type a
+/// `call_named` closure returns implements it: the plain ones say `ok`; `UnlockDto`,
+/// `RelayTestDto` and `Finished` (commands.rs) know better.
 pub trait CommandOutcome {
     fn outcome(&self) -> (Outcome, Option<String>);
 }
@@ -38,12 +41,25 @@ impl ErrorCode for &str {
     }
 }
 
-impl<T, E: ErrorCode> CommandOutcome for Result<T, E> {
+impl<T: CommandOutcome, E: ErrorCode> CommandOutcome for Result<T, E> {
     fn outcome(&self) -> (Outcome, Option<String>) {
         match self {
-            Ok(_) => (Outcome::Ok, None),
+            Ok(t) => t.outcome(),
             Err(e) => (Outcome::Fail, Some(e.code())),
         }
+    }
+}
+
+/// A list or an optional value is an answer, not a failure (an empty invite list, `None` from
+/// an accept that consumed nothing this poll -- named in D-0048 004d, left as `ok`).
+impl<T> CommandOutcome for Vec<T> {
+    fn outcome(&self) -> (Outcome, Option<String>) {
+        (Outcome::Ok, None)
+    }
+}
+impl<T> CommandOutcome for Option<T> {
+    fn outcome(&self) -> (Outcome, Option<String>) {
+        (Outcome::Ok, None)
     }
 }
 
@@ -56,7 +72,15 @@ macro_rules! infallible_outcome {
         })*
     };
 }
-infallible_outcome!((), bool, String, crate::state::LaunchState);
+infallible_outcome!(
+    (),
+    bool,
+    String,
+    crate::state::LaunchState,
+    crate::commands::ProtectionDto,
+    crate::commands::IdentityDto,
+    crate::commands::ConnectStatusDto,
+);
 
 pub struct CoreGateway {
     gate: tauri::async_runtime::Mutex<()>,

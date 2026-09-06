@@ -262,6 +262,9 @@ let vaultAlertDismissed = false;
 
 async function showUnlockScreen(next) {
   unlockNext = next;
+  // RULING_NA0779_005 R2 N-07: every path to the unlock window passes here -- the new session must PROVE the relay
+  // again before the bar may say "connected" (F3's spirit); a lock does not carry the last session's proof over.
+  relayProven = false; relayTrust = null;
   try {
     const s = await invoke("protection_status");
     observedFailedUnlocks = s.failed_unlocks;
@@ -2002,7 +2005,8 @@ setInterval(async () => {
     // NA-0779 (`D-0048`): the timer would have fired on an exempt surface -- recorded once, then reset.
     if (Date.now() - idleSince >= autolockMinutes * 60 * 1000) {
       idleSince = Date.now();
-      dlEmit("ui.autolock", { decision: "off_surface", idle_s: String(autolockMinutes * 60) });
+      // RULING_NA0779_005 R2 N-17: the decision alone -- the setting is not a measurement and does not wear idle_s.
+      dlEmit("ui.autolock", { decision: "off_surface" });
     }
     return; // the wizard (and unlock itself) is exempt
   }
@@ -4307,13 +4311,14 @@ function dlResultClear() {
   const p = byId("dl-export-result");
   if (p) { p.replaceChildren(); p.classList.add("hidden"); }
 }
-function dlResult(parts, danger) {
+function dlResult(parts, trouble) {
   dlResultClear();
   const p = byId("dl-export-result");
   p.replaceChildren(...parts);
-  p.classList.toggle("is-danger", !!danger);
+  // RULING_NA0779_005 R2 N-18: a failed export is trouble in the ACCENT tier; red stays for the vault-loss ceremonies (F3).
+  p.classList.toggle("is-trouble", !!trouble);
   p.classList.remove("hidden");
-  if (!danger) dlResultTimer = setTimeout(dlResultClear, DL_RESULT_MS);
+  if (!trouble) dlResultTimer = setTimeout(dlResultClear, DL_RESULT_MS);
 }
 function dlNameTail(name) {
   const m = /-([0-9a-f]{16})\.txt$/.exec(name);
@@ -4329,7 +4334,8 @@ byId("btn-dl-copy").addEventListener("click", async () => {
   try {
     const r = await tauriInvoke("debug_log_export", { dir: null });
     await navigator.clipboard.writeText(r.text);
-    window.__qsld_dl_copy = "ok:" + r.sha256;
+    // F-01: the Copy carries its own minted label; the measurement records it beside the sha.
+    window.__qsld_dl_copy = "ok:" + r.sha256 + ":" + r.label;
     acknowledge(byId("btn-dl-copy"), "\u2713 Copied");
   } catch (e) {
     window.__qsld_dl_copy = "err:" + String(e);

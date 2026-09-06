@@ -34,7 +34,10 @@ fn fresh(level: DebugLogLevel) -> DebugLog {
     log
 }
 
+/// The file arm's construction with a FIXED label and clock: the act's word first (as
+/// `export_snapshot` pushes it), then the pure renderer.
 fn export_of(log: &DebugLog) -> String {
+    log.push_desktop("gw.log", &[("action", "export")]).unwrap();
     log.export_text("testbuild", "0123456789abcdef", "2026-09-05T20:00:00.000Z")
 }
 
@@ -566,4 +569,259 @@ fn a11_read_since_seq_and_reset() {
     let _ = uninstall_sink;
     let _ = install_sink;
     let _ = Outcome::Ok;
+}
+
+// ===== RULING_NA0779_005 R2 -- THE READ's FOUR FIXES AND THE NOTES' ARMS, RED FIRST =====
+// FINDINGS_SR15_NA0779_20260906T074720Z (sha256 80247aed...). Written against the observable
+// behaviour BEFORE the fixes so they compile and fail on their assertions; the arms that need
+// the new API (the gw.unlock emitter, the Finished newtype) join at the green run.
+
+/// F-04 (the read's load-bearing item): `gw.command`'s `out` is the SEMANTIC outcome. A rejected,
+/// delayed, wiped or version-unsupported unlock reads out=fail with a closed reason; an
+/// unreachable or untrusted relay reads out=fail; the reasons are members, never `?`.
+#[test]
+fn a12_gw_command_out_is_the_semantic_outcome() {
+    use qsl_desktop_app::commands::{RelayTestDto, UnlockDto};
+    use qsl_desktop_app::gateway::CommandOutcome;
+    let rejected: Result<UnlockDto, String> = Ok(UnlockDto::Rejected {
+        failed_unlocks: 1,
+        retry_after_s: 0,
+    });
+    assert_eq!(
+        rejected.outcome(),
+        (Outcome::Fail, Some("passphrase_rejected".to_string())),
+        "a rejected passphrase is a FAILED unlock_attempt"
+    );
+    let delayed: Result<UnlockDto, String> = Ok(UnlockDto::Delayed {
+        failed_unlocks: 3,
+        retry_after_s: 30,
+    });
+    assert_eq!(
+        delayed.outcome(),
+        (Outcome::Fail, Some("unlock_delayed".to_string()))
+    );
+    let wiped: Result<UnlockDto, String> = Ok(UnlockDto::Wiped);
+    assert_eq!(
+        wiped.outcome(),
+        (Outcome::Fail, Some("vault_wiped".to_string()))
+    );
+    let old: Result<UnlockDto, String> = Ok(UnlockDto::VersionUnsupported);
+    assert_eq!(
+        old.outcome(),
+        (Outcome::Fail, Some("vault_version_unsupported".to_string()))
+    );
+    let unlocked: Result<UnlockDto, String> = Ok(UnlockDto::Unlocked);
+    assert_eq!(unlocked.outcome(), (Outcome::Ok, None));
+    let down: Result<RelayTestDto, String> = Ok(RelayTestDto::Unreachable);
+    assert_eq!(
+        down.outcome(),
+        (Outcome::Fail, Some("relay_unreachable".to_string()))
+    );
+    let cert: Result<RelayTestDto, String> = Ok(RelayTestDto::CertNotTrusted);
+    assert_eq!(
+        cert.outcome(),
+        (Outcome::Fail, Some("relay_cert_not_trusted".to_string()))
+    );
+    let not_qsl: Result<RelayTestDto, String> = Ok(RelayTestDto::NotAQslRelay);
+    assert_eq!(
+        not_qsl.outcome(),
+        (Outcome::Fail, Some("relay_not_a_qsl_relay".to_string()))
+    );
+    let auth: Result<RelayTestDto, String> = Ok(RelayTestDto::AuthRequired {
+        token_was_sent: false,
+    });
+    assert_eq!(
+        auth.outcome(),
+        (Outcome::Ok, None),
+        "a relay that answers 'token required' was reached"
+    );
+    // the closed reasons are MEMBERS of the log's reason lookup, so the line carries the word, not `?`
+    let ev = desktop_event(
+        "gw.unlock",
+        &[("out", "fail"), ("reason", "passphrase_rejected")],
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        ev.reason,
+        Some("passphrase_rejected"),
+        "the a8 arm's emitter has a member at last"
+    );
+    let _g = arm_lock();
+    let log = fresh(DebugLogLevel::Detailed);
+    log.gw_command(
+        "unlock_attempt",
+        Outcome::Fail,
+        Some("passphrase_rejected"),
+        7,
+    );
+    let last = log.read(0, 100).lines.last().unwrap().line.clone();
+    assert!(
+        last.contains("ev=gw.command out=fail reason=passphrase_rejected")
+            && last.contains("c.name=unlock_attempt"),
+        "{last}"
+    );
+}
+
+/// F-02: THE INTAKE CLOSES AT LOCK. Between gw.lock and gw.unlock nothing enters -- not a surface
+/// change, not a gateway command, not a ui event -- and nothing is counted as dropped either (the
+/// count of attempts is itself the thing kept out). The next unlock reopens it at seq 2.
+#[test]
+fn a13_the_intake_closes_at_lock_and_reopens_at_unlock() {
+    let _g = arm_lock();
+    let log = fresh(DebugLogLevel::Detailed);
+    log.push_desktop("ui.surface", &[("screen", "scr-main")])
+        .unwrap();
+    log.on_lock("user");
+    assert_eq!(log.read(0, 100).buffered, 1);
+    log.push_desktop("ui.surface", &[("screen", "scr-unlock")])
+        .unwrap();
+    log.gw_command(
+        "unlock_attempt",
+        Outcome::Fail,
+        Some("passphrase_rejected"),
+        40,
+    );
+    log.gw_command("protection_status", Outcome::Ok, None, 1);
+    log.push_desktop("ui.autolock", &[("decision", "zero_disabled")])
+        .unwrap();
+    let r = log.read(0, 100);
+    assert_eq!(
+        r.buffered, 1,
+        "nothing enters the locked ring: {:?}",
+        r.lines
+    );
+    assert_eq!(
+        r.dropped, 0,
+        "and nothing is COUNTED: the count of attempts stays out too"
+    );
+    log.on_unlock(true, DebugLogLevel::Detailed);
+    let r = log.read(0, 100);
+    assert_eq!(r.buffered, 2);
+    assert!(r.lines[0].line.contains("ev=gw.lock") && r.lines[0].seq == 1);
+    assert!(r.lines[1].line.contains("ev=gw.unlock out=ok") && r.lines[1].seq == 2);
+    log.push_desktop("ui.surface", &[("screen", "scr-main")])
+        .unwrap();
+    assert_eq!(log.read(0, 100).buffered, 3, "open again after unlock");
+}
+
+/// F-03: the sink is installed ONLY while a session is open. `on` while locked stores the switch
+/// and installs nothing; the next unlock installs it.
+#[test]
+fn a14_the_switch_on_while_locked_installs_no_sink() {
+    let _g = arm_lock();
+    uninstall_sink();
+    let log = DebugLog::new(); // no session: unlocked_at is None
+    assert!(log.apply_action("on"));
+    assert!(log.is_on(), "the switch is stored");
+    assert!(!sink_installed(), "F-03: no sink without a session");
+    log.on_unlock(true, DebugLogLevel::Events);
+    assert!(sink_installed(), "the next unlock installs it");
+    log.on_lock("user");
+    assert!(!sink_installed());
+    // and the same through a session that is open: on installs, as the harness relies on
+    let open = fresh(DebugLogLevel::Events);
+    uninstall_sink();
+    assert!(open.apply_action("on"));
+    assert!(
+        sink_installed(),
+        "on while UNLOCKED installs (the designed second path)"
+    );
+    open.on_erase();
+    log.on_erase();
+}
+
+/// F-01 + N-05: the Copy arm mints a label too -- two Copies carry different non-zero 16-hex
+/// labels in their headers -- and the ring tells a copy from a file export by the action word.
+#[test]
+fn a15_copy_mints_a_label_and_the_ring_tells_copy_from_export() {
+    use qsl_desktop_app::commands::{debug_log_export, DebugLogExportDto};
+    let _g = arm_lock();
+    let log = DebugLog::global();
+    log.on_unlock(true, DebugLogLevel::Events);
+    fn label_of(text: &str) -> String {
+        let h = text.lines().nth(1).expect("the second header line");
+        h.split(' ')
+            .find_map(|t| t.strip_prefix("label="))
+            .expect("label= in the header")
+            .to_string()
+    }
+    let mut labels = Vec::new();
+    for _ in 0..2 {
+        match debug_log_export(None).unwrap() {
+            DebugLogExportDto::Text { text, .. } => labels.push(label_of(&text)),
+            DebugLogExportDto::Written(_) => panic!("no dir, no file"),
+        }
+    }
+    for l in &labels {
+        assert!(
+            l.len() == 16 && l.chars().all(|c| c.is_ascii_hexdigit()) && l != "0000000000000000",
+            "a minted label, never the zero placeholder: {l}"
+        );
+    }
+    assert_ne!(
+        labels[0], labels[1],
+        "two Copies are told apart by their labels"
+    );
+    assert!(
+        desktop_event("gw.log", &[("action", "copy")], false).is_ok(),
+        "N-05: `copy` is a member of gw.log's action vocabulary"
+    );
+    let text = log.read(0, 100);
+    let copies = text
+        .lines
+        .iter()
+        .filter(|s| s.line.contains("c.action=copy"))
+        .count();
+    assert_eq!(
+        copies, 2,
+        "each Copy is its own act in the ring: {:?}",
+        text.lines
+    );
+    log.on_erase();
+}
+
+/// N-16: the live `gw_command` Event equals what `DesktopSpec` would validate for the same
+/// fields, so the two constructors cannot drift. A guard: green from the day it was written.
+#[test]
+fn a16_live_gw_command_equals_the_spec_validated_event() {
+    let _g = arm_lock();
+    let log = fresh(DebugLogLevel::Detailed);
+    log.gw_command("relay_probe", Outcome::Fail, Some("vault_locked"), 321);
+    let live = log.read(0, 100).lines.last().unwrap().clone();
+    let spec = desktop_event(
+        "gw.command",
+        &[
+            ("name", "relay_probe"),
+            ("out", "fail"),
+            ("reason", "vault_locked"),
+            ("dur_ms", "321"),
+        ],
+        false,
+    )
+    .unwrap();
+    assert_eq!(live.line, spec.to_line(live.seq, live.utc_ms));
+    // the two doors differ by DESIGN on an unlisted name: the live path substitutes `?`, the
+    // spec door refuses -- neither copies the text
+    log.gw_command("PLANT-not-a-command", Outcome::Ok, None, 1);
+    let live = log.read(0, 100).lines.last().unwrap().clone();
+    assert!(
+        live.line.contains("c.name=?") && !live.line.contains("PLANT"),
+        "{}",
+        live.line
+    );
+    assert_eq!(
+        desktop_event(
+            "gw.command",
+            &[
+                ("name", "PLANT-not-a-command"),
+                ("out", "ok"),
+                ("dur_ms", "1")
+            ],
+            false
+        )
+        .unwrap_err(),
+        Refusal::NotInVocabulary
+    );
+    log.on_erase();
 }

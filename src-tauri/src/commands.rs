@@ -117,6 +117,23 @@ pub enum UnlockDto {
     VersionUnsupported,
 }
 
+/// RULING_NA0779_005 R2 F-04: the unlock's SEMANTIC outcome for `gw.command`. Only `Unlocked` is
+/// `ok`; every other answer is a failed attempt with its closed reason (a member of
+/// `debug_log::DESKTOP_REASONS`). The counts and the retry delay never enter.
+impl crate::gateway::CommandOutcome for UnlockDto {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        use qsc::output::event::Outcome;
+        let reason = match self {
+            UnlockDto::Unlocked => return (Outcome::Ok, None),
+            UnlockDto::Rejected { .. } => "passphrase_rejected",
+            UnlockDto::Delayed { .. } => "unlock_delayed",
+            UnlockDto::Wiped => "vault_wiped",
+            UnlockDto::VersionUnsupported => "vault_version_unsupported",
+        };
+        (Outcome::Fail, Some(reason.to_string()))
+    }
+}
+
 #[derive(Serialize)]
 pub struct ProtectionDto {
     pub failed_unlocks: u32,
@@ -203,7 +220,8 @@ pub async fn vault_create(
     if crate::store_vanished(&st.data_dir) {
         return Err(crate::STORE_VANISHED.into());
     }
-    st.gw
+    let r = st
+        .gw
         .call_named("vault_create", move || -> Result<(), String> {
             // NA-0705 (F-10): this guard call needs NO version pre-flight, and the reason
             // is a precondition worth writing down rather than rediscovering. The wizard
@@ -219,7 +237,16 @@ pub async fn vault_create(
                 other => Err(format!("post_init_unlock_unexpected:{other:?}")),
             }
         })
-        .await
+        .await;
+    // RULING_NA0779_005 R2 (F-02/F-03, found by the driver arms): a CREATED vault is an OPENED session
+    // too -- the log learns it here exactly as it does from a successful unlock_attempt. Before the
+    // intake was keyed on the session, the switch alone let the wizard's session in and this path
+    // went unnoticed; the harness's first launch goes through it.
+    if r.is_ok() {
+        let dl = crate::settings::load(&st.data_dir).debug_log;
+        crate::debug_log::DebugLog::global().on_unlock(dl.on, dl.level);
+    }
+    r
 }
 
 #[tauri::command]
@@ -258,9 +285,21 @@ pub async fn unlock_attempt(
     // NA-0779 (`D-0048`): AT UNLOCK the stored switch is read and applied -- with the log on
     // the engine sink is installed here and `gw.unlock` opens the session's record. The
     // switch is a setting, never an environment variable.
-    if let Ok(UnlockDto::Unlocked) = &r {
-        let dl = crate::settings::load(&st.data_dir).debug_log;
-        crate::debug_log::DebugLog::global().on_unlock(dl.on, dl.level);
+    match &r {
+        Ok(UnlockDto::Unlocked) => {
+            let dl = crate::settings::load(&st.data_dir).debug_log;
+            crate::debug_log::DebugLog::global().on_unlock(dl.on, dl.level);
+        }
+        // RULING_NA0779_005 R2 F-04: the model's `gw.unlock out=fail` arm has its emitter. F-02 keeps
+        // the intake closed while locked, so in the app this event is refused at the door by design:
+        // the count and timing of attempts never sit in the next session's record.
+        Ok(UnlockDto::Rejected { .. }) => {
+            crate::debug_log::DebugLog::global().unlock_failed("passphrase_rejected");
+        }
+        Ok(UnlockDto::Delayed { .. }) => {
+            crate::debug_log::DebugLog::global().unlock_failed("unlock_delayed");
+        }
+        _ => {}
     }
     r
 }
@@ -672,6 +711,38 @@ pub enum RelayTestDto {
     Unreachable,
 }
 
+/// RULING_NA0779_005 R2 F-04: a probe's SEMANTIC outcome. Reached (a document, or a relay that
+/// asks for a token) is `ok`; unreachable, an untrusted certificate, or not a QSL relay is a
+/// failed probe with its closed reason. Nothing of the document enters.
+impl crate::gateway::CommandOutcome for RelayTestDto {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        use qsc::output::event::Outcome;
+        let reason = match self {
+            RelayTestDto::Reachable { .. } | RelayTestDto::AuthRequired { .. } => {
+                return (Outcome::Ok, None)
+            }
+            RelayTestDto::Unreachable => "relay_unreachable",
+            RelayTestDto::CertNotTrusted => "relay_cert_not_trusted",
+            RelayTestDto::NotAQslRelay => "relay_not_a_qsl_relay",
+        };
+        (Outcome::Fail, Some(reason.to_string()))
+    }
+}
+
+/// RULING_NA0779_005 R2 F-04: a bool where `false` means "not finished" -- `invite_finish`'s answer.
+/// The gateway reads the newtype; the caller gets the bool back.
+pub struct Finished(pub bool);
+impl crate::gateway::CommandOutcome for Finished {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        use qsc::output::event::Outcome;
+        if self.0 {
+            (Outcome::Ok, None)
+        } else {
+            (Outcome::Fail, Some("not_finished".to_string()))
+        }
+    }
+}
+
 #[derive(Serialize)]
 pub struct RelayConfigDto {
     pub relay_url: String,
@@ -754,11 +825,12 @@ pub async fn relay_test(st: State<'_, AppState>, url: String) -> Result<RelayTes
     let outcome = st
         .gw
         .call_named("relay_test", move || {
-            qsc::transport::relay_server_info(&url)
+            // F-04: the DTO is built inside the named call so `gw.command` reads ITS outcome
+            qsc::transport::relay_server_info(&url).map(relay_test_dto)
         })
         .await;
     match outcome {
-        Ok(o) => Ok(relay_test_dto(o)),
+        Ok(o) => Ok(o),
         Err(code) => Err(code.to_string()),
     }
 }
@@ -898,11 +970,11 @@ pub async fn relay_probe(
         .call_named("relay_probe", move || {
             let _token_guard = EnvGuard::set("QSC_RELAY_TOKEN", token.as_deref());
             let _ca_guard = EnvGuard::set("QSC_RELAY_CA_FILE", ca_path.as_deref());
-            qsc::transport::relay_server_info(&address)
+            qsc::transport::relay_server_info(&address).map(relay_test_dto)
         })
         .await;
     match outcome {
-        Ok(o) => Ok(relay_test_dto(o)),
+        Ok(o) => Ok(o),
         Err(code) => Err(code.to_string()),
     }
 }
@@ -1376,14 +1448,15 @@ pub async fn invite_finish(
 ) -> Result<bool, ErrorDto> {
     st.gw
         .call_named("invite_finish", move || {
-            Ok(qsc::facade::invite_finish(
+            Ok(Finished(qsc::facade::invite_finish(
                 self_label.as_deref(),
                 &alias,
                 &relay,
                 max,
-            )?)
+            )?))
         })
         .await
+        .map(|f| f.0)
 }
 
 #[tauri::command]
@@ -1576,10 +1649,12 @@ pub fn debug_log_event(
 #[serde(untagged)]
 pub enum DebugLogExportDto {
     Written(crate::debug_log::ExportDto),
+    /// RULING_NA0779_005 R2 F-01: the Copy arm carries its own minted label too.
     Text {
         text: String,
         bytes: usize,
         sha256: String,
+        label: String,
     },
 }
 
@@ -1596,21 +1671,17 @@ pub fn debug_log_export(dir: Option<String>) -> Result<DebugLogExportDto, String
             let dto = log.export_to_dir(std::path::Path::new(d.trim()), build)?;
             Ok(DebugLogExportDto::Written(dto))
         }
+        // RULING_NA0779_005 R2 F-01 + N-05: the clipboard arm mints its label like the file arm and
+        // marks itself `gw.log action=copy`, so two Copies are told apart and the ring tells a
+        // copy from a file write. The zero placeholder that stood here is gone.
         _ => {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_millis() as u64)
-                .unwrap_or(0);
-            let text = log.export_text(
-                build,
-                "0000000000000000",
-                &qsc::output::event::utc_rfc3339_ms(now),
-            );
-            let sha = crate::debug_log::sha256_hex(text.as_bytes());
+            let snap = log.export_snapshot(build, "copy")?;
+            let sha = crate::debug_log::sha256_hex(snap.text.as_bytes());
             Ok(DebugLogExportDto::Text {
-                bytes: text.len(),
+                bytes: snap.text.len(),
                 sha256: sha,
-                text,
+                label: snap.label,
+                text: snap.text,
             })
         }
     }

@@ -3288,3 +3288,46 @@ fn na0765_both_modal_flows_have_a_visible_way_out() {
         "and so does the code-entry Close — the view that had no exit at all before NA-0765"
     );
 }
+
+// ===== RULING_NA0779_005 R2 -- two of the read's notes, pinned beside the text they move =====
+
+/// N-17: `ui.autolock decision=off_surface` carried the SETTING (autolock minutes * 60) under the
+/// measurement's key `idle_s`; a constant under a measurement's name. The off_surface arm carries the
+/// decision alone; the fired arm keeps the MEASURED idle.
+#[test]
+fn na0779_autolock_off_surface_carries_no_setting_under_idle_s() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"dlEmit("ui.autolock", { decision: "off_surface" });"#),
+        "the off_surface decision alone"
+    );
+    assert!(
+        !js.contains(r#"decision: "off_surface", idle_s"#),
+        "N-17: no setting under idle_s"
+    );
+    assert!(
+        js.contains(r#"dlEmit("ui.autolock", { decision: "fired", idle_s: String(idleS) });"#),
+        "the fired arm keeps the measured idle"
+    );
+}
+
+/// N-18: the export-failure line is painted in the ACCENT colour, not the danger colour -- F3 reserves
+/// red for the vault-loss ceremonies. The class is named for what it is.
+#[test]
+fn na0779_export_failure_line_is_accent_not_danger() {
+    let css = ui_file("style.css");
+    let js = ui_file("main.js");
+    assert!(
+        css.contains(".dl-result.is-trouble { color: var(--accent-text); }"),
+        "the failure line in the accent tier"
+    );
+    assert!(
+        !css.contains(".dl-result.is-danger"),
+        "no danger class on the export line"
+    );
+    assert!(
+        js.contains(r#"p.classList.toggle("is-trouble", !!trouble);"#),
+        "the toggle names the tier"
+    );
+    assert!(!js.contains(r#"p.classList.toggle("is-danger""#));
+}

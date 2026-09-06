@@ -1052,7 +1052,7 @@ input.dl-ctl { padding: 0 var(--sp-x10); }
 .dl-path { flex: 0 1 500px; min-width: 160px; font-family: ui-monospace, monospace; font-size: var(--fs-hint); }
 .dl-result { color: var(--fg-secondary); font-size: var(--fs-body); margin: var(--sp-3) 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dl-result code { font-family: ui-monospace, monospace; font-size: var(--fs-hint); }
-.dl-result.is-danger { color: var(--danger-text); }
+.dl-result.is-trouble { color: var(--accent-text); }  /* RULING_NA0779_005 R2 N-18: accent, never red */
 /* L5/L6: the status bar -- state words at the left, "Logging: on . level" at the right; on every screen */
 .status-line.status-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); white-space: nowrap; }
 .status-line .status-left { min-width: 0; }

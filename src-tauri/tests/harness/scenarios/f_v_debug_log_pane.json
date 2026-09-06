@@ -208,6 +208,33 @@
     },
     {
       "op": "note",
+      "text": "RULING_NA0779_005 R2, F-01: the Copy arm mints a label like the file arm -- the handler records ok:<sha>:<label>; two Copies carry different non-zero 16-hex labels"
+    },
+    {
+      "op": "exec",
+      "script": "window.__qsld_copy1=String(window.__qsld_dl_copy||''); return window.__qsld_copy1;"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var b=document.getElementById('btn-dl-copy'); return !b.disabled && b.textContent==='Copy';",
+      "expect": true
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-copy"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var a=window.__qsld_copy1.split(':'), b=String(window.__qsld_dl_copy||'').split(':'); return a.length===3 && b.length===3 && /^[0-9a-f]{16}$/.test(a[2]) && /^[0-9a-f]{16}$/.test(b[2]) && a[2]!=='0000000000000000' && b[2]!=='0000000000000000' && a[2]!==b[2] && b[0]==='ok';",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('c.action=copy')>=0;",
+      "expect": true
+    },
+    {
+      "op": "note",
       "text": "Pause / Resume and the display filter: the filter narrows what is SHOWN only"
     },
     {
@@ -364,6 +391,76 @@
     {
       "op": "poll_exec",
       "script": "return document.getElementById('dl-log').textContent.indexOf('c.action=export')<0;",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "RULING_NA0779_005 R2, F-02 (the intake closes at lock) and N-07 (relayProven is reset in the lock path): the app path -- lock from the menu's own two calls, a surface change to the unlock window, a WRONG passphrase (an unlock_attempt), then the right one. The new ring's first two lines must be gw.lock then gw.unlock with NOTHING between: no surface event, no unlock_attempt, no protection_status. The count and timing of passphrase attempts never sit in the next session's record."
+    },
+    {
+      "op": "exec",
+      "script": "relayProven=true; invoke('lock_now').then(function(){ return showUnlockScreen('main'); }); return 'fired';"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-unlock"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return relayProven===false;",
+      "expect": true
+    },
+    {
+      "op": "type",
+      "sel": "#unlock-pass",
+      "text": "definitely-wrong-pass"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-unlock"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('unlock-feedback').textContent.length>0;",
+      "expect": true
+    },
+    {
+      "op": "clear_type",
+      "sel": "#unlock-pass",
+      "text": "na0779-fv-passphrase"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-unlock"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-main"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-settings"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-settings"
+    },
+    {
+      "op": "click",
+      "sel": ".settings-rail .cat[data-pane=\"diagnostics\"]"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var ls=document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}); return ls.length>=2 && ls[0].indexOf('seq=1 ')===0 && ls[0].indexOf('ev=gw.lock')>=0 && ls[0].indexOf('c.cause=user')>=0 && ls[1].indexOf('seq=2 ')===0 && ls[1].indexOf('ev=gw.unlock out=ok')>=0;",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "what F-02 promises: NOTHING between gw.lock (seq 1) and gw.unlock (seq 2) -- asserted by the row above -- and no unlock_attempt anywhere (attempts happen only while locked). A `ui.surface c.screen=scr-unlock` AFTER gw.unlock is the page's own height sync of the surface it is leaving, fired once the intake is open again; it is not a locked-interval event and is not forbidden."
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('c.name=unlock_attempt')<0;",
       "expect": true
     },
     {

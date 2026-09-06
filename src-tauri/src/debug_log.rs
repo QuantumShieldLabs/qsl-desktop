@@ -7,6 +7,9 @@
 //!   * THE RING -- 8192 events, memory only, oldest dropped and counted (one `gw.log action=drop`
 //!     notice per overflow episode, never per event), cleared on lock keeping the lock's cause as
 //!     the new ring's first event, wiped by erase. No path is opened by the ring.
+//!     RULING_NA0779_005 R2 F-02: THE INTAKE IS CLOSED WHILE NO SESSION IS OPEN -- between
+//!     `gw.lock` and `gw.unlock` nothing enters and nothing is counted, so the count and timing
+//!     of passphrase attempts never sit in the next session's record; `gw.unlock` reopens it.
 //!   * THE SWITCH's runtime -- a stored setting (`settings.json`: `debug_log = { on, level }`,
 //!     the existing 0600 writer) read at unlock; NEVER an environment variable.
 //!   * THE DESKTOP's OWN CLOSED VOCABULARY -- `gw.*` from the gateway, `ui.*` from the front end
@@ -14,6 +17,11 @@
 //!     vocabulary and says so with a `gw.log action=refused` notice of its own.
 //!   * THE EXPORT -- one ASCII file: a header, one line per event (the SAME line the viewer
 //!     shows), a `# sha256=` footer over every byte before it. The only disk write of the log.
+//!     The clipboard Copy is the same construction with its OWN minted label and its own act
+//!     in the ring (`gw.log action=copy`; RULING_NA0779_005 R2 F-01, N-05).
+//!   * THE SINK is installed only while a session is open: at unlock with the switch on, or
+//!     when the switch is turned on while unlocked (F-03). `on` while locked stores the switch
+//!     and installs nothing; the next unlock installs it.
 //!
 //! The model is `STOP_NA0779_002` sec 3-7 as the operator blessed it
 //! (`RBANK_debug_log_event_model_blessed_20260905`) with `RULING_NA0779_002` R2 (a)(b) and R3.
@@ -48,6 +56,20 @@ pub const DIGEST_CONSTRUCTION: &str = "sha256-of-all-bytes-before-the-footer-lin
 pub const QSC_PIN: &str = "4e03092fb14a6129065b711f8c17fc7252965e07";
 /// The literal an unlisted reason or command name becomes. Never a copy of the input.
 pub const UNLISTED: &str = "?";
+
+/// RULING_NA0779_005 R2 F-04: the DESKTOP's closed reasons, joined to the engine's vocabulary in
+/// the log's lookup -- the semantic outcomes of the unlock, the relay probe and the handshake's
+/// finish, which the engine's tables have no word for. Members, never a copy of any text.
+pub const DESKTOP_REASONS: &[&str] = &[
+    "passphrase_rejected",
+    "unlock_delayed",
+    "vault_wiped",
+    "vault_version_unsupported",
+    "relay_unreachable",
+    "relay_cert_not_trusted",
+    "relay_not_a_qsl_relay",
+    "not_finished",
+];
 
 /// The registered command set (`lib.rs` `generate_handler!`). `gw.command`'s `c.name` is a
 /// member of this table or `?`; a test pins the two against each other.
@@ -267,6 +289,7 @@ pub const DESKTOP_EVENTS: &[DesktopSpec] = &[
                 "level_events",
                 "level_detailed",
                 "export",
+                "copy",
                 "clear",
                 "drop",
                 "refused",
@@ -310,11 +333,14 @@ fn member(table: &'static [&'static str], s: &str) -> Option<&'static str> {
 
 /// The engine's closed `reason` vocabulary (REJECT_* codes, literal marker codes and reason
 /// literals), the SHARED one for `code` and `reason`. A string outside it becomes `?`.
+/// The reason lookup: a member of the engine's closed `reason` vocabulary, else a member of
+/// `DESKTOP_REASONS` (F-04), else `?`. The input is compared, never stored.
 pub fn engine_reason(s: &str) -> &'static str {
     ENUM_KEYS
         .iter()
         .find(|(k, _)| *k == "reason")
         .and_then(|(_, vocab)| member(vocab, s))
+        .or_else(|| member(DESKTOP_REASONS, s))
         .unwrap_or(UNLISTED)
 }
 
@@ -434,6 +460,14 @@ pub struct ReadDto {
 }
 
 /// What an export produced.
+/// One export's rendered bytes, its minted label and its timestamp (F-01).
+#[derive(Clone, Debug)]
+pub struct Snapshot {
+    pub text: String,
+    pub label: String,
+    pub exported_utc: String,
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct ExportDto {
     pub path: String,
@@ -490,8 +524,19 @@ impl DebugLog {
     /// the host's `seq` and `utc_ms` are assigned, the line rendered, and the ring advanced;
     /// an overflow drops the OLDEST, counts it, and opens a drop episode with ONE notice.
     pub fn push(&self, ev: &Event) -> bool {
+        self.push_at(ev, false)
+    }
+
+    /// F-02: the intake is CLOSED while no session is open (`unlocked_at` is `None`, which
+    /// `on_lock` sets before it records the lock and `on_unlock` sets back). A refused push is
+    /// not counted: the count of what was kept out is itself kept out. Only `on_lock`'s own
+    /// event passes the closed door (`lock_event`).
+    fn push_at(&self, ev: &Event, lock_event: bool) -> bool {
         let mut g = self.lock();
         if !g.on {
+            return false;
+        }
+        if g.unlocked_at.is_none() && !lock_event {
             return false;
         }
         if g.level == DebugLogLevel::Events && ev.level == Level::Detailed {
@@ -566,8 +611,10 @@ impl DebugLog {
     }
 
     /// AT LOCK: the ring is emptied and the lock's own event becomes the FIRST event of the new,
-    /// otherwise empty ring; `seq` restarts at 1; the sink is removed (the slot is `None` while
-    /// locked). The cause survives; the session's history does not.
+    /// otherwise empty ring; `seq` restarts at 1; the sink is removed and the INTAKE IS CLOSED
+    /// until the next unlock (F-02: nothing else enters the locked ring, and the slot stays `None`
+    /// -- F-03: `on` while locked installs nothing). The cause survives; the session's history
+    /// does not.
     pub fn on_lock(&self, cause: &str) {
         let cause = member(&["user", "autolock", "erase", "restart"], cause).unwrap_or("user");
         {
@@ -579,7 +626,17 @@ impl DebugLog {
             g.unlocked_at = None;
         }
         uninstall_sink();
-        let _ = self.push_desktop("gw.lock", &[("cause", cause)]);
+        // F-02: the one event that enters a closed ring -- the lock's own, through its own door.
+        if let Ok(ev) = desktop_event("gw.lock", &[("cause", cause)], false) {
+            self.push_at(&ev, true);
+        }
+    }
+
+    /// RULING_NA0779_005 R2 F-04: the model's `gw.unlock out=fail` arm has an emitter -- the
+    /// unlock command's Rejected and Delayed arms. F-02 keeps the door closed while locked, so in
+    /// the app the event is refused there by design; the arm proves the emitter and the word.
+    pub fn unlock_failed(&self, reason: &str) {
+        let _ = self.push_desktop("gw.unlock", &[("out", "fail"), ("reason", reason)]);
     }
 
     /// AT UNLOCK: the stored switch is applied; with the log on the sink is installed and
@@ -633,7 +690,11 @@ impl DebugLog {
         match action {
             "on" => {
                 self.set_on(true);
-                install_sink();
+                // F-03: the sink only while a session is open; a locked `on` stores the switch
+                // and the next unlock installs it (`on_unlock`).
+                if self.lock().unlocked_at.is_some() {
+                    install_sink();
+                }
                 let _ = self.push_desktop("gw.log", &[("action", "on")]);
                 true
             }
@@ -692,10 +753,10 @@ impl DebugLog {
     }
 
     /// THE EXPORT's BYTES: the header, one line per event, the digest footer. Pure ASCII by
-    /// construction. `gw.log action=export` is pushed FIRST so the export contains its own
-    /// event. The same bytes serve the file, the Copy button and the harness capture.
+    /// construction; PURE of side effects -- the act's own `gw.log` event is pushed by
+    /// `export_snapshot` (F-01 / N-05) before this renders, so the export contains it. The same
+    /// construction serves the file, the Copy button and the harness capture.
     pub fn export_text(&self, build_commit: &str, label: &str, exported_utc: &str) -> String {
-        let _ = self.push_desktop("gw.log", &[("action", "export")]);
         let g = self.lock();
         let level = match g.level {
             DebugLogLevel::Events => "events",
@@ -732,16 +793,33 @@ impl DebugLog {
         body
     }
 
+    /// ONE ACT OF EXPORT (RULING_NA0779_005 R2 F-01, N-05): the act's own word into the ring
+    /// first (`gw.log action=export` for the file, `action=copy` for the clipboard), then a label
+    /// minted from the OS RNG, then the bytes. Both arms mint; two Copies are told apart.
+    pub fn export_snapshot(&self, build_commit: &str, act: &str) -> Result<Snapshot, String> {
+        let act = member(&["export", "copy"], act).unwrap_or("export");
+        let _ = self.push_desktop("gw.log", &[("action", act)]);
+        let label = random_label()?;
+        let exported_utc = engine::utc_rfc3339_ms(now_ms());
+        let text = self.export_text(build_commit, &label, &exported_utc);
+        Ok(Snapshot {
+            text,
+            label,
+            exported_utc,
+        })
+    }
+
     /// THE ONLY DISK WRITE of the log: one file, created new at 0600 in the directory the
     /// operator chose, named `qsl-desktop-debug-log-<utc>-<label>.txt`.
     pub fn export_to_dir(&self, dir: &Path, build_commit: &str) -> Result<ExportDto, String> {
         if !dir.is_dir() {
             return Err("export_dir_not_a_directory".to_string());
         }
-        let label = random_label()?;
-        let now = now_ms();
-        let exported_utc = engine::utc_rfc3339_ms(now);
-        let text = self.export_text(build_commit, &label, &exported_utc);
+        let Snapshot {
+            text,
+            label,
+            exported_utc,
+        } = self.export_snapshot(build_commit, "export")?;
         let name = format!(
             "qsl-desktop-debug-log-{}-{}.txt",
             compact_utc(&exported_utc),
@@ -784,6 +862,10 @@ pub fn verify_export(text: &str) -> bool {
 
 /// Install the engine sink: every marker the engine emits reaches `DebugLog::global()` as a
 /// typed event. The slot is process-global (one sink); the closure captures nothing.
+/// RULING_NA0779_005 R2 N-14: THE ENGINE CALLS THE SINK UNDER ITS SINK MUTEX (`feed`, a std
+/// Mutex, not re-entrant) -- so a sink MUST NOT EMIT A MARKER. This one never does: `push`
+/// takes only the ring's own lock and releases it before its drop notice. (The engine-side
+/// sentence in `set_event_sink`'s doc rides the spine's records PR; the pin is not moved here.)
 pub fn install_sink() {
     engine::set_event_sink(Some(Box::new(|ev: &Event| {
         DebugLog::global().push(ev);
