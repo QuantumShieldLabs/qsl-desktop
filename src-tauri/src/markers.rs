@@ -26,20 +26,27 @@ pub const NOTICE_KINDS: &[&str] = &["invite_finish_hs_unconsumed"];
 /// the VALUE the UI receives is always a whitelist member, never text carried out of
 /// the marker line.
 pub fn classify(line: &str) -> Option<&'static str> {
-    let event: String = if let Some(rest) = line.strip_prefix("QSC_MARK/1 event=") {
-        rest.split_whitespace().next().unwrap_or("").to_string()
+    let event = event_name(line)?;
+    NOTICE_KINDS.iter().copied().find(|k| **k == *event)
+}
+
+/// The EVENT NAME of one marker line, from either format arm -- the name only, never a value.
+/// Shared by the notice classifier and (RULING_NA0779_005's return on invite_finish) the finish
+/// command, which reads the names the engine emitted during its own call.
+pub fn event_name(line: &str) -> Option<String> {
+    if let Some(rest) = line.strip_prefix("QSC_MARK/1 event=") {
+        Some(rest.split_whitespace().next().unwrap_or("").to_string())
     } else if line.starts_with('{') {
         match serde_json::from_str::<serde_json::Value>(line) {
-            Ok(v) => {
-                let e = v.get("event").and_then(|e| e.as_str())?;
-                e.to_string()
-            }
-            Err(_) => return None,
+            Ok(v) => v
+                .get("event")
+                .and_then(|e| e.as_str())
+                .map(|e| e.to_string()),
+            Err(_) => None,
         }
     } else {
-        return None;
-    };
-    NOTICE_KINDS.iter().copied().find(|k| **k == *event)
+        None
+    }
 }
 
 pub struct MarkerBuffer {

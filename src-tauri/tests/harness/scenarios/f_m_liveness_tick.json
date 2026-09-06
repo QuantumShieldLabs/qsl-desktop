@@ -297,6 +297,42 @@
    "expect": true
   },
   {
+   "op": "note",
+   "text": "THE DIRECTOR's RETURN on the acceptance export (before the merge): invite_finish's bool answers 'did MY redeem finish', so F-04's false->not_finished read the inviter's completed A2 as a failure. Now: a typed result (finished | offered | nothing) as out=ok c.result=<member>; out=fail only for an actual error. The two ok-words need a relay that answers; this harness has none, so the drivable half is asserted here: a finish against the relay that never answers is an ACTUAL error -- out=fail with the engine's reason, never not_finished, and no c.result on a failed line. The unit arm a17 pins the mapping; the operator's export on this head shows the words live."
+  },
+  {
+   "op": "exec",
+   "script": "window.__qsld_fin='pending'; invoke('invite_finish', {selfLabel:null, alias:'nobody-here', relay:'https://relay.invalid', max:1}).then(function(r){ window.__qsld_fin='ok:'+JSON.stringify(r); }).catch(function(e){ window.__qsld_fin='err:'+String(e && e.code ? e.code : e); }); return 'fired';"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return window.__qsld_fin!=='pending';",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return String(window.__qsld_fin).slice(0,80);"
+  },
+  {
+   "op": "poll_exec",
+   "script": "window.__qsld_finrow=null; tauriInvoke('debug_log_read', {sinceSeq:0, max:2048}).then(function(r){ var ls=r.lines.map(function(s){return s.line;}).filter(function(l){return l.indexOf('c.name=invite_finish')>=0;}); window.__qsld_finrow={n:ls.length, last:ls.length?ls[ls.length-1]:'', notfin:r.lines.filter(function(s){return s.line.indexOf('not_finished')>=0;}).length}; }).catch(function(e){ window.__qsld_finrow={err:String(e)}; }); return true;",
+   "expect": true
+  },
+  {
+   "op": "poll_exec",
+   "script": "var f=window.__qsld_finrow; return !!f && f.n>0;",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify(window.__qsld_finrow);"
+  },
+  {
+   "op": "poll_exec",
+   "script": "var f=window.__qsld_finrow; return !!f && f.n>0 && f.notfin===0 && f.last.indexOf('out=fail')>=0 && f.last.indexOf('c.result=')<0;",
+   "expect": true
+  },
+  {
    "op": "exec",
    "script": "window.__na0763.locked = false; invoke(\"lock_now\").then(function(){ return showUnlockScreen(\"main\"); })   .then(function(){ window.__na0763.locked = true; })   .catch(function(e){ window.__na0763.err = \"lock: \" + String((e && e.message) || e); }); return \"kicked\";",
    "expect": "kicked"

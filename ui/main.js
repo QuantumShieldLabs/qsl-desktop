@@ -3441,7 +3441,7 @@ async function finishScanClass(marks) {
         selfLabel: null, alias: row.alias, relay: relayUrl, max: 1,
       });
       marks.scanned += 1;
-      if (done === true) marks.finished += 1;   // EQUALITY, never truthiness
+      if (done === "finished") marks.finished += 1;   // EQUALITY on the typed word (finished | offered | nothing), never truthiness
         // ⚠⚠ NA-0768 (D-1409, RULING_012 §1(a)): THE REPAINT SIGNAL, AND WHY IT IS NOT
         //   `done`. On the E4 completing path the fan-out consumes the peer's A2 and
         //   commits her session, then `invite_finish` returns Ok(FALSE) at

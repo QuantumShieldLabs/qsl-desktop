@@ -2841,9 +2841,15 @@ fn na0756_the_triggers_use_equality_and_the_timer_census_is_exact() {
         js.contains(r#"if (st.state !== "inactive") continue;"#),
         "the pending predicate must be an EQUALITY test on the extracted value"
     );
+    // NA-0779 (the Director's return on the acceptance export): `invite_finish` answers a typed
+    // word (finished | offered | nothing) instead of the bool; the equality pin moves with it.
     assert!(
-        js.contains("if (done === true) marks.finished += 1;"),
-        "the finish outcome must be compared by equality, never by truthiness"
+        js.contains(r#"if (done === "finished") marks.finished += 1;"#),
+        "the finish outcome must be compared by equality on the typed word, never by truthiness"
+    );
+    assert!(
+        !js.contains("if (done === true)"),
+        "the bool reading is gone"
     );
     // Both triggers exist, and trigger (b) is on the CHOOSER's opener — R387 §S6. Item 1
     // retargets both entries there, so a trigger left on the create modal would cover only

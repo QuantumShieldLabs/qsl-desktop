@@ -653,6 +653,7 @@ fn a12_gw_command_out_is_the_semantic_outcome() {
         "unlock_attempt",
         Outcome::Fail,
         Some("passphrase_rejected"),
+        None,
         7,
     );
     let last = log.read(0, 100).lines.last().unwrap().line.clone();
@@ -680,9 +681,10 @@ fn a13_the_intake_closes_at_lock_and_reopens_at_unlock() {
         "unlock_attempt",
         Outcome::Fail,
         Some("passphrase_rejected"),
+        None,
         40,
     );
-    log.gw_command("protection_status", Outcome::Ok, None, 1);
+    log.gw_command("protection_status", Outcome::Ok, None, None, 1);
     log.push_desktop("ui.autolock", &[("decision", "zero_disabled")])
         .unwrap();
     let r = log.read(0, 100);
@@ -787,7 +789,13 @@ fn a15_copy_mints_a_label_and_the_ring_tells_copy_from_export() {
 fn a16_live_gw_command_equals_the_spec_validated_event() {
     let _g = arm_lock();
     let log = fresh(DebugLogLevel::Detailed);
-    log.gw_command("relay_probe", Outcome::Fail, Some("vault_locked"), 321);
+    log.gw_command(
+        "relay_probe",
+        Outcome::Fail,
+        Some("vault_locked"),
+        None,
+        321,
+    );
     let live = log.read(0, 100).lines.last().unwrap().clone();
     let spec = desktop_event(
         "gw.command",
@@ -803,7 +811,7 @@ fn a16_live_gw_command_equals_the_spec_validated_event() {
     assert_eq!(live.line, spec.to_line(live.seq, live.utc_ms));
     // the two doors differ by DESIGN on an unlisted name: the live path substitutes `?`, the
     // spec door refuses -- neither copies the text
-    log.gw_command("PLANT-not-a-command", Outcome::Ok, None, 1);
+    log.gw_command("PLANT-not-a-command", Outcome::Ok, None, None, 1);
     let live = log.read(0, 100).lines.last().unwrap().clone();
     assert!(
         live.line.contains("c.name=?") && !live.line.contains("PLANT"),
@@ -822,6 +830,111 @@ fn a16_live_gw_command_equals_the_spec_validated_event() {
         )
         .unwrap_err(),
         Refusal::NotInVocabulary
+    );
+    log.on_erase();
+}
+
+/// THE DIRECTOR's RETURN on the acceptance export (2026-09-06, before the merge): Bob's seq 59
+/// read `gw.command out=fail reason=not_finished c.name=invite_finish` right after his handshake
+/// COMPLETED as responder -- F-04's false -> not_finished called a success a failure, the exact
+/// class F-04 fixed for unlock. THE FIX: invite_finish returns a typed result (finished | offered
+/// | nothing) mapped to out=ok c.result=<member>; out=fail is reserved for an actual error.
+/// Written RED against the bool newtype as it stood.
+#[test]
+fn a17_invite_finish_is_never_a_failure_by_its_answer() {
+    // the RED run measured this arm against the bool newtype as it stood (`Finished(false)` read
+    // Fail/not_finished); the typed result replaced the newtype at the green run
+    use qsl_desktop_app::commands::InviteFinish;
+    use qsl_desktop_app::gateway::CommandOutcome;
+    let offer = vec![
+        "invite_finish_hs_skip".to_string(),
+        "invite_finish_hs_offer".to_string(),
+    ];
+    assert_eq!(
+        InviteFinish::classify(false, &offer),
+        InviteFinish::Offered,
+        "the inviter's completing A2"
+    );
+    assert_eq!(
+        InviteFinish::classify(false, &[]),
+        InviteFinish::Nothing,
+        "an idle poll"
+    );
+    assert_eq!(
+        InviteFinish::classify(true, &offer),
+        InviteFinish::Finished,
+        "my own redeem finished"
+    );
+    for (r, word) in [
+        (InviteFinish::Finished, "finished"),
+        (InviteFinish::Offered, "offered"),
+        (InviteFinish::Nothing, "nothing"),
+    ] {
+        let ok: Result<InviteFinish, String> = Ok(r);
+        assert_eq!(
+            ok.outcome(),
+            (Outcome::Ok, None),
+            "an answer is never a failure"
+        );
+        assert_eq!(ok.result_word(), Some(word));
+    }
+    let err: Result<InviteFinish, String> = Err("relay_unreachable".to_string());
+    assert_eq!(
+        err.outcome(),
+        (Outcome::Fail, Some("relay_unreachable".to_string())),
+        "an actual error is the only fail"
+    );
+    assert_eq!(err.result_word(), None, "no result word on a failed line");
+    // the line: out=ok c.result=<member>; the spec door admits the member and refuses free text
+    let _g = arm_lock();
+    let log = fresh(DebugLogLevel::Detailed);
+    log.gw_command("invite_finish", Outcome::Ok, None, Some("offered"), 3);
+    let live = log.read(0, 100).lines.last().unwrap().clone();
+    assert!(
+        live.line
+            .contains("ev=gw.command out=ok dur=3 c.name=invite_finish c.result=offered"),
+        "{}",
+        live.line
+    );
+    let spec = desktop_event(
+        "gw.command",
+        &[
+            ("name", "invite_finish"),
+            ("out", "ok"),
+            ("result", "offered"),
+            ("dur_ms", "3"),
+        ],
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        live.line,
+        spec.to_line(live.seq, live.utc_ms),
+        "a16's guard holds with the result word"
+    );
+    assert_eq!(
+        desktop_event(
+            "gw.command",
+            &[
+                ("name", "invite_finish"),
+                ("out", "ok"),
+                ("result", "PLANT-word")
+            ],
+            false
+        )
+        .unwrap_err(),
+        Refusal::NotInVocabulary
+    );
+    log.gw_command("invite_finish", Outcome::Ok, None, Some("PLANT-word"), 1);
+    let live = log.read(0, 100).lines.last().unwrap().clone();
+    assert!(
+        !live.line.contains("c.result=") && !live.line.contains("PLANT"),
+        "an unlisted word is OMITTED, never copied: {}",
+        live.line
+    );
+    assert!(
+        !qsl_desktop_app::debug_log::DESKTOP_REASONS.contains(&"not_finished"),
+        "the word that called a success a failure is retired from the vocabulary"
     );
     log.on_erase();
 }

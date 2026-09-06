@@ -729,17 +729,45 @@ impl crate::gateway::CommandOutcome for RelayTestDto {
     }
 }
 
-/// RULING_NA0779_005 R2 F-04: a bool where `false` means "not finished" -- `invite_finish`'s answer.
-/// The gateway reads the newtype; the caller gets the bool back.
-pub struct Finished(pub bool);
-impl crate::gateway::CommandOutcome for Finished {
-    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
-        use qsc::output::event::Outcome;
-        if self.0 {
-            (Outcome::Ok, None)
-        } else {
-            (Outcome::Fail, Some("not_finished".to_string()))
+/// `invite_finish`'s TYPED answer (the Director's return on the acceptance export, 2026-09-06).
+/// The engine's bool answers "did MY redeem finish": `true` only on the redeemer's own selected
+/// path; `false` covers BOTH the inviter's completing A2 (the fan-out committed a session or a
+/// pending record and emitted `invite_finish_hs_offer`) and an idle poll. Reading the bool as a
+/// failure had called a success a failure (Bob's seq 59). The three are told apart by the bool
+/// and by the NAMES of the markers the engine emitted during this very call -- names only, a
+/// closed vocabulary, peeked from the marker queue before the gateway drains it. Every answer is
+/// `ok`; `out=fail` is an actual error.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InviteFinish {
+    Finished,
+    Offered,
+    Nothing,
+}
+impl InviteFinish {
+    pub fn as_word(self) -> &'static str {
+        match self {
+            InviteFinish::Finished => "finished",
+            InviteFinish::Offered => "offered",
+            InviteFinish::Nothing => "nothing",
         }
+    }
+    /// The classification from the engine's bool and the marker names of this call.
+    pub fn classify(done: bool, marker_names: &[String]) -> InviteFinish {
+        if done {
+            InviteFinish::Finished
+        } else if marker_names.iter().any(|n| n == "invite_finish_hs_offer") {
+            InviteFinish::Offered
+        } else {
+            InviteFinish::Nothing
+        }
+    }
+}
+impl crate::gateway::CommandOutcome for InviteFinish {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        (qsc::output::event::Outcome::Ok, None)
+    }
+    fn result_word(&self) -> Option<&'static str> {
+        Some(self.as_word())
     }
 }
 
@@ -1445,18 +1473,27 @@ pub async fn invite_finish(
     alias: String,
     relay: String,
     max: usize,
-) -> Result<bool, ErrorDto> {
+) -> Result<String, ErrorDto> {
     st.gw
         .call_named("invite_finish", move || {
-            Ok(Finished(qsc::facade::invite_finish(
-                self_label.as_deref(),
-                &alias,
-                &relay,
-                max,
-            )?))
+            // the marker queue's length before the call; the names the engine emits DURING it
+            // are peeked after (the gateway drains the queue only once the closure returns)
+            let before = qsc::output::marker_queue()
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .len();
+            let done = qsc::facade::invite_finish(self_label.as_deref(), &alias, &relay, max)?;
+            let names: Vec<String> = qsc::output::marker_queue()
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .iter()
+                .skip(before)
+                .filter_map(|l| crate::markers::event_name(l))
+                .collect();
+            Ok(InviteFinish::classify(done, &names))
         })
         .await
-        .map(|f| f.0)
+        .map(|f| f.as_word().to_string())
 }
 
 #[tauri::command]

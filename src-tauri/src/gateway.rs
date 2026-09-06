@@ -20,6 +20,12 @@ use std::time::Instant;
 /// `RelayTestDto` and `Finished` (commands.rs) know better.
 pub trait CommandOutcome {
     fn outcome(&self) -> (Outcome, Option<String>);
+    /// A closed RESULT WORD beside `ok` (`gw.command c.result=<member>`), for the commands whose
+    /// `ok` has more than one shape -- `invite_finish`'s finished | offered | nothing (the
+    /// Director's return on the acceptance export, 2026-09-06). `None` for every other type.
+    fn result_word(&self) -> Option<&'static str> {
+        None
+    }
 }
 
 /// An error's CODE -- the closed token the log looks up in the engine's reason vocabulary
@@ -46,6 +52,12 @@ impl<T: CommandOutcome, E: ErrorCode> CommandOutcome for Result<T, E> {
         match self {
             Ok(t) => t.outcome(),
             Err(e) => (Outcome::Fail, Some(e.code())),
+        }
+    }
+    fn result_word(&self) -> Option<&'static str> {
+        match self {
+            Ok(t) => t.result_word(),
+            Err(_) => None,
         }
     }
 }
@@ -128,7 +140,13 @@ impl CoreGateway {
         let t0 = Instant::now();
         let out = self.call(f).await;
         let (outcome, reason) = out.outcome();
-        DebugLog::global().gw_command(name, outcome, reason.as_deref(), t0.elapsed().as_millis());
+        DebugLog::global().gw_command(
+            name,
+            outcome,
+            reason.as_deref(),
+            out.result_word(),
+            t0.elapsed().as_millis(),
+        );
         out
     }
 

@@ -68,8 +68,14 @@ pub const DESKTOP_REASONS: &[&str] = &[
     "relay_unreachable",
     "relay_cert_not_trusted",
     "relay_not_a_qsl_relay",
-    "not_finished",
 ];
+
+/// The closed RESULT WORDS `gw.command` may carry beside `ok` (`c.result`): `invite_finish`'s
+/// three answers. THE DIRECTOR's RETURN on the acceptance export (2026-09-06): the command's bool
+/// answers "did MY redeem finish", so `false -> not_finished` had called the inviter's completed
+/// A2 a failure -- the class F-04 fixed for unlock. `not_finished` is retired; `out=fail` is an
+/// actual error only.
+pub const RESULT_WORDS: &[&str] = &["finished", "offered", "nothing"];
 
 /// The registered command set (`lib.rs` `generate_handler!`). `gw.command`'s `c.name` is a
 /// member of this table or `?`; a test pins the two against each other.
@@ -241,7 +247,7 @@ pub const DESKTOP_EVENTS: &[DesktopSpec] = &[
         level: Level::Detailed,
         source: Source::Gateway,
         ints: &[],
-        enums: &[("name", COMMAND_NAMES)],
+        enums: &[("name", COMMAND_NAMES), ("result", RESULT_WORDS)],
         out: true,
         reason: true,
         dur: true,
@@ -587,8 +593,21 @@ impl DebugLog {
 
     /// `gw.command`: the NAME (a member of the registered set or `?`), the outcome, the reason
     /// from the engine's closed vocabulary (or `?`), the duration. Arguments never reach here.
-    pub fn gw_command(&self, name: &str, outcome: Outcome, reason: Option<&str>, dur_ms: u128) {
+    /// ONE `gw.command` per named call: the name (a member or `?`), the outcome, the reason (a
+    /// member or `?`), the result word (a member of `RESULT_WORDS`, or omitted) and the duration.
+    pub fn gw_command(
+        &self,
+        name: &str,
+        outcome: Outcome,
+        reason: Option<&str>,
+        result: Option<&str>,
+        dur_ms: u128,
+    ) {
         let name = member(COMMAND_NAMES, name).unwrap_or(UNLISTED);
+        let mut enums = vec![("name", name)];
+        if let Some(r) = result.and_then(|r| member(RESULT_WORDS, r)) {
+            enums.push(("result", r));
+        }
         let ev = Event {
             level: Level::Detailed,
             source: Source::Gateway,
@@ -599,7 +618,7 @@ impl DebugLog {
             duration_ms: Some(dur_ms.min(u32::MAX as u128) as u32),
             ints: Vec::new(),
             bools: Vec::new(),
-            enums: vec![("name", name)],
+            enums,
         };
         self.push(&ev);
     }
