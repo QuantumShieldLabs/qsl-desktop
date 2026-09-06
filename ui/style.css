@@ -489,11 +489,12 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 .rail-btn:hover { background: var(--bg-raised); color: var(--fg); }
 .rail-btn.active { background: var(--rail-active-bg); color: var(--accent-text); }
 /* NA-0779 (D-0048 004c, RBANK_rail_icons_todo T1-T2; the reference mockup-rail-icons-preview.html): the NAV rail's
-   three tabs at the reference's size (a 28px icon in a 36px square; the rail is 52px) and ONE selection treatment --
-   a soft filled square in the raised-surface token, the icon in the text colour, no border. Scoped to `.rail` so the
-   contacts header's "+" keeps the pinned 34px / 21px shape. The sliders' knobs are filled with the surface they sit
-   on, so they read as knobs ON the lines. */
-.rail .rail-btn { width: 36px; height: 36px; }
+   three tabs with the reference's 28px icon (the rail is 52px) and ONE selection treatment -- a soft filled square in
+   the raised-surface token, the icon in the text colour, no border. DEVIATION NAMED: the square stays the tree's 34px
+   `.rail-btn` (the reference draws 36px): the pane headings are pinned to the rail button's centre (f_q, the shared
+   head-row height), and a 36px button moved that centre by 1px -- CI's gui-driver said so at c58916a5. The icon size
+   is scoped to `.rail` so the contacts header's "+" keeps the pinned 21px glyph. The sliders' knobs are filled with
+   the surface they sit on, so they read as knobs ON the lines. */
 .rail .rail-btn svg { width: 28px; height: 28px; }
 .rail .rail-btn.active { background: var(--bg-raised); color: var(--fg); border-color: transparent; }
 .rail-btn svg .knob { fill: var(--bg-inset); }
