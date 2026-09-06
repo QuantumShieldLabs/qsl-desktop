@@ -131,6 +131,12 @@ def main():
             sys.exit(0)
         print(raw)
         sys.exit(2)
+    elif cmd == "rect":
+        # NA-0779 (18c L1): the window's size, the WebDriver way (POST window/rect) -- the harness's resize op.
+        st, raw = call("POST", "/session/%s/window/rect" % sid(),
+                       {"width": int(sys.argv[2]), "height": int(sys.argv[3])})
+        print(raw)
+        sys.exit(0 if st == 200 else 2)
     elif cmd == "execute":
         st, raw = call("POST", "/session/%s/execute/sync" % sid(),
                        {"script": sys.argv[2], "args": []})

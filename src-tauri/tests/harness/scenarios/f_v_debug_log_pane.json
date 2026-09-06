@@ -1,0 +1,470 @@
+{
+  "scenario": "f_v_debug_log_pane",
+  "destructive": false,
+  "steps": [
+    {
+      "op": "note",
+      "text": "NA-0779 (D-0048) STOP 004: Settings > Diagnostics. The runner ARMS the log (on + detailed, through debug_log_control) the first time scr-main is visible and EXPORTS it into the run dir at every teardown (the L4 capture); this scenario then drives the pane: the switch and the bar, the live list, Pause/Resume (18d I4: the counts keep growing while Paused, the list stops FOLLOWING -- flight step 13), the filter, the Copy MEASUREMENT (RULING_NA0779_002 R2 (b)), the Export button, and the switch's persistence across a relaunch. 18d (RBANK_second_flight_18d_blessed_20260905): the bar is on the MAIN WINDOW only (I1), reads 'Debug Log: <level>' (I7), the export line is short and transient (I5)."
+    },
+    {
+      "op": "launch"
+    },
+    {
+      "op": "type",
+      "sel": "#vault-pass",
+      "text": "na0779-fv-passphrase"
+    },
+    {
+      "op": "type",
+      "sel": "#vault-confirm",
+      "text": "na0779-fv-passphrase"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#btn-vault-create",
+      "prop": "disabled",
+      "expect": false,
+      "poll": 5
+    },
+    {
+      "op": "click",
+      "sel": "#btn-vault-create"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-wizard-identity"
+    },
+    {
+      "op": "type",
+      "sel": "#alias-input",
+      "text": "FV"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#btn-identity-done",
+      "prop": "disabled",
+      "expect": false,
+      "poll": 5
+    },
+    {
+      "op": "click",
+      "sel": "#btn-identity-done"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-main"
+    },
+    {
+      "op": "note",
+      "text": "the runner armed the log on scr-main; the STATUS BAR's right end must read 'Debug Log: detailed' on scr-main (18d I7; 18c L5: the pill is gone; the bar speaks)"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.querySelector('#status-line .status-right').textContent;",
+      "expect": "Debug Log: detailed"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-settings"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-settings"
+    },
+    {
+      "op": "click",
+      "sel": ".settings-rail .cat[data-pane=\"diagnostics\"]"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#pane-diagnostics",
+      "prop": "className",
+      "expect": "pane pane-fill",
+      "poll": 5
+    },
+    {
+      "op": "poll_exec",
+      "script": "var f=document.querySelector('#scr-settings footer.status-line'); return f ? f.querySelector('.status-left').textContent.indexOf('Relay: not configured')===0 && f.querySelector('.status-right').textContent : 'no bar';",
+      "expect": "Debug Log: detailed"
+    },
+    {
+      "op": "note",
+      "text": "18c L1, RENDERED AT THE MOCKUP's TWO FRAMES: the window is resized to 1120x760 (wide) and 840x600 (narrow); the events list must be the ONLY element that changes height (the card, the toolbar row and the export row keep theirs); a screenshot of each frame is frozen in the run dir for the comparison against the mockup"
+    },
+    {
+      "op": "resize",
+      "width": 1120,
+      "height": 760
+    },
+    {
+      "op": "poll_exec",
+      "script": "var l=document.getElementById('dl-log').getBoundingClientRect(); var c=document.querySelector('.dl-card').getBoundingClientRect(); window.__qsld_wide={log:Math.round(l.height), card:Math.round(c.height), row:Math.round(document.querySelector('.dl-listhead').getBoundingClientRect().height), exp:Math.round(document.querySelector('.dl-exportrow').getBoundingClientRect().height)}; return l.height > 250;",
+      "expect": true
+    },
+    {
+      "op": "screenshot",
+      "name": "diagnostics_wide_1120x760.png"
+    },
+    {
+      "op": "resize",
+      "width": 840,
+      "height": 600
+    },
+    {
+      "op": "poll_exec",
+      "script": "var l=document.getElementById('dl-log').getBoundingClientRect(); var c=document.querySelector('.dl-card').getBoundingClientRect(); var w=window.__qsld_wide||{}; return l.height < w.log - 100 && Math.round(c.height)===w.card && Math.round(document.querySelector('.dl-listhead').getBoundingClientRect().height)===w.row && Math.round(document.querySelector('.dl-exportrow').getBoundingClientRect().height)===w.exp;",
+      "expect": true
+    },
+    {
+      "op": "exec",
+      "script": "var l=document.getElementById('dl-log').getBoundingClientRect(); var w=window.__qsld_wide; return JSON.stringify({wide:w, narrow_log:Math.round(l.height)});"
+    },
+    {
+      "op": "screenshot",
+      "name": "diagnostics_narrow_840x600.png"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var h=[]; document.querySelectorAll('#pane-diagnostics .dl-ctl, #pane-diagnostics .dl-seg').forEach(function(e){h.push(Math.round(e.getBoundingClientRect().height));}); return h.length>=7 && h.every(function(x){return x===h[0];});",
+      "expect": true
+    },
+    {
+      "op": "resize",
+      "width": 1120,
+      "height": 760
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#dl-on",
+      "prop": "checked",
+      "expect": true,
+      "poll": 5
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#dl-level-detailed",
+      "prop": "className",
+      "expect": "dl-seg-item on",
+      "poll": 5
+    },
+    {
+      "op": "note",
+      "text": "the live list: the log's own gw.log on / level_detailed events, a gateway command the pane itself calls (protection_status; settings_get is SYNC and never crosses the gateway, so it has no gw.command by design) and the ui.surface transition are the SAME lines the export carries"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length >= 4;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=gw.log')>=0 && t.indexOf('c.action=on')>=0 && t.indexOf('c.action=level_detailed')>=0;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=ui.surface')>=0 && t.indexOf('c.screen=scr-settings')>=0;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=gw.command')>=0 && t.indexOf('c.name=protection_status')>=0;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('na0779-fv-passphrase')<0 && t.indexOf('FV')<0 && t.split('\\n').every(function(l){return l===''||/^[\\x20-\\x7e]+$/.test(l);});",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "THE COPY MEASUREMENT (R2 (b)): the button places the export's bytes on the clipboard via navigator.clipboard.writeText; the handler records its result in window.__qsld_dl_copy, and the clipboard is read back with readText where the webview allows it"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-copy"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return String(window.__qsld_dl_copy||'').indexOf('ok:')===0;",
+      "expect": true
+    },
+    {
+      "op": "exec",
+      "script": "window.__qsld_clip=null; navigator.clipboard.readText().then(function(t){window.__qsld_clip=t.slice(0,40);}).catch(function(e){window.__qsld_clip='err:'+String(e);}); return 'fired';"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return window.__qsld_clip!==null && window.__qsld_clip!==undefined;",
+      "expect": true
+    },
+    {
+      "op": "exec",
+      "script": "return String(window.__qsld_clip);"
+    },
+    {
+      "op": "note",
+      "text": "the row above RECORDS the read-back (the first 40 bytes of the clipboard, or the webview's refusal); the writeText result is the R2 (b) answer, the read-back its corroboration"
+    },
+    {
+      "op": "note",
+      "text": "RULING_NA0779_005 R2, F-01: the Copy arm mints a label like the file arm -- the handler records ok:<sha>:<label>; two Copies carry different non-zero 16-hex labels"
+    },
+    {
+      "op": "exec",
+      "script": "window.__qsld_copy1=String(window.__qsld_dl_copy||''); return window.__qsld_copy1;"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var b=document.getElementById('btn-dl-copy'); return !b.disabled && b.textContent==='Copy';",
+      "expect": true
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-copy"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var a=window.__qsld_copy1.split(':'), b=String(window.__qsld_dl_copy||'').split(':'); return a.length===3 && b.length===3 && /^[0-9a-f]{16}$/.test(a[2]) && /^[0-9a-f]{16}$/.test(b[2]) && a[2]!=='0000000000000000' && b[2]!=='0000000000000000' && a[2]!==b[2] && b[0]==='ok';",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('c.action=copy')>=0;",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "Pause / Resume and the display filter: the filter narrows what is SHOWN only"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-pause"
+    },
+    {
+      "op": "read_tc",
+      "sel": "#btn-dl-pause",
+      "literal": "Resume"
+    },
+    {
+      "op": "note",
+      "text": "18d I4 -- THE MISS AGAINST FLIGHT STEP 13, now asserted: while Paused the ring keeps recording and the counts line keeps growing; only the list stops FOLLOWING. Two gateway calls are provoked (protection_status, a gw.command each at the detailed level); the counts must rise and the shown lines must not."
+    },
+    {
+      "op": "exec",
+      "script": "window.__qsld_pause={counts:parseInt(document.getElementById('dl-counts').textContent,10), shown:document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length}; tauriInvoke('protection_status').catch(function(){}); tauriInvoke('protection_status').catch(function(){}); return JSON.stringify(window.__qsld_pause);"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var p=window.__qsld_pause; var n=parseInt(document.getElementById('dl-counts').textContent,10); var s=document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length; return n>p.counts && s===p.shown;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; var n=parseInt(document.getElementById('dl-counts').textContent,10); var s=t.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length; window.__qsld_pause.counts2=n; window.__qsld_pause.shown2=s; return s<n;",
+      "expect": true
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-pause"
+    },
+    {
+      "op": "read_tc",
+      "sel": "#btn-dl-pause",
+      "literal": "Pause"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var p=window.__qsld_pause; return document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length > p.shown;",
+      "expect": true
+    },
+    {
+      "op": "type",
+      "sel": "#dl-filter",
+      "text": "gw.log"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.length>0 && t.split('\\n').every(function(l){return l===''||l.indexOf('gw.log')>=0;});",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "THE EXPORT BUTTON: the directory the operator chose (the run dir here, never the real HOME -- the isolation bracket), one file, its digest verified by the runner's own capture at teardown as well"
+    },
+    {
+      "op": "clear_type",
+      "sel": "#dl-export-dir",
+      "text": "{run_dir}"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-export"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-export-result').textContent; return t.indexOf('Saved ')===0 && /-[0-9a-f]{16}\\.txt/.test(t) && t.indexOf('/')<0 && t.indexOf('sha256')<0;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "return /\\u00b7 [0-9]+ KB$/.test(document.getElementById('dl-export-result').textContent);",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "18d I5: the line is TRANSIENT -- it clears within ten seconds (one one-shot timer) or when the pane is left; polled past the ten seconds here"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('dl-export-result').classList.contains('hidden') && document.getElementById('dl-export-result').textContent==='';",
+      "expect": true,
+      "poll": 40
+    },
+    {
+      "op": "teardown"
+    },
+    {
+      "op": "note",
+      "text": "launch #2 on the persisted profile: the switch PERSISTS (RULING 002 R3) -- the UNLOCK window carries NO bar (18d I1: the bar is the main window's, the unlock window's two texts overlapped at its width); the bar reads 'Debug Log: detailed' on scr-main right after unlock; the contents did NOT persist -- the new session's record begins with gw.unlock"
+    },
+    {
+      "op": "launch"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-unlock"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.querySelector('#scr-unlock footer.status-line')===null && document.querySelectorAll('#scr-unlock .status-bar').length===0 && document.querySelectorAll('#scr-main footer.status-line, #scr-settings footer.status-line').length===2;",
+      "expect": true
+    },
+    {
+      "op": "type",
+      "sel": "#unlock-pass",
+      "text": "na0779-fv-passphrase"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-unlock"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-main"
+    },
+    {
+      "op": "resize",
+      "width": 1120,
+      "height": 760
+    },
+    {
+      "op": "screenshot",
+      "name": "main_after_unlock_1120x760.png"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.querySelector('#status-line .status-right').textContent;",
+      "expect": "Debug Log: detailed"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-settings"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-settings"
+    },
+    {
+      "op": "click",
+      "sel": ".settings-rail .cat[data-pane=\"diagnostics\"]"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; var first=t.split('\\n').filter(function(l){return l.indexOf('seq=')===0;})[0]||''; return first.indexOf('seq=1 ')===0 && first.indexOf('ev=gw.unlock')>=0;",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "the runner re-arms the log on THIS launch too (gw.log on / level_detailed appear again by the harness's design); what proves the contents did not persist is the first line above (seq=1 gw.unlock) and the ABSENCE of the previous session's export events"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('dl-log').textContent.indexOf('c.action=export')<0;",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "RULING_NA0779_005 R2, F-02 (the intake closes at lock) and N-07 (relayProven is reset in the lock path): the app path -- lock from the menu's own two calls, a surface change to the unlock window, a WRONG passphrase (an unlock_attempt), then the right one. The new ring's first two lines must be gw.lock then gw.unlock with NOTHING between: no surface event, no unlock_attempt, no protection_status. The count and timing of passphrase attempts never sit in the next session's record."
+    },
+    {
+      "op": "exec",
+      "script": "relayProven=true; invoke('lock_now').then(function(){ return showUnlockScreen('main'); }); return 'fired';"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-unlock"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return relayProven===false;",
+      "expect": true
+    },
+    {
+      "op": "type",
+      "sel": "#unlock-pass",
+      "text": "definitely-wrong-pass"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-unlock"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('unlock-feedback').textContent.length>0;",
+      "expect": true
+    },
+    {
+      "op": "clear_type",
+      "sel": "#unlock-pass",
+      "text": "na0779-fv-passphrase"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-unlock"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-main"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-settings"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-settings"
+    },
+    {
+      "op": "click",
+      "sel": ".settings-rail .cat[data-pane=\"diagnostics\"]"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var ls=document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}); return ls.length>=2 && ls[0].indexOf('seq=1 ')===0 && ls[0].indexOf('ev=gw.lock')>=0 && ls[0].indexOf('c.cause=user')>=0 && ls[1].indexOf('seq=2 ')===0 && ls[1].indexOf('ev=gw.unlock out=ok')>=0;",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "what F-02 promises: NOTHING between gw.lock (seq 1) and gw.unlock (seq 2) -- asserted by the row above -- and no unlock_attempt anywhere (attempts happen only while locked). A `ui.surface c.screen=scr-unlock` AFTER gw.unlock is the page's own height sync of the surface it is leaving, fired once the intake is open again; it is not a locked-interval event and is not forbidden."
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('c.name=unlock_attempt')<0;",
+      "expect": true
+    },
+    {
+      "op": "teardown"
+    }
+  ]
+}

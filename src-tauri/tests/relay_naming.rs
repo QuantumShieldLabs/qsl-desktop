@@ -45,9 +45,10 @@ fn the_pane_is_named_relay_everywhere_it_is_shown() {
         html.contains("<h2>Relay</h2>"),
         "the pane heading must read Relay"
     );
+    // NA-0779 (18c L6): the status bar's static default -- state words, never an address.
     assert!(
-        html.contains(">No relay configured.<"),
-        "the main-window status line must read 'No relay configured.'"
+        html.contains("Relay: not configured &middot; Vault: unlocked &middot; Auto-lock: 60 min"),
+        "the main-window status bar's default must read the relay as 'not configured'"
     );
 }
 
@@ -55,7 +56,7 @@ fn the_pane_is_named_relay_everywhere_it_is_shown() {
 fn the_status_and_result_copy_reads_relay() {
     let js = ui("main.js");
     for needle in [
-        "No relay configured — add one in Settings › Relay.",
+        "const STATUS_FOOTER_NO_RELAY = \"not configured\";",
         r#"docRow("Relay version""#,
         "Couldn't reach the relay",
         "This relay presented a certificate",

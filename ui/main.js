@@ -113,6 +113,8 @@ function show(id) {
   closeRedeemModal();
   for (const s of SCREENS) byId(s).classList.toggle("hidden", s !== id);
   currentScreen = id;
+  if (id !== "scr-settings") dlPaneVisibility(false); // NA-0779 (`D-0048`)
+  paintStatusFooter(lastFooterReason, lastFooterRelayUrl); // NA-0779 (18c L5): the bar follows the surface
   // Item 15 (R1): the backend disables the state-dependent menu entries
   // (File > Settings / Lock now) unless an unlocked surface is showing.
   // R-14: the measurement rides the same carrier.
@@ -243,6 +245,10 @@ function adoptSettings(cfg) {
   // (see `saveSettings` above, still two fields) — nothing in this lane writes
   // the knob, so an absent key is the blessed default rather than a loss.
   tickTempo = TICK_TEMPO[cfg.tempo] ? cfg.tempo : TICK_DEFAULT;
+  // NA-0779 (`D-0048`): the debug log's switch and level ride the same read.
+  dlAdopt(cfg.debug_log || null);
+  if (cfg.autolock_minutes === 0) dlEmit("ui.autolock", { decision: "zero_disabled" });
+  paintStatusFooter(lastFooterReason, lastFooterRelayUrl); // NA-0779 (18c L6): the auto-lock word
 }
 
 // ---- failed-attempts capture (binding D596 rule, unchanged) --------------
@@ -256,11 +262,22 @@ let vaultAlertDismissed = false;
 
 async function showUnlockScreen(next) {
   unlockNext = next;
+  // RULING_NA0779_005 R2 N-07: every path to the unlock window passes here -- the new session must PROVE the relay
+  // again before the bar may say "connected" (F3's spirit); a lock does not carry the last session's proof over.
+  relayProven = false; relayTrust = null;
   try {
     const s = await invoke("protection_status");
     observedFailedUnlocks = s.failed_unlocks;
   } catch (_) { /* fail-quiet: the alert simply stays silent */ }
   show("scr-unlock");
+  // NA-0779 (18c L5): the bar on the unlock screen -- the stored switch and autolock, the stored relay address; the
+  // vault's word is "locked" by the surface. Nothing here needs the vault.
+  dlRefreshSwitch();
+  try {
+    const cfg = await invoke("relay_config_get");
+    lastFooterRelayUrl = cfg.relay_url || "";
+  } catch (_) { /* the bar keeps its last address */ }
+  paintStatusFooter("vault_locked", lastFooterRelayUrl);
 }
 
 // unlock routing: where a successful unlock goes (S1 → wizard identity,
@@ -671,10 +688,22 @@ byId("btn-erase-cancel").addEventListener("click", () => showUnlockScreen(unlock
 //
 // PRECEDENCE IS WORST-FIRST and it is load-bearing: the first matching row
 // wins, so a storage fault is never hidden behind a cheerful "Ready."
-const STATUS_FOOTER_STORAGE = "Storage problem — check Settings › Vault.";
-const STATUS_FOOTER_LOCKED = "Locked — unlock to connect.";
-const STATUS_FOOTER_UNKNOWN = "Status unknown — please report this.";
-const STATUS_FOOTER_NO_RELAY = "No relay configured — add one in Settings › Relay.";
+// NA-0779 (D-0048, mockup 18c L6; RBANK_status_footer_todo F2/F3): the footer is now THE STATUS BAR, and it speaks
+// in STATE WORDS ONLY -- distinct words for distinct causes, never a host or an address, no "connected" until a
+// call has succeeded, no red (unreachable is the accent tier). NA-0752's two-source line (the desk's reason and the
+// relay config) still feeds it; the words below are its vocabulary. The three undrivable sentences of NA-0752
+// became the three undrivable WORDS, pinned by the same test.
+const STATUS_FOOTER_STORAGE = "storage error";   // the vault's word when the desk reports missing_home / unsafe_parent
+const STATUS_FOOTER_LOCKED = "locked";           // the vault's word when the desk reports vault_locked (or on a locked surface)
+const STATUS_FOOTER_UNKNOWN = "unknown";         // the relay's word when the desk answers nothing or an unrecognized reason
+const STATUS_FOOTER_NO_RELAY = "not configured"; // the relay's word with no relay address stored
+const STATUS_RELAY_CONFIGURED = "configured";    // an address is stored; no call has succeeded yet (F3)
+const STATUS_RELAY_CONNECTED = "connected";      // a call succeeded and nothing failed since
+const STATUS_RELAY_NOT_TRUSTED = "not trusted";  // the last test or probe reported cert_not_trusted (TLS is fail-closed)
+// Measured signals behind the relay's word. `relayProven` flips on a scan that reaches the relay and does not fail
+// (recordScanOutcome), or a Server-pane test / probe that reports reachable; it resets when the stored address changes.
+let relayProven = false;
+let relayTrust = null;
 
 // NA-0764 (R5): the footer's last known inputs. The tick repaints the SAME line
 // when its failure counter crosses the threshold, and it must not re-invoke the
@@ -727,24 +756,33 @@ let lastFooterRelayUrl = "";
 // resets and this function's last arm answers again. A "Reconnected" line was
 // refused for this lane.
 function statusFooterLine(reason, relayUrl, tickTrouble) {
+  // The vault's word.
+  let vault = "unlocked";
   if (reason === "missing_home" || reason === "unsafe_parent") {
-    return STATUS_FOOTER_STORAGE;
+    vault = STATUS_FOOTER_STORAGE;
+  } else if (reason === "vault_locked" || !(currentScreen === "scr-main" || currentScreen === "scr-settings")) {
+    vault = STATUS_FOOTER_LOCKED;
   }
-  if (reason === "vault_locked") {
-    return STATUS_FOOTER_LOCKED;
-  }
-  // The honest tripwire: an EIGHTH upstream reason string, or a desk that did
-  // not answer at all. A typed failure must never arrive as silence.
-  if (reason === null || reason === "unrecognized") {
-    return STATUS_FOOTER_UNKNOWN;
-  }
+  // The relay's word, in the ruled precedence: a problem the user can act on before the outage, the outage before
+  // the connected word (NA-0764 R5), and "connected" only on a measured success (F3).
+  let relay;
   if (!relayUrl) {
-    return STATUS_FOOTER_NO_RELAY;
+    relay = STATUS_FOOTER_NO_RELAY;
+  } else if (reason === "missing_home" || reason === "unsafe_parent" || reason === null || reason === "unrecognized") {
+    relay = STATUS_FOOTER_UNKNOWN;
+  } else if (reason === "vault_locked" || vault === STATUS_FOOTER_LOCKED) {
+    relay = STATUS_RELAY_CONFIGURED;
+  } else if (relayTrust === "cert_not_trusted") {
+    relay = STATUS_RELAY_NOT_TRUSTED;
+  } else if (tickTrouble) {
+    relay = TICK_UNREACHABLE_COPY;
+  } else if (relayProven) {
+    relay = STATUS_RELAY_CONNECTED;
+  } else {
+    relay = STATUS_RELAY_CONFIGURED;
   }
-  if (tickTrouble) {
-    return TICK_UNREACHABLE_COPY;
-  }
-  return `Ready. Relay: ${relayUrl}`;
+  const autolock = autolockMinutes === 0 ? "off" : autolockMinutes + " min";
+  return "Relay: " + relay + " \u00b7 Vault: " + vault + " \u00b7 Auto-lock: " + autolock;
 }
 
 // The footer's TIER. Accent, never danger: an unreachable relay needs
@@ -752,9 +790,18 @@ function statusFooterLine(reason, relayUrl, tickTrouble) {
 // NA-0763's ruling, carried forward unchanged rather than reversed here.
 function paintStatusFooter(reason, relayUrl) {
   const trouble = tickFails >= TICK_FAIL_THRESHOLD;
-  const el = byId("status-line");
-  el.textContent = statusFooterLine(reason, relayUrl, trouble);
-  el.classList.toggle("is-trouble", trouble && !!relayUrl && isPlainReason(reason));
+  const left = statusFooterLine(reason, relayUrl, trouble);
+  // NA-0779 (18d I7): "Debug Log: <level>" while the log is on, NOTHING while it is off.
+  const right = dl.on ? "Debug Log: " + dl.level : "";
+  // NA-0779 (18c L5; 18d I1): the same bar on every screen INSIDE the main window (chats, contacts, settings); one
+  // painter, one text. The unlock window carries none.
+  for (const el of document.querySelectorAll("footer.status-line")) {
+    const l = el.querySelector(".status-left");
+    const r = el.querySelector(".status-right");
+    if (l) l.textContent = left;
+    if (r) r.textContent = right;
+    el.classList.toggle("is-trouble", trouble && !!relayUrl && isPlainReason(reason));
+  }
 }
 
 // The outage tier paints only where the outage arm can actually render — the
@@ -774,6 +821,7 @@ function isPlainReason(reason) {
 async function enterMain() {
   show("scr-main");
   refreshNotices();   // NA-0776 3.3: initial paint; not awaited, never blocking
+  dlRefreshSwitch();  // NA-0779 (`D-0048`): the pill reflects the stored switch after unlock
   // Slice B (D609 R4) kept: the footer reflects the ACTUAL relay config, never
   // a "future update" claim. NA-0752 adds the desk's answer beside it.
   //
@@ -795,6 +843,7 @@ async function enterMain() {
   } catch (_) {
     reason = null;
   }
+  if (relayUrl !== lastFooterRelayUrl) { relayProven = false; relayTrust = null; } // a new address: nothing proven yet
   lastFooterReason = reason;
   lastFooterRelayUrl = relayUrl;
   paintStatusFooter(reason, relayUrl);
@@ -923,6 +972,7 @@ async function openSettings(pane) {
   selectPane(pane);
   // NA-0778 (`D-0047`): the Invitations pane refreshes on open, before the other panes' reads.
   if (pane === "invitations") await refreshInvitationsPane();
+  if (pane === "diagnostics") await refreshDiagnosticsPane();
   await refreshIdentityPane();
   await refreshVaultPane();
   await refreshServerPane();
@@ -960,9 +1010,10 @@ function selectPane(name) {
   for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
     b.classList.toggle("active", b.dataset.pane === name);
   }
-  for (const p of ["identity", "server", "vault", "invitations", "appearance", "notifications", "about"]) {
+  for (const p of ["identity", "server", "vault", "invitations", "diagnostics", "appearance", "notifications", "about"]) {
     byId("pane-" + p).classList.toggle("hidden", p !== name);
   }
+  dlPaneVisibility(name === "diagnostics"); // NA-0779 (`D-0048`): the live list polls only while shown
   // NA-0778 (`D-0047`, RULING_NA0778_004 R22): selecting the Invitations pane puts it in its
   // LOADING state synchronously; only a completed refresh replaces that with rows.
   if (name === "invitations") invitationsSetLoading();
@@ -971,6 +1022,7 @@ for (const b of document.querySelectorAll(".settings-rail .cat[data-pane]")) {
   b.addEventListener("click", () => {
     selectPane(b.dataset.pane);
     if (b.dataset.pane === "invitations") refreshInvitationsPane();
+    if (b.dataset.pane === "diagnostics") refreshDiagnosticsPane();
   });
 }
 
@@ -1683,6 +1735,7 @@ function renderServerOutcome(res, committed) {
   doc.innerHTML = "";
   switch (res.kind) {
     case "reachable": {
+      relayProven = true; relayTrust = null; // NA-0779 (F3): a measured success
       setBanner(status, "neutral", "Connected");
       const bearer = res.auth_mode === "bearer";
       detail.textContent = bearer
@@ -1706,6 +1759,7 @@ function renderServerOutcome(res, committed) {
         : "This app sent no token, and the relay requires one. Ask the operator for one, set it above, and test again.";
       break;
     case "cert_not_trusted":
+      relayTrust = "cert_not_trusted"; // NA-0779 (F3): a distinct word for a distinct cause
       setBanner(status, "accent", "Certificate not trusted");
       detail.textContent =
         "This relay presented a certificate your computer doesn't recognise. That's expected if the operator runs their own certificate authority — and it's also what an interception attack looks like. Ask the operator for their CA certificate and add it above, or install it on this computer.";
@@ -1910,6 +1964,7 @@ byId("btn-relay-test").addEventListener("click", async () => {
     // (4) PERSIST ONLY ON PROOF. Connected is the ONLY accepting outcome; every
     //     other variant is a rung that failed, and a failed rung saves nothing.
     if (res && res.kind === "reachable") {
+      relayProven = true; relayTrust = null; // NA-0779 (F3)
       const fail = await persistProvenSettings(proven);
       if (fail) {
         handleFailedCommit(fail);
@@ -1939,15 +1994,28 @@ for (const ev of ["mousemove", "mousedown", "keydown", "wheel", "touchstart"]) {
   window.addEventListener(ev, () => { idleSince = Date.now(); }, { passive: true });
 }
 setInterval(async () => {
-  const onLockedSurface = currentScreen === "scr-main" || currentScreen === "scr-settings";
-  if (!onLockedSurface) return; // the wizard (and unlock itself) is exempt
   // Item 2b (E.3, BINDING encoded rule): at 0 the timer must NEVER fire —
   // without this guard the elapsed-time comparison below is satisfied
-  // immediately and the vault would lock the moment it unlocked.
+  // immediately and the vault would lock the moment it unlocked. NA-0779 moved it
+  // ABOVE the surface check (at 0 there is nothing to do on any surface) so it still
+  // precedes EVERY elapsed comparison, including the exempt-surface note below.
   if (autolockMinutes === 0) return;
+  const onLockedSurface = currentScreen === "scr-main" || currentScreen === "scr-settings";
+  if (!onLockedSurface) {
+    // NA-0779 (`D-0048`): the timer would have fired on an exempt surface -- recorded once, then reset.
+    if (Date.now() - idleSince >= autolockMinutes * 60 * 1000) {
+      idleSince = Date.now();
+      // RULING_NA0779_005 R2 N-17: the decision alone -- the setting is not a measurement and does not wear idle_s.
+      dlEmit("ui.autolock", { decision: "off_surface" });
+    }
+    return; // the wizard (and unlock itself) is exempt
+  }
   if (Date.now() - idleSince >= autolockMinutes * 60 * 1000) {
+    const idleS = Math.floor((Date.now() - idleSince) / 1000);
     idleSince = Date.now();
-    await invoke("lock_now"); // the one-call NA-0658 lock()
+    // NA-0779 (`D-0048`): the decision is recorded, then the lock carries its cause.
+    dlEmit("ui.autolock", { decision: "fired", idle_s: String(idleS) });
+    await invoke("lock_now", { cause: "autolock" }); // the one-call NA-0658 lock()
     await showUnlockScreen("main");
     // R-14: accent severity, not red-adjacent — being locked by the timer is
     // the protection working, not a failure. The helper resizes: this write
@@ -1988,8 +2056,7 @@ const TICK_DEFAULT = "instant";       // the blessed default, held in code
 const TICK_CHECK_MS = 250;            // the checker's period => beat granularity
 const TICK_BACKOFF_CEIL_MS = 900000;  // R7: 900 s
 const TICK_FAIL_THRESHOLD = 3;        // R7: consecutive scan failures before we speak
-const TICK_UNREACHABLE_COPY =
-  "Can't reach the relay — still trying. Contacts may not finish connecting until it's back.";
+const TICK_UNREACHABLE_COPY = "unreachable"; // NA-0779 (18c L6, F3): the relay's state WORD; the sentence retired with the pill
 
 let tickTempo = TICK_DEFAULT;
 let tickOverrideMs = null;   // the TEST-ONLY seam; null in every ordinary run
@@ -2106,6 +2173,7 @@ function tickMark() {
 }
 
 setInterval(async () => {
+  dlTickGate(tickGateOpen()); // NA-0779 (`D-0048`): ui.tick_gate on every CHANGE of the gate
   if (!tickGateOpen()) {
     // Locked, or no relay: no beat, and the schedule RESETS so an unlock does
     // not inherit a due-time computed in a previous session.
@@ -2213,6 +2281,22 @@ const INVITATIONS_STATE_TEXT = {
 };
 let invitationsFilter = "all";
 let invitationsRows = [];      // the last invite_list read, as delivered
+// NA-0779 (D-0048 004c I12, the operator's second-flight finding; the Director's position: ONE NAME PER PERSON): the
+// contacts read beside the invitations, for the Sent list's DISPLAY only. An accepted invitation names the contact it
+// became through its `label`: the desktop's only accept path provisions the contact under `alias := the invite's own
+// label` (NA-0764 R1, `autoConnectClass`), and the alias is immutable -- a rename writes `display_name` beside it
+// (NA-0765 A3). MEASURED before this was written: neither record carries an id, a route token or a hash of the other
+// (InviteRecord: invite_id/cap/expiry/relay_ep/state/revoke_token/created_unix/label; ContactSummary: alias/fingerprint/
+// pinned/blocked/state/display_name/device_count). So the lookup is `contact.alias === invite.label`, exact; the record
+// is never rewritten; a pending invitation keeps its label; an accepted one whose contact is gone falls back to it.
+let invitationsContacts = [];  // the contact_list read beside invite_list, display-side only
+function invitationsDisplayName(r, kind) {
+  if (kind === "accepted" && r.label) {
+    const c = invitationsContacts.find((x) => x && x.alias === r.label);
+    if (c) return contactDisplayName(c);
+  }
+  return r.label ? r.label : "(no name)";
+}
 
 function invitationsKind(r, now) {
   if (r.state === "creating") return "failed";
@@ -2264,6 +2348,8 @@ async function refreshInvitationsPane() {
     return;
   }
   invitationsRows = rows;
+  // I12: the contacts beside the invitations; a refusal (a locked vault, a fault) leaves the labels to speak.
+  try { invitationsContacts = await invoke("contact_list"); } catch (_) { invitationsContacts = []; }
   invitationsRender();
 }
 
@@ -2274,7 +2360,7 @@ function invitationsRowEl(r, kind, now) {
   tr.dataset.kind = kind;
   const name = document.createElement("td");
   name.className = "invitations-name";
-  name.textContent = r.label ? r.label : "(no name)";
+  name.textContent = invitationsDisplayName(r, kind);
   const state = document.createElement("td");
   const s = document.createElement("span");
   s.className = "invitations-state is-" + kind;
@@ -2324,7 +2410,7 @@ function invitationsRenderMeta(rows) {
   for (const x of rows) counts[x.kind] += 1;
   const meta = [];
   if (counts.waiting) meta.push(counts.waiting + " waiting");
-  if (counts.accepted) meta.push(counts.accepted + " accepted");
+  // NA-0779 (18d I9, the operator's word): the accepted count is NOT shown -- the Accepted chip still lists them.
   if (counts.expired) meta.push(counts.expired + " expired");
   if (counts.failed) meta.push(counts.failed + " didn't finish");
   byId("invitations-sent-meta").textContent = meta.join(" · ");
@@ -2780,6 +2866,9 @@ async function inviteRefresh() {
   // Activate after a mint, the explanation is redundant at exactly the moment it would have
   // appeared, and the cap stays enforced by the disabled control rather than by prose.
   inviteCapFull = live >= INVITE_SOFT_CAP;
+  // NA-0779 (`D-0048`): an offer refused by a fixed condition is recorded once per open.
+  if (inviteNoRelay) dlEmit("ui.guard_refused", { guard: "no_relay" });
+  if (inviteCapFull) dlEmit("ui.guard_refused", { guard: "cap_full" });
   inviteSyncActivate();
   byId("invite-no-relay").classList.toggle("hidden", !inviteNoRelay);
   return relayUrl;
@@ -2875,12 +2964,14 @@ async function adoptMinted(before) {
 }
 
 byId("btn-invite-activate").addEventListener("click", async (ev) => {
+  if (inviteInFlight) dlEmit("ui.guard_refused", { guard: "invite_in_flight" }); // NA-0779 (`D-0048`)
   if (inviteInFlight) return; // NA-0778 (004f / R74 (b)): ONE mint at a time -- never a second invite_create in flight
   clearInviteErrors();
   const label = byId("invite-label").value.trim();
   // R61, belt and braces (the redeem handler's own shape): the commit refuses an illegal name
   // independently of the button's state -- a gate that lives only in the enable path is one
   // keyboard event from being bypassed.
+  if (label === "" || !REDEEM_NAME_RE.test(label)) dlEmit("ui.guard_refused", { guard: "name_grammar" }); // NA-0779 (`D-0048`)
   if (label === "" || !REDEEM_NAME_RE.test(label)) { inviteSyncActivate(); return; }
   const btn = byId("btn-invite-activate");
   inviteInFlight = true; // NA-0778 (004f / R74 (b)): in flight from here until the promise settles
@@ -3151,6 +3242,7 @@ railLinkKeys("btn-contacts-send");
 function inviteUserClose() {
   const ov = byId("invite-overlay");
   if (!ov || ov.classList.contains("hidden")) return;
+  if (inviteInFlight) dlEmit("ui.guard_refused", { guard: "invite_in_flight" }); // NA-0779 (`D-0048`)
   if (inviteInFlight) return;
   closeInviteModal();
   if (currentScreen === "scr-settings" && !byId("pane-invitations").classList.contains("hidden")) refreshInvitationsPane();
@@ -3349,7 +3441,7 @@ async function finishScanClass(marks) {
         selfLabel: null, alias: row.alias, relay: relayUrl, max: 1,
       });
       marks.scanned += 1;
-      if (done === true) marks.finished += 1;   // EQUALITY, never truthiness
+      if (done === "finished") marks.finished += 1;   // EQUALITY on the typed word (finished | offered | nothing), never truthiness
         // ⚠⚠ NA-0768 (D-1409, RULING_012 §1(a)): THE REPAINT SIGNAL, AND WHY IT IS NOT
         //   `done`. On the E4 completing path the fan-out consumes the peer's A2 and
         //   commits her session, then `invite_finish` returns Ok(FALSE) at
@@ -3466,8 +3558,11 @@ function renderContactsList() {
 
     const word = CONTACT_WORD[ui];
     if (word) {
-      const w = document.createElement("span");
-      w.className = "contact-word" + (CONTACT_WORD_TONE[ui] || "");
+      // NA-0779 (18d I11): the NEW row's word is the shipped blue text link (`a.rm.plain`, never underlined); it opens
+      // the row like the row itself does (the click bubbles), so it is an affordance, not a second flow.
+      const w = document.createElement(ui === "new" ? "a" : "span");
+      w.className = (ui === "new" ? "rm plain " : "") + "contact-word" + (CONTACT_WORD_TONE[ui] || "");
+      if (ui === "new") { w.setAttribute("role", "button"); w.tabIndex = 0; }
       w.textContent = word;
       el.appendChild(w);
     }
@@ -3498,7 +3593,7 @@ const CONTACT_DOT = {
 const CONTACT_WORD = {
   connected: "",
   connecting: "…",
-  new: "new — verify",
+  new: "verify",                // NA-0779 (18d I11): the blue link alone, not "new — verify"
   changed: "check identity",
   attention: "needs attention",
   blocked: "",
@@ -3876,6 +3971,7 @@ let relayScanBusyRejects = 0;
 // without threading the source; it is recorded as a known bound rather than
 // designed around.
 async function relayScanOnce(ev) {
+  const dlT0 = Date.now(); // NA-0779 (`D-0048`): the beat's duration
   let marks = { why: ev.source, at: ev.at, scanned: 0, finished: 0, pending: 0,
                 attempted: 0, failed: 0, unlabelled: 0, changed: 0 };
   const quiet = ev && ev.source === "tick";
@@ -3893,6 +3989,7 @@ async function relayScanOnce(ev) {
     if (quiet) tickQuietDepth -= 1;
   }
   recordScanOutcome(ev, marks);
+  dlBeat(ev, marks, Date.now() - dlT0); // NA-0779 (`D-0048`): ui.tick_beat
   return marks;
 }
 
@@ -3900,6 +3997,7 @@ async function relayScan(ev) {
   if (relayScanBusy) {
     relayScanPending = ev;          // never stacks: one rerun, last request wins
     relayScanBusyRejects += 1;
+    dlEmit("ui.scan_busy", {}); // NA-0779 (`D-0048`)
     tickMark();
     return null;
   }
@@ -3921,6 +4019,7 @@ async function relayScan(ev) {
     relayScanPending = null;
     if (next) {
       relayScanRerunCount += 1;
+      dlEmit("ui.scan_rerun", { count: String(relayScanRerunCount) }); // NA-0779 (`D-0048`)
       marks = await relayScanOnce(next);
       // Triggers arriving during the rerun are DROPPED, deliberately: the rerun
       // has just re-read the same state they would ask about.
@@ -3951,7 +4050,7 @@ function recordScanOutcome(ev, marks) {
   // would report an outage it never observed.
   if (marks.attempted > 0) {
     if (marks.failed === marks.attempted) tickFails += 1;
-    else tickFails = 0;
+    else { tickFails = 0; relayProven = true; } // NA-0779 (F3): a call succeeded -- the bar may say "connected"
   }
   renderTickStatus();
   tickMark();
@@ -4064,3 +4163,206 @@ document.addEventListener("keydown", (ev) => {
   } catch (_) { /* no seam: the blessed tempo stands */ }
   await route();
 })();
+
+// ===== NA-0779 (spine `D-1422`, desktop `D-0048`): THE DEBUG LOG -- the pane (mockup 18c), the bar's right end, the ui.* sources =====
+// The switch and the level are a STORED SETTING (settings.json, the 0600 writer) read at unlock; this file MIRRORS
+// them so a ui.* event costs nothing while the log is off, and the backend is the truth on every read. The list
+// renders the SAME lines the export carries (no second view); the filter narrows the DISPLAY only; Copy places
+// exactly the export's bytes on the clipboard. RULING_NA0779_002 R2 (b), MEASURED: writeText works in this webview
+// (the invite code's copy link relies on it; the driver measured it again); readText is refused by the webview.
+// 18c (RBANK_mockup_18c_blessed_20260905): no pill -- the bar's right end speaks while the log is on; 18d
+// (RBANK_second_flight_18d_blessed_20260905) words it "Debug Log: <level>", scopes the bar to the main window, makes Pause
+// stop the list from FOLLOWING and nothing else (I4, the miss against flight step 13), and shortens the export line (I5).
+const DL_POLL_MS = 500;
+const DL_CLIENT_CAP = 8192;
+const dl = { on: false, level: "events", paused: false, pausedAt: 0, lastSeq: 0, lines: [], timer: null, filter: "" };
+let dlLastGate = null;
+
+function dlAdopt(setting) {
+  const s = setting || { on: false, level: "events" };
+  dl.on = !!s.on;
+  dl.level = s.level === "detailed" ? "detailed" : "events";
+  const cb = byId("dl-on");
+  if (cb) cb.checked = dl.on;
+  for (const a of document.querySelectorAll(".dl-seg-item")) {
+    const on = a.dataset.level === dl.level;
+    a.classList.toggle("on", on);
+    a.setAttribute("aria-checked", on ? "true" : "false");
+  }
+  paintStatusFooter(lastFooterReason, lastFooterRelayUrl);
+}
+async function dlRefreshSwitch() {
+  try {
+    const cfg = await tauriInvoke("settings_get");
+    adoptSettings(cfg);
+  } catch (_) { /* the bar keeps its last state; the next read corrects it */ }
+}
+// The ui.* door. Fire-and-forget through the RAW invoke: no busy indicator, no await in a hot path. A refusal (a
+// name or value outside the closed vocabulary) is the backend's to record; nothing here retries.
+function dlEmit(name, fields) {
+  if (!dl.on) return;
+  tauriInvoke("debug_log_event", { name, fields }).catch(() => {});
+}
+function dlTickGate(open) {
+  if (open === dlLastGate) return;
+  dlLastGate = open;
+  const unlocked = currentScreen === "scr-main" || currentScreen === "scr-settings";
+  dlEmit("ui.tick_gate", { gate: open ? "open" : "closed", reason: open ? "none" : (unlocked ? "no_relay" : "locked") });
+}
+function dlBeat(ev, marks, durMs) {
+  const src = ["tick", "unlock", "surface_open", "manual"].includes(ev.source) ? ev.source : "manual";
+  const out = marks.attempted > 0 && marks.failed === marks.attempted ? "fail" : "ok";
+  dlEmit("ui.tick_beat", { source: src, out, dur_ms: String(durMs), contacts: String(marks.scanned) });
+}
+function dlRender() {
+  const el = byId("dl-log");
+  if (!el) return;
+  const f = dl.filter;
+  // I4: while Paused the list shows nothing newer than the moment of the pause, whatever re-renders it (the filter).
+  const upTo = dl.paused ? dl.lines.filter((l) => l.seq <= dl.pausedAt) : dl.lines;
+  const shown = f ? upTo.filter((l) => l.line.includes(f)) : upTo;
+  el.textContent = shown.map((l) => l.line).join("\n");
+  if (!dl.paused) el.scrollTop = el.scrollHeight;
+}
+function dlSince(ms) {
+  if (ms == null) return "";
+  const s = Math.floor(ms / 1000);
+  return " \u00b7 " + (s < 120 ? s + " s" : Math.floor(s / 60) + " min") + " since unlock";
+}
+function dlCounts(r) {
+  byId("dl-counts").textContent =
+    r.buffered + " events in memory \u00b7 " + r.dropped + " dropped" + dlSince(r.since_unlock_ms) +
+    " \u00b7 kept in memory only, cleared when the vault locks";
+}
+// I4 (flight step 13): the poll ALWAYS reads -- the counts line keeps growing while Paused and the new lines are
+// buffered here; only the RENDER waits, so the list stops following and Resume shows everything that arrived.
+async function dlPoll() {
+  let r;
+  try { r = await tauriInvoke("debug_log_read", { sinceSeq: dl.lastSeq, max: 2048 }); } catch (_) { return; }
+  if (r.reset) { dl.lines = []; dl.lastSeq = 0; }
+  for (const s of r.lines) { dl.lines.push(s); dl.lastSeq = s.seq; }
+  if (dl.lines.length > DL_CLIENT_CAP) dl.lines.splice(0, dl.lines.length - DL_CLIENT_CAP);
+  if (r.on !== dl.on || r.level !== dl.level) dlAdopt({ on: r.on, level: r.level });
+  dlCounts(r);
+  if (!dl.paused) dlRender();
+}
+function dlPaneVisibility(visible) {
+  if (visible && !dl.timer) {
+    dl.lastSeq = 0;
+    dl.lines = [];
+    dlPoll();
+    dl.timer = setInterval(dlPoll, DL_POLL_MS);
+  }
+  if (!visible && dl.timer) {
+    clearInterval(dl.timer);
+    dl.timer = null;
+    dlResultClear();
+  }
+}
+async function refreshDiagnosticsPane() {
+  await dlRefreshSwitch();
+  dlPaneVisibility(true);
+}
+// The switch by PUSH: any caller of debug_log_control (the pane, the harness, a future window) moves the bar's
+// right end at once -- the same carrier as the menu events above.
+if (window.__TAURI__.event && window.__TAURI__.event.listen) {
+  window.__TAURI__.event.listen("debug-log-switch", (ev) => { if (ev && ev.payload) dlAdopt(ev.payload); });
+}
+byId("dl-on").addEventListener("change", async () => {
+  try {
+    const r = await invoke("debug_log_control", { action: byId("dl-on").checked ? "on" : "off" });
+    dlAdopt(r);
+  } catch (_) { dlRefreshSwitch(); }
+});
+// The level as a two-way segment (18c L2): the Invitations chips' idiom -- anchors with a role, never buttons.
+for (const a of document.querySelectorAll(".dl-seg-item")) {
+  const pick = async () => {
+    const action = a.dataset.level === "detailed" ? "level_detailed" : "level_events";
+    try {
+      const r = await invoke("debug_log_control", { action });
+      dlAdopt(r);
+    } catch (_) { dlRefreshSwitch(); }
+  };
+  a.addEventListener("click", pick);
+  a.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); pick(); } });
+}
+byId("btn-dl-pause").addEventListener("click", () => {
+  dl.paused = !dl.paused;
+  if (dl.paused) dl.pausedAt = dl.lastSeq;
+  byId("btn-dl-pause").textContent = dl.paused ? "Resume" : "Pause";
+  if (!dl.paused) { dlRender(); dlPoll(); }
+});
+byId("dl-filter").addEventListener("input", () => {
+  dl.filter = byId("dl-filter").value;
+  dlRender();
+});
+byId("btn-dl-clear").addEventListener("click", async () => {
+  try { await invoke("debug_log_control", { action: "clear" }); } catch (_) { /* the next poll shows the truth */ }
+  dl.lines = [];
+  dlRender();
+});
+// I5 (18d): one short line after an export -- "Saved <the name's tail from its random label> . <size in KB>" -- no path, no
+// sha; it clears after ten seconds (one one-shot timer, never a poll) or when the pane is left. A failure line stays
+// until the next action or the pane is left. The path is the field's directory (or the placeholder's own default).
+const DL_RESULT_MS = 10000;
+let dlResultTimer = null;
+function dlResultClear() {
+  if (dlResultTimer) { clearTimeout(dlResultTimer); dlResultTimer = null; }
+  const p = byId("dl-export-result");
+  if (p) { p.replaceChildren(); p.classList.add("hidden"); }
+}
+function dlResult(parts, trouble) {
+  dlResultClear();
+  const p = byId("dl-export-result");
+  p.replaceChildren(...parts);
+  // RULING_NA0779_005 R2 N-18: a failed export is trouble in the ACCENT tier; red stays for the vault-loss ceremonies (F3).
+  p.classList.toggle("is-trouble", !!trouble);
+  p.classList.remove("hidden");
+  if (!trouble) dlResultTimer = setTimeout(dlResultClear, DL_RESULT_MS);
+}
+function dlNameTail(name) {
+  const m = /-([0-9a-f]{16})\.txt$/.exec(name);
+  return m ? "\u2026-" + m[1] + ".txt" : name;
+}
+function dlCode(text) {
+  const c = document.createElement("code");
+  c.textContent = text;
+  return c;
+}
+byId("btn-dl-copy").addEventListener("click", async () => {
+  window.__qsld_dl_copy = "pending";
+  try {
+    const r = await tauriInvoke("debug_log_export", { dir: null });
+    await navigator.clipboard.writeText(r.text);
+    // F-01: the Copy carries its own minted label; the measurement records it beside the sha.
+    window.__qsld_dl_copy = "ok:" + r.sha256 + ":" + r.label;
+    acknowledge(byId("btn-dl-copy"), "\u2713 Copied");
+  } catch (e) {
+    window.__qsld_dl_copy = "err:" + String(e);
+    dlResult(["Copy didn't complete. Select the list and copy, or use Export."], false);
+  }
+});
+// 18c L3: the directory field alone, an EXAMPLE directory as its placeholder. Empty means the example's own place --
+// the home directory's Documents if it exists, else the home directory; the result line names where the file went.
+byId("btn-dl-export").addEventListener("click", async () => {
+  let dir = byId("dl-export-dir").value.trim();
+  let home = "";
+  if (dir === "") {
+    try { home = await tauriInvoke("home_dir"); } catch (_) { home = ""; }
+    dir = home ? home + "/Documents" : "";
+  }
+  const write = (d) => invoke("debug_log_export", { dir: d });
+  try {
+    let r;
+    try {
+      r = await write(dir);
+    } catch (e) {
+      if (home && dir === home + "/Documents" && String(e).includes("export_dir_not_a_directory")) r = await write(home);
+      else throw e;
+    }
+    const name = String(r.path).split("/").pop();
+    dlResult(["Saved ", dlCode(dlNameTail(name)), " \u00b7 " + Math.max(1, Math.round(Number(r.bytes) / 1024)) + " KB"], false);
+  } catch (e) {
+    dlResult(["Export failed: " + String(e)], true);
+  }
+});

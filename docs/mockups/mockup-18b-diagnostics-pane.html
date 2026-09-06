@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mockup 18b -- Settings &gt; Diagnostics: the debug log, LIVE with Pause/Resume, a display filter and Copy (NA-0779, RULING 002 R2 (a)(b), R3; layout authority only)</title>
+<style>
+  /* LAYOUT AUTHORITY ONLY. Colour comes from the shipped tokens in docs/DESIGN_SPEC_AppendixF.md at build time;
+     reading a hex out of this file is a STOP. The values below are placeholders named after the token they stand for.
+     18b amends 18 under the operator's bless of 2026-09-05 (RBANK_debug_log_event_model_blessed_20260905.md): the list
+     STREAMS live (newest last) with Pause / Resume, a filter box narrows the DISPLAY only, and a Copy button places
+     exactly the export's bytes on the clipboard -- its presence decided by STOP 004's measurement (RULING 002 R2 (b)). */
+  :root { --bg: #f4f4f2; --panel: #ffffff; --ink: #1c1c1c; --muted: #6a6a6a; --border: #d9d9d4; --accent: #2a6db0; --accent-ink: #ffffff; --warn: #b8860b; }
+  body { margin: 0; font: 14px/1.45 system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+  .frame { max-width: 760px; margin: 24px auto; padding: 0 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .crumb { color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 14px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+  .row + .row { border-top: 1px solid var(--border); }
+  .lbl { font-weight: 600; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .toggle { width: 42px; height: 24px; border-radius: 12px; background: var(--border); position: relative; }
+  .toggle.on { background: var(--accent); }
+  .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 9px; background: var(--panel); }
+  .toggle.on::after { left: 21px; }
+  .radio { display: flex; gap: 14px; }
+  .radio label { display: flex; gap: 6px; align-items: center; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: .04em; background: var(--warn); color: var(--accent-ink); }
+  .live { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 11px; border: 1px solid var(--accent); color: var(--accent); margin-left: 6px; }
+  .btnrow { display: flex; gap: 8px; align-items: center; }
+  button { font: inherit; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border); background: var(--panel); color: var(--ink); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  input.filter { font: 12px ui-monospace, monospace; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; width: 220px; }
+  .counts { color: var(--muted); font-size: 12px; }
+  .log { font: 12px/1.5 ui-monospace, monospace; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; height: 220px; overflow: auto; white-space: pre; user-select: text; }
+  .log .new { background: var(--panel); }
+  .footer { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; padding: 8px 0 0; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <h1>Diagnostics</h1>
+  <div class="crumb">Settings &rsaquo; Diagnostics &nbsp;&middot;&nbsp; mockup 18b (NA-0779, amends 18 under the bless of 2026-09-05) &nbsp;&middot;&nbsp; layout authority only</div>
+
+  <div class="panel">
+    <div class="row">
+      <div><div class="lbl">Debug log</div><div class="hint">Off by default. The switch persists across restarts; the log's contents never do. Records event names, outcomes, reason codes, counters and timings. Never a name, a code, a token, a URL or a message.</div></div>
+      <div class="toggle on" aria-label="Debug log: on"></div>
+    </div>
+    <div class="row">
+      <div><div class="lbl">Level</div><div class="hint">Events: transitions and outcomes. Detailed: every relay call, tick beat, pull, lease, frame, ratchet step and guard.</div></div>
+      <div class="radio"><label><input type="radio" name="lvl"> Events</label><label><input type="radio" name="lvl" checked> Detailed</label></div>
+    </div>
+    <div class="row">
+      <div><div class="lbl">In memory</div><div class="hint">Ring of 8192 events. Oldest dropped first; drops are counted. Cleared when the vault locks (the lock's cause stays as the first event). Wiped by Erase.</div></div>
+      <div class="counts">buffered 1,204 &nbsp;&middot;&nbsp; dropped 0 &nbsp;&middot;&nbsp; since unlock 00:14:32</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row" style="border-top:0">
+      <div class="lbl">Live events <span class="live">LIVE</span> <span class="hint">newest last; appended as they arrive while this pane is open</span></div>
+      <div class="btnrow">
+        <input class="filter" type="text" placeholder="filter: event name or code" value="relay_">
+        <button>Pause</button>
+      </div>
+    </div>
+    <div class="log">seq=1198 utc=2026-09-05T15:44:01.120Z lvl=d src=ui  ev=ui.tick_gate    out=ok  c.gate=open
+seq=1201 utc=2026-09-05T15:44:01.140Z lvl=d src=eng ev=relay_pull_diagnostic out=ok c.api=relay_pull_v1 c.op=pull c.status_class=2xx n.max=16 n.count=1 dur=133
+seq=1206 utc=2026-09-05T15:44:01.190Z lvl=d src=eng ev=relay_pull_diagnostic out=ok c.api=relay_pull_ack_v1 c.op=ack c.status_class=2xx n.count=1 dur=71
+seq=1214 utc=2026-09-05T15:44:21.310Z lvl=d src=eng ev=relay_pull_diagnostic out=ok c.api=relay_pull_v1 c.op=pull c.status_class=2xx n.max=16 n.count=0 dur=97
+<span class="new">seq=1231 utc=2026-09-05T15:44:41.402Z lvl=d src=eng ev=relay_pull_diagnostic out=fail c.api=relay_pull_v1 c.op=pull c.status_class=5xx c.error_class=http_status n.max=16 dur=1204</span>
+<span class="new">seq=1232 utc=2026-09-05T15:44:41.403Z lvl=d src=eng ev=relay_event     out=fail reason=? c.kind=pull_failed</span></div>
+    <div class="row" style="border-top:0; padding-top:10px">
+      <div class="hint">The filter narrows what this list SHOWS (here: names containing <code>relay_</code>, 6 of 34 since seq 1198). It never touches what enters the ring, the export or the harness capture: those are always the whole ring. While paused, auto-scroll stops and the ring keeps filling; Resume jumps to the newest.</div>
+      <div class="btnrow"><button>Clear</button><button title="exactly the export's bytes: header, events, footer -- present only if the webview's clipboard works without a new dependency (STOP 004 measures); otherwise the list is plain selectable text">Copy</button><button class="primary">Export&hellip;</button></div>
+    </div>
+    <div class="footer">
+      <div>Export and Copy carry the SAME bytes: one ASCII file with a header (build, level, cap, drops, a random export label) and a digest footer. There is only one allowlist.</div>
+      <div><span class="pill">LOG ON &middot; DETAILED</span> <span class="hint">&larr; the indicator, in the status footer on every screen while the log is on</span></div>
+    </div>
+  </div>
+
+  <div class="note">What this pane never shows: aliases, invite codes, tokens, route tokens, relay URLs, key material, message text, fine-grained sizes, or any hash of them. The viewer renders the SAME lines the export carries; there is no second, richer view. Changes 18 &rarr; 18b: the list is live (LIVE badge, newest last, auto-scroll), a Pause/Resume control, a display filter box, a Copy button (drawn; its presence is STOP 004's measurement), the switch-persists / contents-never line (R3), and the lock's-cause note on the ring.</div>
+</div>
+</body>
+</html>

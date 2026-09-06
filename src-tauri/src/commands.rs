@@ -117,6 +117,23 @@ pub enum UnlockDto {
     VersionUnsupported,
 }
 
+/// RULING_NA0779_005 R2 F-04: the unlock's SEMANTIC outcome for `gw.command`. Only `Unlocked` is
+/// `ok`; every other answer is a failed attempt with its closed reason (a member of
+/// `debug_log::DESKTOP_REASONS`). The counts and the retry delay never enter.
+impl crate::gateway::CommandOutcome for UnlockDto {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        use qsc::output::event::Outcome;
+        let reason = match self {
+            UnlockDto::Unlocked => return (Outcome::Ok, None),
+            UnlockDto::Rejected { .. } => "passphrase_rejected",
+            UnlockDto::Delayed { .. } => "unlock_delayed",
+            UnlockDto::Wiped => "vault_wiped",
+            UnlockDto::VersionUnsupported => "vault_version_unsupported",
+        };
+        (Outcome::Fail, Some(reason.to_string()))
+    }
+}
+
 #[derive(Serialize)]
 pub struct ProtectionDto {
     pub failed_unlocks: u32,
@@ -171,7 +188,10 @@ fn identity_dto(rec: &qsc::identity::IdentityPublicRecord) -> IdentityDto {
 #[tauri::command]
 pub async fn launch_state(st: State<'_, AppState>) -> Result<String, String> {
     let data = st.data_dir.clone();
-    let s = st.gw.call(move || resolve_launch_state(&data)).await;
+    let s = st
+        .gw
+        .call_named("launch_state", move || resolve_launch_state(&data))
+        .await;
     // NA-0776 (3.5): this is the only place the app forms a belief about the store.
     crate::record_believed_state(s);
     Ok(s.as_str().to_string())
@@ -200,8 +220,9 @@ pub async fn vault_create(
     if crate::store_vanished(&st.data_dir) {
         return Err(crate::STORE_VANISHED.into());
     }
-    st.gw
-        .call(move || -> Result<(), String> {
+    let r = st
+        .gw
+        .call_named("vault_create", move || -> Result<(), String> {
             // NA-0705 (F-10): this guard call needs NO version pre-flight, and the reason
             // is a precondition worth writing down rather than rediscovering. The wizard
             // that reaches `vault_create` is reachable ONLY from launch state S0, and
@@ -216,13 +237,22 @@ pub async fn vault_create(
                 other => Err(format!("post_init_unlock_unexpected:{other:?}")),
             }
         })
-        .await
+        .await;
+    // RULING_NA0779_005 R2 (F-02/F-03, found by the driver arms): a CREATED vault is an OPENED session
+    // too -- the log learns it here exactly as it does from a successful unlock_attempt. Before the
+    // intake was keyed on the session, the switch alone let the wizard's session in and this path
+    // went unnoticed; the harness's first launch goes through it.
+    if r.is_ok() {
+        let dl = crate::settings::load(&st.data_dir).debug_log;
+        crate::debug_log::DebugLog::global().on_unlock(dl.on, dl.level);
+    }
+    r
 }
 
 #[tauri::command]
 pub async fn identity_ensure(st: State<'_, AppState>) -> Result<IdentityDto, String> {
     st.gw
-        .call(move || {
+        .call_named("identity_ensure", move || {
             let rec = qsc::identity::identity_ensure(SELF_LABEL).map_err(|e| format!("{e:?}"))?;
             Ok(identity_dto(&rec))
         })
@@ -232,7 +262,7 @@ pub async fn identity_ensure(st: State<'_, AppState>) -> Result<IdentityDto, Str
 #[tauri::command]
 pub async fn identity_show(st: State<'_, AppState>) -> Result<Option<IdentityDto>, String> {
     st.gw
-        .call(move || {
+        .call_named("identity_show", move || {
             let rec = qsc::identity::identity_read_self_public(SELF_LABEL)
                 .map_err(|e| format!("{e:?}"))?;
             Ok(rec.map(|r| identity_dto(&r)))
@@ -246,9 +276,32 @@ pub async fn unlock_attempt(
     passphrase: String,
 ) -> Result<UnlockDto, String> {
     let data = st.data_dir.clone();
-    st.gw
-        .call(move || unlock_attempt_impl(&data, &passphrase))
-        .await
+    let r = st
+        .gw
+        .call_named("unlock_attempt", move || {
+            unlock_attempt_impl(&data, &passphrase)
+        })
+        .await;
+    // NA-0779 (`D-0048`): AT UNLOCK the stored switch is read and applied -- with the log on
+    // the engine sink is installed here and `gw.unlock` opens the session's record. The
+    // switch is a setting, never an environment variable.
+    match &r {
+        Ok(UnlockDto::Unlocked) => {
+            let dl = crate::settings::load(&st.data_dir).debug_log;
+            crate::debug_log::DebugLog::global().on_unlock(dl.on, dl.level);
+        }
+        // RULING_NA0779_005 R2 F-04: the model's `gw.unlock out=fail` arm has its emitter. F-02 keeps
+        // the intake closed while locked, so in the app this event is refused at the door by design:
+        // the count and timing of attempts never sit in the next session's record.
+        Ok(UnlockDto::Rejected { .. }) => {
+            crate::debug_log::DebugLog::global().unlock_failed("passphrase_rejected");
+        }
+        Ok(UnlockDto::Delayed { .. }) => {
+            crate::debug_log::DebugLog::global().unlock_failed("unlock_delayed");
+        }
+        _ => {}
+    }
+    r
 }
 
 /// NA-0705 (D640 A2.2): the unlock decision as a plain function, mirroring
@@ -320,16 +373,23 @@ pub fn unlock_attempt_impl(data_dir: &Path, passphrase: &str) -> Result<UnlockDt
     }
 }
 
+/// NA-0779 (`D-0048`): `cause` is OPTIONAL and closed -- the idle timer passes `autolock`, every
+/// other caller passes nothing and reads as `user`; anything else reads as `user` too. The ring
+/// is cleared AFTER the engine's lock, keeping `gw.lock` with its cause as the new ring's first
+/// event; the sink is removed while locked.
 #[tauri::command]
-pub async fn lock_now(st: State<'_, AppState>) -> Result<(), String> {
-    st.gw.call(|| qsc::vault::protection::lock(None)).await;
+pub async fn lock_now(st: State<'_, AppState>, cause: Option<String>) -> Result<(), String> {
+    st.gw
+        .call_named("lock_now", || qsc::vault::protection::lock(None))
+        .await;
+    crate::debug_log::DebugLog::global().on_lock(cause.as_deref().unwrap_or("user"));
     Ok(())
 }
 
 #[tauri::command]
 pub async fn protection_status(st: State<'_, AppState>) -> Result<ProtectionDto, String> {
     st.gw
-        .call(move || {
+        .call_named("protection_status", move || {
             let s = qsc::vault::protection::protection_status().map_err(|e| e.to_string())?;
             Ok(ProtectionDto {
                 failed_unlocks: s.failed_unlocks,
@@ -350,7 +410,7 @@ pub async fn wipe_arm(st: State<'_, AppState>, limit: u32) -> Result<(), String>
         return Err("wipe_limit_out_of_bounds".into());
     }
     st.gw
-        .call(move || {
+        .call_named("wipe_arm", move || {
             qsc::vault::protection::wipe_after_failed_unlocks_arm(limit).map_err(|e| e.to_string())
         })
         .await
@@ -359,7 +419,7 @@ pub async fn wipe_arm(st: State<'_, AppState>, limit: u32) -> Result<(), String>
 #[tauri::command]
 pub async fn wipe_disarm(st: State<'_, AppState>) -> Result<(), String> {
     st.gw
-        .call(|| {
+        .call_named("wipe_disarm", || {
             qsc::vault::protection::wipe_after_failed_unlocks_disarm().map_err(|e| e.to_string())
         })
         .await
@@ -394,9 +454,17 @@ pub async fn destroy_vault(
         return Err("confirm_phrase_mismatch".into());
     }
     let data = st.data_dir.clone();
-    st.gw
-        .call(move || destroy_vault_impl(&data, &passphrase))
-        .await
+    let r = st
+        .gw
+        .call_named("destroy_vault", move || {
+            destroy_vault_impl(&data, &passphrase)
+        })
+        .await;
+    // NA-0779 (`D-0048`): the passphrase-committed destroy is an erase for the log too.
+    if r.is_ok() {
+        crate::debug_log::DebugLog::global().on_erase();
+    }
+    r
 }
 
 /// The tokened core destroy (passphrase-committed — the opposite case from
@@ -460,6 +528,8 @@ pub fn destroy_vault_impl(data_dir: &Path, passphrase: &str) -> Result<(), Strin
 /// separate arm.
 #[tauri::command]
 pub fn restart_app<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    // NA-0779 (`D-0048`): the ring dies with the process; the cause is named for the record.
+    crate::debug_log::DebugLog::global().on_lock("restart");
     app.restart();
 }
 
@@ -469,7 +539,16 @@ pub async fn erase_all(st: State<'_, AppState>, confirm_phrase: String) -> Resul
         return Err("confirm_phrase_mismatch".into());
     }
     let data = st.data_dir.clone();
-    st.gw.call(move || erase_all_impl(&data)).await
+    let r = st
+        .gw
+        .call_named("erase_all", move || erase_all_impl(&data))
+        .await;
+    // NA-0779 (`D-0048`): `gw.erase`, then the ring is WIPED and the switch returns to off with
+    // the rest of the settings (the file is gone with the profile).
+    if r.is_ok() {
+        crate::debug_log::DebugLog::global().on_erase();
+    }
+    r
 }
 
 /// The forgotten-passphrase escape (D595): app-level removal of the
@@ -632,6 +711,66 @@ pub enum RelayTestDto {
     Unreachable,
 }
 
+/// RULING_NA0779_005 R2 F-04: a probe's SEMANTIC outcome. Reached (a document, or a relay that
+/// asks for a token) is `ok`; unreachable, an untrusted certificate, or not a QSL relay is a
+/// failed probe with its closed reason. Nothing of the document enters.
+impl crate::gateway::CommandOutcome for RelayTestDto {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        use qsc::output::event::Outcome;
+        let reason = match self {
+            RelayTestDto::Reachable { .. } | RelayTestDto::AuthRequired { .. } => {
+                return (Outcome::Ok, None)
+            }
+            RelayTestDto::Unreachable => "relay_unreachable",
+            RelayTestDto::CertNotTrusted => "relay_cert_not_trusted",
+            RelayTestDto::NotAQslRelay => "relay_not_a_qsl_relay",
+        };
+        (Outcome::Fail, Some(reason.to_string()))
+    }
+}
+
+/// `invite_finish`'s TYPED answer (the Director's return on the acceptance export, 2026-09-06).
+/// The engine's bool answers "did MY redeem finish": `true` only on the redeemer's own selected
+/// path; `false` covers BOTH the inviter's completing A2 (the fan-out committed a session or a
+/// pending record and emitted `invite_finish_hs_offer`) and an idle poll. Reading the bool as a
+/// failure had called a success a failure (Bob's seq 59). The three are told apart by the bool
+/// and by the NAMES of the markers the engine emitted during this very call -- names only, a
+/// closed vocabulary, peeked from the marker queue before the gateway drains it. Every answer is
+/// `ok`; `out=fail` is an actual error.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InviteFinish {
+    Finished,
+    Offered,
+    Nothing,
+}
+impl InviteFinish {
+    pub fn as_word(self) -> &'static str {
+        match self {
+            InviteFinish::Finished => "finished",
+            InviteFinish::Offered => "offered",
+            InviteFinish::Nothing => "nothing",
+        }
+    }
+    /// The classification from the engine's bool and the marker names of this call.
+    pub fn classify(done: bool, marker_names: &[String]) -> InviteFinish {
+        if done {
+            InviteFinish::Finished
+        } else if marker_names.iter().any(|n| n == "invite_finish_hs_offer") {
+            InviteFinish::Offered
+        } else {
+            InviteFinish::Nothing
+        }
+    }
+}
+impl crate::gateway::CommandOutcome for InviteFinish {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        (qsc::output::event::Outcome::Ok, None)
+    }
+    fn result_word(&self) -> Option<&'static str> {
+        Some(self.as_word())
+    }
+}
+
 #[derive(Serialize)]
 pub struct RelayConfigDto {
     pub relay_url: String,
@@ -713,10 +852,13 @@ pub fn relay_config_set(st: State<'_, AppState>, url: String) -> Result<(), Stri
 pub async fn relay_test(st: State<'_, AppState>, url: String) -> Result<RelayTestDto, String> {
     let outcome = st
         .gw
-        .call(move || qsc::transport::relay_server_info(&url))
+        .call_named("relay_test", move || {
+            // F-04: the DTO is built inside the named call so `gw.command` reads ITS outcome
+            qsc::transport::relay_server_info(&url).map(relay_test_dto)
+        })
         .await;
     match outcome {
-        Ok(o) => Ok(relay_test_dto(o)),
+        Ok(o) => Ok(o),
         Err(code) => Err(code.to_string()),
     }
 }
@@ -726,14 +868,18 @@ pub async fn relay_test(st: State<'_, AppState>, url: String) -> Result<RelayTes
 #[tauri::command]
 pub async fn relay_token_set(st: State<'_, AppState>, token: String) -> Result<(), String> {
     st.gw
-        .call(move || qsc::transport::relay_token_set(&token).map_err(|c| c.to_string()))
+        .call_named("relay_token_set", move || {
+            qsc::transport::relay_token_set(&token).map_err(|c| c.to_string())
+        })
         .await
 }
 
 #[tauri::command]
 pub async fn relay_token_clear(st: State<'_, AppState>) -> Result<(), String> {
     st.gw
-        .call(|| qsc::transport::relay_token_clear().map_err(|c| c.to_string()))
+        .call_named("relay_token_clear", || {
+            qsc::transport::relay_token_clear().map_err(|c| c.to_string())
+        })
         .await
 }
 
@@ -742,7 +888,7 @@ pub async fn relay_token_clear(st: State<'_, AppState>) -> Result<(), String> {
 pub async fn relay_token_show(st: State<'_, AppState>) -> Result<RelayTokenStatusDto, String> {
     Ok(st
         .gw
-        .call(|| RelayTokenStatusDto {
+        .call_named("relay_token_show", || RelayTokenStatusDto {
             configured: qsc::transport::relay_token_show().configured,
         })
         .await)
@@ -766,14 +912,18 @@ pub async fn relay_token_show(st: State<'_, AppState>) -> Result<RelayTokenStatu
 #[tauri::command]
 pub async fn relay_ca_file_set(st: State<'_, AppState>, path: String) -> Result<(), String> {
     st.gw
-        .call(move || qsc::transport::relay_ca_file_set(&path).map_err(|c| c.to_string()))
+        .call_named("relay_ca_file_set", move || {
+            qsc::transport::relay_ca_file_set(&path).map_err(|c| c.to_string())
+        })
         .await
 }
 
 #[tauri::command]
 pub async fn relay_ca_file_clear(st: State<'_, AppState>) -> Result<(), String> {
     st.gw
-        .call(|| qsc::transport::relay_ca_file_clear().map_err(|c| c.to_string()))
+        .call_named("relay_ca_file_clear", || {
+            qsc::transport::relay_ca_file_clear().map_err(|c| c.to_string())
+        })
         .await
 }
 
@@ -785,7 +935,7 @@ pub async fn relay_ca_file_clear(st: State<'_, AppState>) -> Result<(), String> 
 pub async fn relay_ca_file_show(st: State<'_, AppState>) -> Result<RelayCaStatusDto, String> {
     Ok(st
         .gw
-        .call(|| {
+        .call_named("relay_ca_file_show", || {
             let s = qsc::transport::relay_ca_file_show();
             RelayCaStatusDto {
                 configured: s.configured,
@@ -845,14 +995,14 @@ pub async fn relay_probe(
 ) -> Result<RelayTestDto, String> {
     let outcome = st
         .gw
-        .call(move || {
+        .call_named("relay_probe", move || {
             let _token_guard = EnvGuard::set("QSC_RELAY_TOKEN", token.as_deref());
             let _ca_guard = EnvGuard::set("QSC_RELAY_CA_FILE", ca_path.as_deref());
-            qsc::transport::relay_server_info(&address)
+            qsc::transport::relay_server_info(&address).map(relay_test_dto)
         })
         .await;
     match outcome {
-        Ok(o) => Ok(relay_test_dto(o)),
+        Ok(o) => Ok(o),
         Err(code) => Err(code.to_string()),
     }
 }
@@ -956,6 +1106,27 @@ pub struct ErrorDto {
     /// **no user bytes can ride it**. `Other`'s payload is shape-sealed to `^[a-z][a-z0-9_]*$`.
     /// Every other named variant is still `None`.
     pub detail: Option<String>,
+}
+
+/// NA-0779 (`D-0048`): what `gw.command` learns from a facade failure -- the wire CODE only; the
+/// detail (free text) never enters the log.
+impl crate::gateway::ErrorCode for ErrorDto {
+    fn code(&self) -> String {
+        self.code.clone()
+    }
+}
+
+/// NA-0779 (`D-0048`): the plain DTOs the gateway's closures return read as `ok` outcomes.
+impl crate::gateway::CommandOutcome for RelayTokenStatusDto {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        (qsc::output::event::Outcome::Ok, None)
+    }
+}
+
+impl crate::gateway::CommandOutcome for RelayCaStatusDto {
+    fn outcome(&self) -> (qsc::output::event::Outcome, Option<String>) {
+        (qsc::output::event::Outcome::Ok, None)
+    }
 }
 
 impl From<qsc::facade::FacadeError> for ErrorDto {
@@ -1116,7 +1287,7 @@ pub async fn connect_status(
     peer: String,
 ) -> Result<ConnectStatusDto, ErrorDto> {
     st.gw
-        .call(move || {
+        .call_named("connect_status", move || {
             let s = qsc::facade::connect_status(&peer);
             Ok(ConnectStatusDto {
                 state: connect_state_wire(s.state).to_string(),
@@ -1129,7 +1300,7 @@ pub async fn connect_status(
 #[tauri::command]
 pub async fn contact_list(st: State<'_, AppState>) -> Result<Vec<ContactDto>, ErrorDto> {
     st.gw
-        .call(move || {
+        .call_named("contact_list", move || {
             let rows = qsc::facade::contact_list()?;
             Ok(rows.iter().map(ContactDto::from).collect())
         })
@@ -1139,7 +1310,7 @@ pub async fn contact_list(st: State<'_, AppState>) -> Result<Vec<ContactDto>, Er
 #[tauri::command]
 pub async fn contact_requests(st: State<'_, AppState>) -> Result<Vec<ContactRequestDto>, ErrorDto> {
     st.gw
-        .call(move || {
+        .call_named("contact_requests", move || {
             let rows = qsc::facade::contact_requests()?;
             Ok(rows.iter().map(ContactRequestDto::from).collect())
         })
@@ -1152,7 +1323,9 @@ pub async fn contact_request_accept(
     alias: String,
 ) -> Result<(), ErrorDto> {
     st.gw
-        .call(move || Ok(qsc::facade::contact_request_accept(&alias)?))
+        .call_named("contact_request_accept", move || {
+            Ok(qsc::facade::contact_request_accept(&alias)?)
+        })
         .await
 }
 
@@ -1162,14 +1335,18 @@ pub async fn contact_request_ignore(
     alias: String,
 ) -> Result<(), ErrorDto> {
     st.gw
-        .call(move || Ok(qsc::facade::contact_request_ignore(&alias)?))
+        .call_named("contact_request_ignore", move || {
+            Ok(qsc::facade::contact_request_ignore(&alias)?)
+        })
         .await
 }
 
 #[tauri::command]
 pub async fn contact_request_block(st: State<'_, AppState>, alias: String) -> Result<(), ErrorDto> {
     st.gw
-        .call(move || Ok(qsc::facade::contact_request_block(&alias)?))
+        .call_named("contact_request_block", move || {
+            Ok(qsc::facade::contact_request_block(&alias)?)
+        })
         .await
 }
 
@@ -1193,7 +1370,7 @@ pub async fn contact_set_display_name(
     display_name: Option<String>,
 ) -> Result<(), ErrorDto> {
     st.gw
-        .call(move || {
+        .call_named("contact_set_display_name", move || {
             Ok(qsc::facade::contact_set_display_name(
                 &alias,
                 display_name.as_deref(),
@@ -1205,7 +1382,7 @@ pub async fn contact_set_display_name(
 #[tauri::command]
 pub async fn invite_list(st: State<'_, AppState>) -> Result<Vec<InviteDto>, ErrorDto> {
     st.gw
-        .call(move || {
+        .call_named("invite_list", move || {
             let rows = qsc::facade::invite_list()?;
             Ok(rows.iter().map(InviteDto::from).collect())
         })
@@ -1226,7 +1403,7 @@ pub async fn invite_create(
     recipient_label: Option<String>,
 ) -> Result<String, ErrorDto> {
     st.gw
-        .call(move || {
+        .call_named("invite_create", move || {
             Ok(qsc::facade::invite_create(
                 self_label.as_deref(),
                 &relay,
@@ -1245,7 +1422,9 @@ pub async fn invite_create(
 #[tauri::command]
 pub async fn invite_clear(st: State<'_, AppState>, invite_id: String) -> Result<(), ErrorDto> {
     st.gw
-        .call(move || Ok(qsc::facade::invite_clear(&invite_id)?))
+        .call_named("invite_clear", move || {
+            Ok(qsc::facade::invite_clear(&invite_id)?)
+        })
         .await
 }
 
@@ -1257,7 +1436,7 @@ pub async fn invite_redeem(
     self_label: Option<String>,
 ) -> Result<String, ErrorDto> {
     st.gw
-        .call(move || {
+        .call_named("invite_redeem", move || {
             Ok(qsc::facade::invite_redeem(
                 &code,
                 &alias,
@@ -1276,7 +1455,7 @@ pub async fn invite_accept(
     max: usize,
 ) -> Result<Option<String>, ErrorDto> {
     st.gw
-        .call(move || {
+        .call_named("invite_accept", move || {
             Ok(qsc::facade::invite_accept(
                 self_label.as_deref(),
                 &invite_id,
@@ -1294,23 +1473,35 @@ pub async fn invite_finish(
     alias: String,
     relay: String,
     max: usize,
-) -> Result<bool, ErrorDto> {
+) -> Result<String, ErrorDto> {
     st.gw
-        .call(move || {
-            Ok(qsc::facade::invite_finish(
-                self_label.as_deref(),
-                &alias,
-                &relay,
-                max,
-            )?)
+        .call_named("invite_finish", move || {
+            // the marker queue's length before the call; the names the engine emits DURING it
+            // are peeked after (the gateway drains the queue only once the closure returns)
+            let before = qsc::output::marker_queue()
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .len();
+            let done = qsc::facade::invite_finish(self_label.as_deref(), &alias, &relay, max)?;
+            let names: Vec<String> = qsc::output::marker_queue()
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .iter()
+                .skip(before)
+                .filter_map(|l| crate::markers::event_name(l))
+                .collect();
+            Ok(InviteFinish::classify(done, &names))
         })
         .await
+        .map(|f| f.as_word().to_string())
 }
 
 #[tauri::command]
 pub async fn invite_revoke(st: State<'_, AppState>, invite_id: String) -> Result<(), ErrorDto> {
     st.gw
-        .call(move || Ok(qsc::facade::invite_revoke(&invite_id)?))
+        .call_named("invite_revoke", move || {
+            Ok(qsc::facade::invite_revoke(&invite_id)?)
+        })
         .await
 }
 
@@ -1411,5 +1602,124 @@ mod tests {
             !dto.verify_code.contains('-'),
             "the grouped, check-charactered form is gone"
         );
+    }
+}
+
+// ===== NA-0779 (spine `D-1422`; desktop `D-0048`): THE DEBUG LOG's FOUR COMMANDS =====
+// STOP 002 sec 8 drew TWO (event, export); the live viewer (RULING 002 R2 (a)) needs a READ path
+// and the switch needs a WRITE path that is not `settings_set` (its two-field arity is pinned),
+// so the count is four. All four are plain SYNC commands like `marker_stats`: they read or
+// write an in-memory ring and must not queue behind core calls on the serial gateway.
+
+/// The switch's state as the pane needs it after a control action.
+#[derive(serde::Serialize)]
+pub struct DebugLogStateDto {
+    pub on: bool,
+    pub level: crate::settings::DebugLogLevel,
+}
+
+/// The viewer's poll: the lines since `since_seq` (at most `max`), the counts, the switch.
+#[tauri::command]
+pub fn debug_log_read(since_seq: u64, max: u32) -> crate::debug_log::ReadDto {
+    crate::debug_log::DebugLog::global().read(since_seq, max.min(2048) as usize)
+}
+
+/// The switch and the level, PERSISTED through the settings file's 0600 writer and applied at
+/// runtime; and Clear. `action` is a member of a closed set; anything else is refused.
+#[tauri::command]
+pub fn debug_log_control<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    st: State<'_, AppState>,
+    action: String,
+) -> Result<DebugLogStateDto, String> {
+    use tauri::Emitter;
+    let log = crate::debug_log::DebugLog::global();
+    match action.as_str() {
+        "on" | "off" | "level_events" | "level_detailed" => {
+            let mut s = crate::settings::load(&st.data_dir);
+            match action.as_str() {
+                "on" => s.debug_log.on = true,
+                "off" => s.debug_log.on = false,
+                "level_events" => s.debug_log.level = crate::settings::DebugLogLevel::Events,
+                _ => s.debug_log.level = crate::settings::DebugLogLevel::Detailed,
+            }
+            crate::settings::save(&st.data_dir, &s)?;
+            log.apply_action(&action);
+        }
+        "clear" => {
+            log.apply_action("clear");
+        }
+        _ => return Err("debug_log_action_refused".into()),
+    }
+    let state = DebugLogStateDto {
+        on: log.is_on(),
+        level: log.level(),
+    };
+    // The pill on every screen learns the switch by PUSH (the menu's own mechanism, lib.rs
+    // `app.emit`), so a switch flipped by any caller -- the pane, the harness -- shows at once.
+    let _ = app.emit(
+        "debug-log-switch",
+        serde_json::json!({"on": state.on, "level": state.level}),
+    );
+    Ok(state)
+}
+
+/// THE FRONT END's ONE DOOR: a `ui.*` name from the closed desktop vocabulary with typed fields;
+/// a name or field outside it is REFUSED with a `gw.log action=refused` notice of its own and a
+/// closed reason -- never a copy of what was offered.
+#[tauri::command]
+pub fn debug_log_event(
+    name: String,
+    fields: std::collections::BTreeMap<String, String>,
+) -> Result<bool, String> {
+    let pairs: Vec<(&str, &str)> = fields
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+    crate::debug_log::DebugLog::global()
+        .push_from_ui(&name, &pairs)
+        .map_err(|r| r.as_str().to_string())
+}
+
+/// What the Copy button and the harness receive when no directory is given: the export's bytes.
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+pub enum DebugLogExportDto {
+    Written(crate::debug_log::ExportDto),
+    /// RULING_NA0779_005 R2 F-01: the Copy arm carries its own minted label too.
+    Text {
+        text: String,
+        bytes: usize,
+        sha256: String,
+        label: String,
+    },
+}
+
+/// THE EXPORT. With `dir`: ONE file written where the operator chose (the CA-file precedent: a
+/// typed directory, no dialog plugin), created new at 0600, its path and sha256 returned. Without
+/// `dir`: the SAME bytes returned as text and nothing written -- the Copy button's source, so the
+/// clipboard carries exactly the export (RULING 002 R2 (b): one allowlist, one renderer).
+#[tauri::command]
+pub fn debug_log_export(dir: Option<String>) -> Result<DebugLogExportDto, String> {
+    let log = crate::debug_log::DebugLog::global();
+    let build = build_commit_or_unknown(option_env!("QSLD_BUILD_COMMIT"));
+    match dir {
+        Some(d) if !d.trim().is_empty() => {
+            let dto = log.export_to_dir(std::path::Path::new(d.trim()), build)?;
+            Ok(DebugLogExportDto::Written(dto))
+        }
+        // RULING_NA0779_005 R2 F-01 + N-05: the clipboard arm mints its label like the file arm and
+        // marks itself `gw.log action=copy`, so two Copies are told apart and the ring tells a
+        // copy from a file write. The zero placeholder that stood here is gone.
+        _ => {
+            let snap = log.export_snapshot(build, "copy")?;
+            let sha = crate::debug_log::sha256_hex(snap.text.as_bytes());
+            Ok(DebugLogExportDto::Text {
+                bytes: snap.text.len(),
+                sha256: sha,
+                label: snap.label,
+                text: snap.text,
+            })
+        }
     }
 }

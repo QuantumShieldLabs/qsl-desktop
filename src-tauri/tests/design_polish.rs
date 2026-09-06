@@ -1148,16 +1148,13 @@ fn na0752_the_three_undrivable_footer_sentences_are_present_and_wired() {
     // The sentences, as CONST DECLARATIONS — not merely as text somewhere in the
     // file. A string that survived only inside a comment would satisfy a naive
     // `contains` and render nothing.
+    // NA-0779 (D-0048, mockup 18c L6; RBANK_status_footer_todo F2/F3): the footer became the STATUS BAR and
+    // speaks in STATE WORDS -- the three undrivable sentences became the three undrivable WORDS. Same rows,
+    // same wiring, pinned the same way.
     for (name, sentence) in [
-        (
-            "STATUS_FOOTER_STORAGE",
-            "Storage problem — check Settings › Vault.",
-        ),
-        ("STATUS_FOOTER_LOCKED", "Locked — unlock to connect."),
-        (
-            "STATUS_FOOTER_UNKNOWN",
-            "Status unknown — please report this.",
-        ),
+        ("STATUS_FOOTER_STORAGE", "storage error"),
+        ("STATUS_FOOTER_LOCKED", "locked"),
+        ("STATUS_FOOTER_UNKNOWN", "unknown"),
     ] {
         let decl = format!("const {name} = \"{sentence}\";");
         assert!(
@@ -2844,9 +2841,15 @@ fn na0756_the_triggers_use_equality_and_the_timer_census_is_exact() {
         js.contains(r#"if (st.state !== "inactive") continue;"#),
         "the pending predicate must be an EQUALITY test on the extracted value"
     );
+    // NA-0779 (the Director's return on the acceptance export): `invite_finish` answers a typed
+    // word (finished | offered | nothing) instead of the bool; the equality pin moves with it.
     assert!(
-        js.contains("if (done === true) marks.finished += 1;"),
-        "the finish outcome must be compared by equality, never by truthiness"
+        js.contains(r#"if (done === "finished") marks.finished += 1;"#),
+        "the finish outcome must be compared by equality on the typed word, never by truthiness"
+    );
+    assert!(
+        !js.contains("if (done === true)"),
+        "the bool reading is gone"
     );
     // Both triggers exist, and trigger (b) is on the CHOOSER's opener — R387 §S6. Item 1
     // retargets both entries there, so a trigger left on the create modal would cover only
@@ -2865,13 +2868,17 @@ fn na0756_the_triggers_use_equality_and_the_timer_census_is_exact() {
         "trigger (b) rides the CHOOSER's opener, which is where BOTH retargeted entries land"
     );
     // ⚠ THE TIMER CENSUS, COUNTED AND NOT EYEBALLED. v1 pinned THREE and NA-0756 added none.
-    // NA-0763 adds exactly ONE — the liveness tick — so the exact count is now FOUR. It stays
-    // an EXACT equality on purpose: an unaccounted fifth timer must still fail this arm.
+    // NA-0763 adds exactly ONE -- the liveness tick -- so the exact count became FOUR. It stays
+    // an EXACT equality on purpose: an unaccounted timer must still fail this arm.
+    // NA-0779 (`D-0048`) ACCOUNTS FOR THE FIFTH: the Diagnostics pane's live-list poll
+    // (`dlPaneVisibility`, DL_POLL_MS), which runs ONLY while that pane is shown and is cleared
+    // when it hides -- not a standing interval, but the census counts call sites, so it is
+    // named here rather than hidden behind a setTimeout chain the census would not see.
     assert_eq!(
         js.matches("setInterval(").count(),
-        4,
-        "the timer census is EXACT — the four that exist are the unlock countdown, the erase \
-         countdown, the idle autolock and NA-0763's liveness tick"
+        5,
+        "the timer census is EXACT -- the five that exist are the unlock countdown, the erase \
+         countdown, the idle autolock, NA-0763's liveness tick and NA-0779's Diagnostics poll"
     );
 }
 
@@ -3286,4 +3293,47 @@ fn na0765_both_modal_flows_have_a_visible_way_out() {
         js.contains(r#"byId("btn-redeem-close3").addEventListener("click", closeRedeemModal);"#),
         "and so does the code-entry Close — the view that had no exit at all before NA-0765"
     );
+}
+
+// ===== RULING_NA0779_005 R2 -- two of the read's notes, pinned beside the text they move =====
+
+/// N-17: `ui.autolock decision=off_surface` carried the SETTING (autolock minutes * 60) under the
+/// measurement's key `idle_s`; a constant under a measurement's name. The off_surface arm carries the
+/// decision alone; the fired arm keeps the MEASURED idle.
+#[test]
+fn na0779_autolock_off_surface_carries_no_setting_under_idle_s() {
+    let js = ui_file("main.js");
+    assert!(
+        js.contains(r#"dlEmit("ui.autolock", { decision: "off_surface" });"#),
+        "the off_surface decision alone"
+    );
+    assert!(
+        !js.contains(r#"decision: "off_surface", idle_s"#),
+        "N-17: no setting under idle_s"
+    );
+    assert!(
+        js.contains(r#"dlEmit("ui.autolock", { decision: "fired", idle_s: String(idleS) });"#),
+        "the fired arm keeps the measured idle"
+    );
+}
+
+/// N-18: the export-failure line is painted in the ACCENT colour, not the danger colour -- F3 reserves
+/// red for the vault-loss ceremonies. The class is named for what it is.
+#[test]
+fn na0779_export_failure_line_is_accent_not_danger() {
+    let css = ui_file("style.css");
+    let js = ui_file("main.js");
+    assert!(
+        css.contains(".dl-result.is-trouble { color: var(--accent-text); }"),
+        "the failure line in the accent tier"
+    );
+    assert!(
+        !css.contains(".dl-result.is-danger"),
+        "no danger class on the export line"
+    );
+    assert!(
+        js.contains(r#"p.classList.toggle("is-trouble", !!trouble);"#),
+        "the toggle names the tier"
+    );
+    assert!(!js.contains(r#"p.classList.toggle("is-danger""#));
 }

@@ -212,6 +212,10 @@
   },
   {
    "op": "note",
+   "text": "NA-0779 (18c L6): the outage now reads 'Relay: unreachable' in the bar's left span; recovery -- one scan that reaches the relay -- flips relayProven and reads 'Relay: connected' (F3: a measured success). The bar's class carries status-bar beside status-line."
+  },
+  {
+   "op": "note",
    "text": "NA-0764 (R5) RE-AIM, WITH ITS OWN CAN-FAIL PROOF. These three rows moved from #tick-status to #status-line because F1 migrated the message into the footer's closed reason set. A re-aimed assertion is a DIFFERENT assertion, so the row below first proves the quiet line is now SILENT -- if the message were still there, the re-aim would be additive rather than a migration and this row would fail."
   },
   {
@@ -222,12 +226,12 @@
   {
    "op": "exec",
    "script": "return byId(\"status-line\").className;",
-   "expect": "status-line is-trouble"
+   "expect": "status-line status-bar is-trouble"
   },
   {
    "op": "exec",
-   "script": "return byId(\"status-line\").textContent;",
-   "expect": "Can't reach the relay — still trying. Contacts may not finish connecting until it's back."
+   "script": "return byId(\"status-line\").querySelector(\".status-left\").textContent;",
+   "expect": "Relay: unreachable · Vault: unlocked · Auto-lock: 60 min"
   },
   {
    "op": "note",
@@ -241,7 +245,7 @@
   {
    "op": "exec",
    "script": "return byId(\"status-line\").className;",
-   "expect": "status-line"
+   "expect": "status-line status-bar"
   },
   {
    "op": "note",
@@ -249,12 +253,84 @@
   },
   {
    "op": "exec",
-   "script": "return byId(\"status-line\").textContent.slice(0, 6);",
-   "expect": "Ready."
+   "script": "return byId(\"status-line\").querySelector(\".status-left\").textContent.slice(0, 16);",
+   "expect": "Relay: connected"
   },
   {
    "op": "note",
    "text": "I2 SECOND HALF -- LOCKED ACROSS THE WINDOW => ZERO TICK SCANS. The count is sampled at the lock, a BOUNDED window of real elapsed time is then measured on the page's own clock (many seam-beats' worth of opportunity), and the delta must be EXACTLY zero."
+  },
+  {
+   "op": "note",
+   "text": "RULING_NA0779_005 R2, F-04: gw.command's `out` is the SEMANTIC outcome -- a probe against the relay this flow configured (a name that never answers) must read out=fail with the closed reason relay_unreachable, never out=ok. The tick itself probes no relay while there are no contacts (connect_status per contact is its call), so the probe is provoked here through the app's own relay_probe command, and the ring read through debug_log_read (the runner armed the log at Detailed on scr-main). Placed BEFORE this flow's own lock: F-02 empties the ring at lock by design."
+  },
+  {
+   "op": "exec",
+   "script": "window.__qsld_f04=null; window.__qsld_probe='pending'; invoke('relay_probe', {address:'https://relay.invalid', token:null, caPath:null}).then(function(r){ window.__qsld_probe='ok:'+JSON.stringify(r); }).catch(function(e){ window.__qsld_probe='err:'+String(e); }); return 'fired';"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return window.__qsld_probe!=='pending';",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return String(window.__qsld_probe).slice(0,80);"
+  },
+  {
+   "op": "poll_exec",
+   "script": "window.__qsld_f04=null; tauriInvoke('debug_log_read', {sinceSeq:0, max:2048}).then(function(r){ var ls=r.lines.map(function(s){return s.line;}); var probes=ls.filter(function(l){return l.indexOf('c.name=relay_probe')>=0;}); window.__qsld_f04={probes:probes.length, fail:probes.filter(function(l){return l.indexOf('out=fail reason=relay_unreachable')>=0;}).length, ok:probes.filter(function(l){return l.indexOf('out=ok')>=0;}).length}; }).catch(function(e){ window.__qsld_f04={err:String(e)}; }); return true;",
+   "expect": true
+  },
+  {
+   "op": "poll_exec",
+   "script": "var f=window.__qsld_f04; return !!f && f.probes>0;",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify(window.__qsld_f04);"
+  },
+  {
+   "op": "poll_exec",
+   "script": "var f=window.__qsld_f04; return !!f && f.probes>0 && f.fail===f.probes && f.ok===0;",
+   "expect": true
+  },
+  {
+   "op": "note",
+   "text": "THE DIRECTOR's RETURN on the acceptance export (before the merge): invite_finish's bool answers 'did MY redeem finish', so F-04's false->not_finished read the inviter's completed A2 as a failure. Now: a typed result (finished | offered | nothing) as out=ok c.result=<member>; out=fail only for an actual error. The two ok-words need a relay that answers; this harness has none, so the drivable half is asserted here: a finish against the relay that never answers is an ACTUAL error -- out=fail with the engine's reason, never not_finished, and no c.result on a failed line. The unit arm a17 pins the mapping; the operator's export on this head shows the words live."
+  },
+  {
+   "op": "exec",
+   "script": "window.__qsld_fin='pending'; invoke('invite_finish', {selfLabel:null, alias:'nobody-here', relay:'https://relay.invalid', max:1}).then(function(r){ window.__qsld_fin='ok:'+JSON.stringify(r); }).catch(function(e){ window.__qsld_fin='err:'+String(e && e.code ? e.code : e); }); return 'fired';"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return window.__qsld_fin!=='pending';",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return String(window.__qsld_fin).slice(0,80);"
+  },
+  {
+   "op": "poll_exec",
+   "script": "window.__qsld_finrow=null; tauriInvoke('debug_log_read', {sinceSeq:0, max:2048}).then(function(r){ var ls=r.lines.map(function(s){return s.line;}).filter(function(l){return l.indexOf('c.name=invite_finish')>=0;}); window.__qsld_finrow={n:ls.length, last:ls.length?ls[ls.length-1]:'', notfin:r.lines.filter(function(s){return s.line.indexOf('not_finished')>=0;}).length}; }).catch(function(e){ window.__qsld_finrow={err:String(e)}; }); return true;",
+   "expect": true
+  },
+  {
+   "op": "poll_exec",
+   "script": "var f=window.__qsld_finrow; return !!f && f.n>0;",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "return JSON.stringify(window.__qsld_finrow);"
+  },
+  {
+   "op": "poll_exec",
+   "script": "var f=window.__qsld_finrow; return !!f && f.n>0 && f.notfin===0 && f.last.indexOf('out=fail')>=0 && f.last.indexOf('c.result=')<0;",
+   "expect": true
   },
   {
    "op": "exec",
