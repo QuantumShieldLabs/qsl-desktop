@@ -1,320 +1,320 @@
 {
-  "scenario": "na0763_gui_m_liveness_tick",
-  "destructive": false,
-  "steps": [
-    {
-      "op": "note",
-      "text": "NA-0763 (D-0040; spine D-1404) -- THE LIVENESS TICK. Instruments I1-I5 per the Director's ruling R8. The app runs under the TEST-ONLY tempo seam QSLD_TICK_MS, which gui_driver.rs injects into the child environment the same way runner.py already injects QSLD_DATA_DIR. The seam rides app_info -- a Serialize-only DTO with no save path -- so no code path can round-trip a test tempo into settings.json (ruling R4)."
-    },
-    {
-      "op": "launch"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0\u26a0 FAIL FAST IF THE TEMPO SEAM IS ABSENT. This scenario is meaningless without `QSLD_TICK_MS`: at the shipped INSTANT tempo a beat is 15-25 s, so I1's bounded window sees ~1 tick and the run fails with a confusing `I1_tick_fires TIMEOUT, last=1` that looks like a product defect. It is not -- it means the scenario was invoked WITHOUT its seam (running `runner.py` directly rather than through `gui_driver.rs`, which sets it). Measured the hard way, twice. Assert it up front so the failure names its own cause."
-    },
-    {
-      "op": "exec",
-      "script": "return String(tickOverrideMs !== null && tickOverrideMs > 0);",
-      "expect": "true"
-    },
-    {
-      "op": "note",
-      "text": "A vault, so the run reaches an unlocked surface. The tick is gated on exactly the two post-unlock screens, the same gate the idle autolock uses."
-    },
-    {
-      "op": "type",
-      "sel": "#vault-pass",
-      "text": "correct horse battery staple"
-    },
-    {
-      "op": "type",
-      "sel": "#vault-confirm",
-      "text": "correct horse battery staple"
-    },
-    {
-      "op": "prop_eq",
-      "sel": "#btn-vault-create",
-      "prop": "disabled",
-      "expect": false,
-      "poll": 5
-    },
-    {
-      "op": "click",
-      "sel": "#btn-vault-create"
-    },
-    {
-      "op": "poll_visible",
-      "screen": "scr-wizard-identity"
-    },
-    {
-      "op": "type",
-      "sel": "#alias-input",
-      "text": "Tick Rig"
-    },
-    {
-      "op": "prop_eq",
-      "sel": "#btn-identity-done",
-      "prop": "disabled",
-      "expect": false,
-      "poll": 5
-    },
-    {
-      "op": "click",
-      "sel": "#btn-identity-done"
-    },
-    {
-      "op": "poll_visible",
-      "screen": "scr-main"
-    },
-    {
-      "op": "note",
-      "text": "I2, FIRST HALF -- the gate is CLOSED on a fresh profile because NO RELAY is configured (ruling R10: unlocked AND a relay configured). This also proves the arm is not vacuous: the gate is observably closed BEFORE it is observably opened."
-    },
-    {
-      "op": "exec",
-      "script": "return String(tickGateOpen());",
-      "expect": "false"
-    },
-    {
-      "op": "exec",
-      "script": "return String(tickCount);",
-      "expect": "0"
-    },
-    {
-      "op": "note",
-      "text": "Configure a relay through the app's own IPC. relay_config_set normalizes and saves; it requires no probe, so no network is touched. The address is deliberately UNREACHABLE -- nothing in this scenario needs it to answer, and a reachable one would make the run depend on a relay."
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 THE TWO IPC CALLS ARE SPLIT AND EACH CAPTURES ITS OWN REJECTION. The first version chained them with no .catch(), so a rejection anywhere left one boolean reading false forever and the row could only say 'last=false' -- which is exactly what it said when this failed on CI while passing locally. An instrument that cannot name its own failure is not an instrument."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0763 = { setDone:false, mainDone:false, err:null }; invoke(\"relay_config_set\", { url: \"https://relay.invalid.example\" })   .then(function(){ window.__na0763.setDone = true; })   .catch(function(e){ window.__na0763.err = \"relay_config_set: \" + String((e && e.message) || e); }); return \"kicked\";",
-      "expect": "kicked"
-    },
-    {
-      "op": "poll_exec",
-      "script": "return window.__na0763.err ? (\"ERR \" + window.__na0763.err) : String(window.__na0763.setDone);",
-      "expect": "true",
-      "mode": "eq",
-      "poll": 25,
-      "label": "relay_config_set_resolved"
-    },
-    {
-      "op": "note",
-      "text": "Now the surface re-read that publishes the relay into the tick's gate. Kept as a REAL call to `enterMain` rather than assigning the flag directly: assigning it would bypass the very wiring under test (R10's gate is fed by enterMain and refreshServerState, not by the scenario)."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0763.err = null; enterMain()   .then(function(){ window.__na0763.mainDone = true; })   .catch(function(e){ window.__na0763.err = \"enterMain: \" + String((e && e.message) || e); }); return \"kicked\";",
-      "expect": "kicked"
-    },
-    {
-      "op": "poll_exec",
-      "script": "return window.__na0763.err ? (\"ERR \" + window.__na0763.err) : String(window.__na0763.mainDone);",
-      "expect": "true",
-      "mode": "eq",
-      "poll": 25,
-      "label": "enterMain_resolved"
-    },
-    {
-      "op": "exec",
-      "script": "return String(tickGateOpen());",
-      "expect": "true"
-    },
-    {
-      "op": "note",
-      "text": "I1 TICK-FIRES -- with the seam shortened, at least TWO handler runs carrying source=tick inside a BOUNDED window. This is a bounded poll that FAILS on timeout, never a sleep: a tick that never fires produces a red row. RED ARM: disable the timer and this cannot pass."
-    },
-    {
-      "op": "poll_exec",
-      "script": "return String(tickCount);",
-      "expect": "2",
-      "mode": "ge",
-      "poll": 20,
-      "label": "I1_tick_fires"
-    },
-    {
-      "op": "note",
-      "text": "I4 + R6 -- THE MARKER SEPARATION, WHICH IS THE WHOLE REASON THE TWO COMMITTED why:surface_open ASSERTIONS SURVIVE. redeemMark is a single-slot last-write-wins surface. Ticks have now fired repeatedly; the slot must STILL read the last USER-caused trigger (unlock), never 'tick'. If the tick ever writes that slot, this row goes red HERE and f_l_invite_redeem's two expects go red there."
-    },
-    {
-      "op": "exec",
-      "script": "return byId(\"redeem-overlay\").dataset.finishWhy;",
-      "expect": "unlock"
-    },
-    {
-      "op": "note",
-      "text": "I3 SINGLE-FLIGHT -- a trigger arriving mid-scan must NOT start a second scan; it sets the pending slot and never stacks. \u26a0 THE TICK'S OWN GATE IS CLOSED FOR THIS WINDOW so the only scans in flight are the two this step issues -- otherwise the counters are contaminated by the very timer under test. Measured live before that was done: the running tick was refused 60 times in one window, which is the guard working, but it is not a DETERMINISTIC arm."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0763.savedRelay = tickRelayConfigured; tickRelayConfigured = false; return String(tickGateOpen());",
-      "expect": "false"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 WAIT FOR QUIESCENCE BEFORE MEASURING, rather than assuming it. Closing the gate stops NEW beats; it does not abort a scan already in flight. Measured the hard way: without this the delta read 2, because a tick's scan was still running and BOTH calls below were refused."
-    },
-    {
-      "op": "poll_exec",
-      "script": "return String(relayScanBusy);",
-      "expect": "false",
-      "mode": "eq",
-      "poll": 15,
-      "label": "I3_quiescent_before_measuring"
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0763.rej0 = relayScanBusyRejects; window.__na0763.rer0 = relayScanRerunCount; relayScan({ source:\"unlock\", at: Date.now() }); relayScan({ source:\"surface_open\", at: Date.now() }); return String(relayScanBusyRejects - window.__na0763.rej0);",
-      "expect": "1"
-    },
-    {
-      "op": "note",
-      "text": "The refusal above is read in the SAME synchronous turn as the two calls, so nothing can interleave: JS is single-threaded and `relayScan` runs to its first await before returning. That is what makes 'exactly one' a fact rather than a race."
-    },
-    {
-      "op": "poll_exec",
-      "script": "return String(relayScanRerunCount - window.__na0763.rer0);",
-      "expect": "1",
-      "mode": "eq",
-      "poll": 15,
-      "label": "I3_exactly_one_rerun_followed_never_two"
-    },
-    {
-      "op": "note",
-      "text": "And the pending slot is EMPTY afterwards -- the rerun consumed it, and a second trigger did not queue a second one behind it."
-    },
-    {
-      "op": "exec",
-      "script": "return String(relayScanPending);",
-      "expect": "null"
-    },
-    {
-      "op": "note",
-      "text": "Restore the tick's gate; the remaining arms need it live."
-    },
-    {
-      "op": "exec",
-      "script": "tickRelayConfigured = window.__na0763.savedRelay; return String(tickGateOpen());",
-      "expect": "true"
-    },
-    {
-      "op": "note",
-      "text": "I5 BACKOFF-REPORT, and its bound is stated rather than glossed (ruling R8). The RELAY-FAULT path to this state is NOT drivable here: a fresh profile has no pending contact, so no relay call is ever attempted and no failure can accrue. What IS driven is the half this lane owns -- the threshold, the surface and the recovery -- through the handler's own outcome recorder. The unreachable-relay PATH is FIELD-VERIFIED on the acceptance flight."
-    },
-    {
-      "op": "exec",
-      "script": "for (var i = 0; i < 3; i++) {   recordScanOutcome({ source:\"tick\", at: Date.now() },     { why:\"tick\", scanned:1, finished:0, pending:1, attempted:1, failed:1 }); } return String(tickFails);",
-      "expect": "3"
-    },
-    {
-      "op": "note",
-      "text": "NA-0779 (18c L6): the outage now reads 'Relay: unreachable' in the bar's left span; recovery -- one scan that reaches the relay -- flips relayProven and reads 'Relay: connected' (F3: a measured success). The bar's class carries status-bar beside status-line."
-    },
-    {
-      "op": "note",
-      "text": "NA-0764 (R5) RE-AIM, WITH ITS OWN CAN-FAIL PROOF. These three rows moved from #tick-status to #status-line because F1 migrated the message into the footer's closed reason set. A re-aimed assertion is a DIFFERENT assertion, so the row below first proves the quiet line is now SILENT -- if the message were still there, the re-aim would be additive rather than a migration and this row would fail."
-    },
-    {
-      "op": "exec",
-      "script": "return byId(\"tick-status\").querySelector(\".status-text\").textContent;",
-      "expect": ""
-    },
-    {
-      "op": "exec",
-      "script": "return byId(\"status-line\").className;",
-      "expect": "status-line status-bar is-trouble"
-    },
-    {
-      "op": "exec",
-      "script": "return byId(\"status-line\").querySelector(\".status-left\").textContent;",
-      "expect": "Relay: unreachable \u00b7 Vault: unlocked \u00b7 Auto-lock: 60 min"
-    },
-    {
-      "op": "note",
-      "text": "RECOVERY CLEARS IT -- one scan that reaches the relay and does not fail resets the counter and hides the line. A status that appears and never leaves is its own defect."
-    },
-    {
-      "op": "exec",
-      "script": "recordScanOutcome({ source:\"tick\", at: Date.now() },   { why:\"tick\", scanned:1, finished:0, pending:1, attempted:1, failed:0 }); return String(tickFails);",
-      "expect": "0"
-    },
-    {
-      "op": "exec",
-      "script": "return byId(\"status-line\").className;",
-      "expect": "status-line status-bar"
-    },
-    {
-      "op": "note",
-      "text": "RECOVERY IS A SIMPLE RETURN TO NORMAL -- no 'Reconnected' blurb, refused for this lane (ruling R5). The trouble CLASS is gone and the line answers Ready again, which is the whole of the recovery behaviour."
-    },
-    {
-      "op": "exec",
-      "script": "return byId(\"status-line\").querySelector(\".status-left\").textContent.slice(0, 16);",
-      "expect": "Relay: connected"
-    },
-    {
-      "op": "note",
-      "text": "I2 SECOND HALF -- LOCKED ACROSS THE WINDOW => ZERO TICK SCANS. The count is sampled at the lock, a BOUNDED window of real elapsed time is then measured on the page's own clock (many seam-beats' worth of opportunity), and the delta must be EXACTLY zero."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0763.locked = false; invoke(\"lock_now\").then(function(){ return showUnlockScreen(\"main\"); })   .then(function(){ window.__na0763.locked = true; })   .catch(function(e){ window.__na0763.err = \"lock: \" + String((e && e.message) || e); }); return \"kicked\";",
-      "expect": "kicked"
-    },
-    {
-      "op": "poll_exec",
-      "script": "return String(window.__na0763.locked);",
-      "expect": "true",
-      "mode": "eq",
-      "poll": 15,
-      "label": "locked"
-    },
-    {
-      "op": "poll_visible",
-      "screen": "scr-unlock"
-    },
-    {
-      "op": "note",
-      "text": "\u26a0 THE LOCKED WINDOW STARTS **HERE**, not when the lock was REQUESTED. Measured the hard way: at an adversarial 30 ms seam this arm read a delta of 2, because ~2 beats fit between asking to lock and the screen actually changing -- and those ticks are CORRECT, the vault was not locked yet. Sampling after `scr-unlock` is visible makes the arm measure what it claims to measure, at any tempo."
-    },
-    {
-      "op": "exec",
-      "script": "window.__na0763.atLock = tickCount; window.__na0763.lockedAt = Date.now(); return String(tickGateOpen());",
-      "expect": "false"
-    },
-    {
-      "op": "exec",
-      "script": "return String(tickGateOpen());",
-      "expect": "false"
-    },
-    {
-      "op": "poll_exec",
-      "script": "return String(Date.now() - window.__na0763.lockedAt);",
-      "expect": "2500",
-      "mode": "ge",
-      "poll": 20,
-      "label": "I2_bounded_window_elapsed_on_the_page_clock"
-    },
-    {
-      "op": "exec",
-      "script": "return String(tickCount - window.__na0763.atLock);",
-      "expect": "0"
-    },
-    {
-      "op": "note",
-      "text": "And the schedule RESET rather than merely paused: a due-time computed before the lock must not survive it, or the first pass after an unlock would fire immediately."
-    },
-    {
-      "op": "exec",
-      "script": "return String(tickNextDueAt);",
-      "expect": "null"
-    },
-    {
-      "op": "teardown"
-    }
-  ]
+ "scenario": "na0763_gui_m_liveness_tick",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "note",
+   "text": "NA-0763 (D-0040; spine D-1404) -- THE LIVENESS TICK. Instruments I1-I5 per the Director's ruling R8. The app runs under the TEST-ONLY tempo seam QSLD_TICK_MS, which gui_driver.rs injects into the child environment the same way runner.py already injects QSLD_DATA_DIR. The seam rides app_info -- a Serialize-only DTO with no save path -- so no code path can round-trip a test tempo into settings.json (ruling R4)."
+  },
+  {
+   "op": "launch"
+  },
+  {
+   "op": "note",
+   "text": "⚠⚠ FAIL FAST IF THE TEMPO SEAM IS ABSENT. This scenario is meaningless without `QSLD_TICK_MS`: at the shipped INSTANT tempo a beat is 15-25 s, so I1's bounded window sees ~1 tick and the run fails with a confusing `I1_tick_fires TIMEOUT, last=1` that looks like a product defect. It is not -- it means the scenario was invoked WITHOUT its seam (running `runner.py` directly rather than through `gui_driver.rs`, which sets it). Measured the hard way, twice. Assert it up front so the failure names its own cause."
+  },
+  {
+   "op": "exec",
+   "script": "return String(tickOverrideMs !== null && tickOverrideMs > 0);",
+   "expect": "true"
+  },
+  {
+   "op": "note",
+   "text": "A vault, so the run reaches an unlocked surface. The tick is gated on exactly the two post-unlock screens, the same gate the idle autolock uses."
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "correct horse battery staple"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "correct horse battery staple"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "Tick Rig"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "I2, FIRST HALF -- the gate is CLOSED on a fresh profile because NO RELAY is configured (ruling R10: unlocked AND a relay configured). This also proves the arm is not vacuous: the gate is observably closed BEFORE it is observably opened."
+  },
+  {
+   "op": "exec",
+   "script": "return String(tickGateOpen());",
+   "expect": "false"
+  },
+  {
+   "op": "exec",
+   "script": "return String(tickCount);",
+   "expect": "0"
+  },
+  {
+   "op": "note",
+   "text": "Configure a relay through the app's own IPC. relay_config_set normalizes and saves; it requires no probe, so no network is touched. The address is deliberately UNREACHABLE -- nothing in this scenario needs it to answer, and a reachable one would make the run depend on a relay."
+  },
+  {
+   "op": "note",
+   "text": "⚠ THE TWO IPC CALLS ARE SPLIT AND EACH CAPTURES ITS OWN REJECTION. The first version chained them with no .catch(), so a rejection anywhere left one boolean reading false forever and the row could only say 'last=false' -- which is exactly what it said when this failed on CI while passing locally. An instrument that cannot name its own failure is not an instrument."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0763 = { setDone:false, mainDone:false, err:null }; invoke(\"relay_config_set\", { url: \"https://relay.invalid.example\" })   .then(function(){ window.__na0763.setDone = true; })   .catch(function(e){ window.__na0763.err = \"relay_config_set: \" + String((e && e.message) || e); }); return \"kicked\";",
+   "expect": "kicked"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return window.__na0763.err ? (\"ERR \" + window.__na0763.err) : String(window.__na0763.setDone);",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 25,
+   "label": "relay_config_set_resolved"
+  },
+  {
+   "op": "note",
+   "text": "Now the surface re-read that publishes the relay into the tick's gate. Kept as a REAL call to `enterMain` rather than assigning the flag directly: assigning it would bypass the very wiring under test (R10's gate is fed by enterMain and refreshServerState, not by the scenario)."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0763.err = null; enterMain()   .then(function(){ window.__na0763.mainDone = true; })   .catch(function(e){ window.__na0763.err = \"enterMain: \" + String((e && e.message) || e); }); return \"kicked\";",
+   "expect": "kicked"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return window.__na0763.err ? (\"ERR \" + window.__na0763.err) : String(window.__na0763.mainDone);",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 25,
+   "label": "enterMain_resolved"
+  },
+  {
+   "op": "exec",
+   "script": "return String(tickGateOpen());",
+   "expect": "true"
+  },
+  {
+   "op": "note",
+   "text": "I1 TICK-FIRES -- with the seam shortened, at least TWO handler runs carrying source=tick inside a BOUNDED window. This is a bounded poll that FAILS on timeout, never a sleep: a tick that never fires produces a red row. RED ARM: disable the timer and this cannot pass."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(tickCount);",
+   "expect": "2",
+   "mode": "ge",
+   "poll": 20,
+   "label": "I1_tick_fires"
+  },
+  {
+   "op": "note",
+   "text": "I4 + R6 -- THE MARKER SEPARATION, WHICH IS THE WHOLE REASON THE TWO COMMITTED why:surface_open ASSERTIONS SURVIVE. redeemMark is a single-slot last-write-wins surface. Ticks have now fired repeatedly; the slot must STILL read the last USER-caused trigger (unlock), never 'tick'. If the tick ever writes that slot, this row goes red HERE and f_l_invite_redeem's two expects go red there."
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"redeem-overlay\").dataset.finishWhy;",
+   "expect": "unlock"
+  },
+  {
+   "op": "note",
+   "text": "I3 SINGLE-FLIGHT -- a trigger arriving mid-scan must NOT start a second scan; it sets the pending slot and never stacks. ⚠ THE TICK'S OWN GATE IS CLOSED FOR THIS WINDOW so the only scans in flight are the two this step issues -- otherwise the counters are contaminated by the very timer under test. Measured live before that was done: the running tick was refused 60 times in one window, which is the guard working, but it is not a DETERMINISTIC arm."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0763.savedRelay = tickRelayConfigured; tickRelayConfigured = false; return String(tickGateOpen());",
+   "expect": "false"
+  },
+  {
+   "op": "note",
+   "text": "⚠ WAIT FOR QUIESCENCE BEFORE MEASURING, rather than assuming it. Closing the gate stops NEW beats; it does not abort a scan already in flight. Measured the hard way: without this the delta read 2, because a tick's scan was still running and BOTH calls below were refused."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(relayScanBusy);",
+   "expect": "false",
+   "mode": "eq",
+   "poll": 15,
+   "label": "I3_quiescent_before_measuring"
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0763.rej0 = relayScanBusyRejects; window.__na0763.rer0 = relayScanRerunCount; relayScan({ source:\"unlock\", at: Date.now() }); relayScan({ source:\"surface_open\", at: Date.now() }); return String(relayScanBusyRejects - window.__na0763.rej0);",
+   "expect": "1"
+  },
+  {
+   "op": "note",
+   "text": "The refusal above is read in the SAME synchronous turn as the two calls, so nothing can interleave: JS is single-threaded and `relayScan` runs to its first await before returning. That is what makes 'exactly one' a fact rather than a race."
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(relayScanRerunCount - window.__na0763.rer0);",
+   "expect": "1",
+   "mode": "eq",
+   "poll": 15,
+   "label": "I3_exactly_one_rerun_followed_never_two"
+  },
+  {
+   "op": "note",
+   "text": "And the pending slot is EMPTY afterwards -- the rerun consumed it, and a second trigger did not queue a second one behind it."
+  },
+  {
+   "op": "exec",
+   "script": "return String(relayScanPending);",
+   "expect": "null"
+  },
+  {
+   "op": "note",
+   "text": "Restore the tick's gate; the remaining arms need it live."
+  },
+  {
+   "op": "exec",
+   "script": "tickRelayConfigured = window.__na0763.savedRelay; return String(tickGateOpen());",
+   "expect": "true"
+  },
+  {
+   "op": "note",
+   "text": "I5 BACKOFF-REPORT, and its bound is stated rather than glossed (ruling R8). The RELAY-FAULT path to this state is NOT drivable here: a fresh profile has no pending contact, so no relay call is ever attempted and no failure can accrue. What IS driven is the half this lane owns -- the threshold, the surface and the recovery -- through the handler's own outcome recorder. The unreachable-relay PATH is FIELD-VERIFIED on the acceptance flight."
+  },
+  {
+   "op": "exec",
+   "script": "for (var i = 0; i < 3; i++) {   recordScanOutcome({ source:\"tick\", at: Date.now() },     { why:\"tick\", scanned:1, finished:0, pending:1, attempted:1, failed:1 }); } return String(tickFails);",
+   "expect": "3"
+  },
+  {
+   "op": "note",
+   "text": "NA-0779 (18c L6): the outage now reads 'Relay: unreachable' in the bar's left span; recovery -- one scan that reaches the relay -- flips relayProven and reads 'Relay: connected' (F3: a measured success). The bar's class carries status-bar beside status-line."
+  },
+  {
+   "op": "note",
+   "text": "NA-0764 (R5) RE-AIM, WITH ITS OWN CAN-FAIL PROOF. These three rows moved from #tick-status to #status-line because F1 migrated the message into the footer's closed reason set. A re-aimed assertion is a DIFFERENT assertion, so the row below first proves the quiet line is now SILENT -- if the message were still there, the re-aim would be additive rather than a migration and this row would fail."
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"tick-status\").querySelector(\".status-text\").textContent;",
+   "expect": ""
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"status-line\").className;",
+   "expect": "status-line status-bar is-trouble"
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"status-line\").querySelector(\".status-left\").textContent;",
+   "expect": "Relay: unreachable · Vault: unlocked · Auto-lock: 60 min"
+  },
+  {
+   "op": "note",
+   "text": "RECOVERY CLEARS IT -- one scan that reaches the relay and does not fail resets the counter and hides the line. A status that appears and never leaves is its own defect."
+  },
+  {
+   "op": "exec",
+   "script": "recordScanOutcome({ source:\"tick\", at: Date.now() },   { why:\"tick\", scanned:1, finished:0, pending:1, attempted:1, failed:0 }); return String(tickFails);",
+   "expect": "0"
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"status-line\").className;",
+   "expect": "status-line status-bar"
+  },
+  {
+   "op": "note",
+   "text": "RECOVERY IS A SIMPLE RETURN TO NORMAL -- no 'Reconnected' blurb, refused for this lane (ruling R5). The trouble CLASS is gone and the line answers Ready again, which is the whole of the recovery behaviour."
+  },
+  {
+   "op": "exec",
+   "script": "return byId(\"status-line\").querySelector(\".status-left\").textContent.slice(0, 16);",
+   "expect": "Relay: connected"
+  },
+  {
+   "op": "note",
+   "text": "I2 SECOND HALF -- LOCKED ACROSS THE WINDOW => ZERO TICK SCANS. The count is sampled at the lock, a BOUNDED window of real elapsed time is then measured on the page's own clock (many seam-beats' worth of opportunity), and the delta must be EXACTLY zero."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0763.locked = false; invoke(\"lock_now\").then(function(){ return showUnlockScreen(\"main\"); })   .then(function(){ window.__na0763.locked = true; })   .catch(function(e){ window.__na0763.err = \"lock: \" + String((e && e.message) || e); }); return \"kicked\";",
+   "expect": "kicked"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(window.__na0763.locked);",
+   "expect": "true",
+   "mode": "eq",
+   "poll": 15,
+   "label": "locked"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-unlock"
+  },
+  {
+   "op": "note",
+   "text": "⚠ THE LOCKED WINDOW STARTS **HERE**, not when the lock was REQUESTED. Measured the hard way: at an adversarial 30 ms seam this arm read a delta of 2, because ~2 beats fit between asking to lock and the screen actually changing -- and those ticks are CORRECT, the vault was not locked yet. Sampling after `scr-unlock` is visible makes the arm measure what it claims to measure, at any tempo."
+  },
+  {
+   "op": "exec",
+   "script": "window.__na0763.atLock = tickCount; window.__na0763.lockedAt = Date.now(); return String(tickGateOpen());",
+   "expect": "false"
+  },
+  {
+   "op": "exec",
+   "script": "return String(tickGateOpen());",
+   "expect": "false"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return String(Date.now() - window.__na0763.lockedAt);",
+   "expect": "2500",
+   "mode": "ge",
+   "poll": 20,
+   "label": "I2_bounded_window_elapsed_on_the_page_clock"
+  },
+  {
+   "op": "exec",
+   "script": "return String(tickCount - window.__na0763.atLock);",
+   "expect": "0"
+  },
+  {
+   "op": "note",
+   "text": "And the schedule RESET rather than merely paused: a due-time computed before the lock must not survive it, or the first pass after an unlock would fire immediately."
+  },
+  {
+   "op": "exec",
+   "script": "return String(tickNextDueAt);",
+   "expect": "null"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
 }
