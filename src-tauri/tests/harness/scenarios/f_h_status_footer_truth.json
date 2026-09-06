@@ -8,7 +8,7 @@
     },
     {
       "op": "note",
-      "text": "NA-0779 (D-0048, mockup 18c L6; RBANK_status_footer_todo F2/F3): the footer is now the STATUS BAR and speaks state words at its left end -- the two drivable states read 'Relay: not configured' and 'Relay: configured' (an address stored, no call succeeded: F3 forbids 'connected' before a measured success; this scenario's relay is a name that never answers). The bar's LEFT span is read, because the runner arms the debug log on scr-main and the right end then carries 'Logging: on . detailed'."
+      "text": "NA-0779 (D-0048, mockup 18c L6; RBANK_status_footer_todo F2/F3): the footer is now the STATUS BAR and speaks state words at its left end -- the two drivable states read 'Relay: not configured' and 'Relay: configured' (an address stored, no call succeeded: F3 forbids 'connected' before a measured success; this scenario's relay is a name that never answers). The bar's LEFT span is read, because the runner arms the debug log on scr-main and the right end then carries 'Debug Log: detailed' (18d I7; under 18c it read 'Logging: on . detailed')."
     },
     {
       "op": "note",

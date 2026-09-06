@@ -235,7 +235,7 @@
   {
    "op": "exec",
    "script": "return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').textContent;",
-   "expect": "new — verify"
+   "expect": "verify"
   },
   {
    "op": "exec",
@@ -355,7 +355,15 @@
   {
    "op": "exec",
    "script": "renderContactsList(); return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').textContent;",
-   "expect": "new — verify"
+   "expect": "verify"
+  },
+  {
+   "op": "exec",
+   "script": "return document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').tagName + ' ' + document.querySelector('.contact-row[data-alias=\"dana\"] .contact-word').className + ' | rows-top-pad=' + getComputedStyle(document.getElementById('contacts-rows')).paddingTop;"
+  },
+  {
+   "op": "screenshot",
+   "name": "contacts_new_row_verify.png"
   },
   {
    "op": "exec",

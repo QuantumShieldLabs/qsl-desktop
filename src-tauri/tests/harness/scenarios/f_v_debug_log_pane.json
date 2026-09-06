@@ -4,7 +4,7 @@
   "steps": [
     {
       "op": "note",
-      "text": "NA-0779 (D-0048) STOP 004: Settings > Diagnostics. The runner ARMS the log (on + detailed, through debug_log_control) the first time scr-main is visible and EXPORTS it into the run dir at every teardown (the L4 capture); this scenario then drives the pane: the switch and the pill, the live list, Pause/Resume, the filter, the Copy MEASUREMENT (RULING_NA0779_002 R2 (b)), the Export button, and the switch's persistence across a relaunch."
+      "text": "NA-0779 (D-0048) STOP 004: Settings > Diagnostics. The runner ARMS the log (on + detailed, through debug_log_control) the first time scr-main is visible and EXPORTS it into the run dir at every teardown (the L4 capture); this scenario then drives the pane: the switch and the bar, the live list, Pause/Resume (18d I4: the counts keep growing while Paused, the list stops FOLLOWING -- flight step 13), the filter, the Copy MEASUREMENT (RULING_NA0779_002 R2 (b)), the Export button, and the switch's persistence across a relaunch. 18d (RBANK_second_flight_18d_blessed_20260905): the bar is on the MAIN WINDOW only (I1), reads 'Debug Log: <level>' (I7), the export line is short and transient (I5)."
     },
     {
       "op": "launch"
@@ -56,12 +56,12 @@
     },
     {
       "op": "note",
-      "text": "the runner armed the log on scr-main; the STATUS BAR's right end must read 'Logging: on . detailed' on scr-main (18c L5: the pill is gone; the bar speaks)"
+      "text": "the runner armed the log on scr-main; the STATUS BAR's right end must read 'Debug Log: detailed' on scr-main (18d I7; 18c L5: the pill is gone; the bar speaks)"
     },
     {
       "op": "poll_exec",
       "script": "return document.querySelector('#status-line .status-right').textContent;",
-      "expect": "Logging: on \u00b7 detailed"
+      "expect": "Debug Log: detailed"
     },
     {
       "op": "click",
@@ -85,7 +85,7 @@
     {
       "op": "poll_exec",
       "script": "var f=document.querySelector('#scr-settings footer.status-line'); return f ? f.querySelector('.status-left').textContent.indexOf('Relay: not configured')===0 && f.querySelector('.status-right').textContent : 'no bar';",
-      "expect": "Logging: on \u00b7 detailed"
+      "expect": "Debug Log: detailed"
     },
     {
       "op": "note",
@@ -220,6 +220,24 @@
       "literal": "Resume"
     },
     {
+      "op": "note",
+      "text": "18d I4 -- THE MISS AGAINST FLIGHT STEP 13, now asserted: while Paused the ring keeps recording and the counts line keeps growing; only the list stops FOLLOWING. Two gateway calls are provoked (protection_status, a gw.command each at the detailed level); the counts must rise and the shown lines must not."
+    },
+    {
+      "op": "exec",
+      "script": "window.__qsld_pause={counts:parseInt(document.getElementById('dl-counts').textContent,10), shown:document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length}; tauriInvoke('protection_status').catch(function(){}); tauriInvoke('protection_status').catch(function(){}); return JSON.stringify(window.__qsld_pause);"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var p=window.__qsld_pause; var n=parseInt(document.getElementById('dl-counts').textContent,10); var s=document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length; return n>p.counts && s===p.shown;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; var n=parseInt(document.getElementById('dl-counts').textContent,10); var s=t.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length; window.__qsld_pause.counts2=n; window.__qsld_pause.shown2=s; return s<n;",
+      "expect": true
+    },
+    {
       "op": "click",
       "sel": "#btn-dl-pause"
     },
@@ -227,6 +245,11 @@
       "op": "read_tc",
       "sel": "#btn-dl-pause",
       "literal": "Pause"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var p=window.__qsld_pause; return document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length > p.shown;",
+      "expect": true
     },
     {
       "op": "type",
@@ -253,20 +276,30 @@
     },
     {
       "op": "poll_exec",
-      "script": "return document.getElementById('dl-export-result').textContent.indexOf('qsl-desktop-debug-log-')>=0;",
+      "script": "var t=document.getElementById('dl-export-result').textContent; return t.indexOf('Saved ')===0 && /-[0-9a-f]{16}\\.txt/.test(t) && t.indexOf('/')<0 && t.indexOf('sha256')<0;",
       "expect": true
     },
     {
       "op": "poll_exec",
-      "script": "return document.getElementById('dl-export-result').textContent.indexOf('sha256 ')>=0;",
+      "script": "return /\\u00b7 [0-9]+ KB$/.test(document.getElementById('dl-export-result').textContent);",
       "expect": true
+    },
+    {
+      "op": "note",
+      "text": "18d I5: the line is TRANSIENT -- it clears within ten seconds (one one-shot timer) or when the pane is left; polled past the ten seconds here"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('dl-export-result').classList.contains('hidden') && document.getElementById('dl-export-result').textContent==='';",
+      "expect": true,
+      "poll": 40
     },
     {
       "op": "teardown"
     },
     {
       "op": "note",
-      "text": "launch #2 on the persisted profile: the switch PERSISTS (RULING 002 R3) -- the bar's right end reads 'Logging: on . detailed' on the UNLOCK screen already (the setting needs no vault) and on scr-main after unlock; the contents did NOT persist -- the new session's record begins with gw.unlock"
+      "text": "launch #2 on the persisted profile: the switch PERSISTS (RULING 002 R3) -- the UNLOCK window carries NO bar (18d I1: the bar is the main window's, the unlock window's two texts overlapped at its width); the bar reads 'Debug Log: detailed' on scr-main right after unlock; the contents did NOT persist -- the new session's record begins with gw.unlock"
     },
     {
       "op": "launch"
@@ -277,8 +310,8 @@
     },
     {
       "op": "poll_exec",
-      "script": "var f=document.querySelector('#scr-unlock footer.status-line'); return f ? f.querySelector('.status-left').textContent.indexOf('Vault: locked')>=0 && f.querySelector('.status-right').textContent : 'no bar';",
-      "expect": "Logging: on \u00b7 detailed"
+      "script": "return document.querySelector('#scr-unlock footer.status-line')===null && document.querySelectorAll('#scr-unlock .status-bar').length===0 && document.querySelectorAll('#scr-main footer.status-line, #scr-settings footer.status-line').length===2;",
+      "expect": true
     },
     {
       "op": "type",
@@ -294,9 +327,18 @@
       "screen": "scr-main"
     },
     {
+      "op": "resize",
+      "width": 1120,
+      "height": 760
+    },
+    {
+      "op": "screenshot",
+      "name": "main_after_unlock_1120x760.png"
+    },
+    {
       "op": "poll_exec",
       "script": "return document.querySelector('#status-line .status-right').textContent;",
-      "expect": "Logging: on \u00b7 detailed"
+      "expect": "Debug Log: detailed"
     },
     {
       "op": "click",

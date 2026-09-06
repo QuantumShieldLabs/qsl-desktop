@@ -544,7 +544,7 @@
   {
    "op": "read_tc",
    "sel": "#invitations-sent-meta",
-   "literal": "2 waiting · 1 accepted · 2 expired · 1 didn't finish"
+   "literal": "2 waiting · 2 expired · 1 didn't finish"
   },
   {
    "op": "exec",
@@ -631,7 +631,7 @@
   {
    "op": "exec",
    "script": "invitationsMarkRevoked('u1');return document.getElementById('invitations-sent-meta').textContent;",
-   "expect": "1 waiting · 1 accepted · 2 expired · 1 didn't finish"
+   "expect": "1 waiting · 2 expired · 1 didn't finish"
   },
   {
    "op": "click",

@@ -788,8 +788,10 @@ function statusFooterLine(reason, relayUrl, tickTrouble) {
 function paintStatusFooter(reason, relayUrl) {
   const trouble = tickFails >= TICK_FAIL_THRESHOLD;
   const left = statusFooterLine(reason, relayUrl, trouble);
-  const right = dl.on ? "Logging: on \u00b7 " + dl.level : "";
-  // NA-0779 (18c L5): the same bar on every screen that carries one; one painter, one text.
+  // NA-0779 (18d I7): "Debug Log: <level>" while the log is on, NOTHING while it is off.
+  const right = dl.on ? "Debug Log: " + dl.level : "";
+  // NA-0779 (18c L5; 18d I1): the same bar on every screen INSIDE the main window (chats, contacts, settings); one
+  // painter, one text. The unlock window carries none.
   for (const el of document.querySelectorAll("footer.status-line")) {
     const l = el.querySelector(".status-left");
     const r = el.querySelector(".status-right");
@@ -2386,7 +2388,7 @@ function invitationsRenderMeta(rows) {
   for (const x of rows) counts[x.kind] += 1;
   const meta = [];
   if (counts.waiting) meta.push(counts.waiting + " waiting");
-  if (counts.accepted) meta.push(counts.accepted + " accepted");
+  // NA-0779 (18d I9, the operator's word): the accepted count is NOT shown -- the Accepted chip still lists them.
   if (counts.expired) meta.push(counts.expired + " expired");
   if (counts.failed) meta.push(counts.failed + " didn't finish");
   byId("invitations-sent-meta").textContent = meta.join(" · ");
@@ -3534,8 +3536,11 @@ function renderContactsList() {
 
     const word = CONTACT_WORD[ui];
     if (word) {
-      const w = document.createElement("span");
-      w.className = "contact-word" + (CONTACT_WORD_TONE[ui] || "");
+      // NA-0779 (18d I11): the NEW row's word is the shipped blue text link (`a.rm.plain`, never underlined); it opens
+      // the row like the row itself does (the click bubbles), so it is an affordance, not a second flow.
+      const w = document.createElement(ui === "new" ? "a" : "span");
+      w.className = (ui === "new" ? "rm plain " : "") + "contact-word" + (CONTACT_WORD_TONE[ui] || "");
+      if (ui === "new") { w.setAttribute("role", "button"); w.tabIndex = 0; }
       w.textContent = word;
       el.appendChild(w);
     }
@@ -3566,7 +3571,7 @@ const CONTACT_DOT = {
 const CONTACT_WORD = {
   connected: "",
   connecting: "…",
-  new: "new — verify",
+  new: "verify",                // NA-0779 (18d I11): the blue link alone, not "new — verify"
   changed: "check identity",
   attention: "needs attention",
   blocked: "",
@@ -4143,10 +4148,12 @@ document.addEventListener("keydown", (ev) => {
 // renders the SAME lines the export carries (no second view); the filter narrows the DISPLAY only; Copy places
 // exactly the export's bytes on the clipboard. RULING_NA0779_002 R2 (b), MEASURED: writeText works in this webview
 // (the invite code's copy link relies on it; the driver measured it again); readText is refused by the webview.
-// 18c (RBANK_mockup_18c_blessed_20260905): no pill -- the bar's right end says "Logging: on . level" while on.
+// 18c (RBANK_mockup_18c_blessed_20260905): no pill -- the bar's right end speaks while the log is on; 18d
+// (RBANK_second_flight_18d_blessed_20260905) words it "Debug Log: <level>", scopes the bar to the main window, makes Pause
+// stop the list from FOLLOWING and nothing else (I4, the miss against flight step 13), and shortens the export line (I5).
 const DL_POLL_MS = 500;
 const DL_CLIENT_CAP = 8192;
-const dl = { on: false, level: "events", paused: false, lastSeq: 0, lines: [], timer: null, filter: "" };
+const dl = { on: false, level: "events", paused: false, pausedAt: 0, lastSeq: 0, lines: [], timer: null, filter: "" };
 let dlLastGate = null;
 
 function dlAdopt(setting) {
@@ -4189,7 +4196,9 @@ function dlRender() {
   const el = byId("dl-log");
   if (!el) return;
   const f = dl.filter;
-  const shown = f ? dl.lines.filter((l) => l.line.includes(f)) : dl.lines;
+  // I4: while Paused the list shows nothing newer than the moment of the pause, whatever re-renders it (the filter).
+  const upTo = dl.paused ? dl.lines.filter((l) => l.seq <= dl.pausedAt) : dl.lines;
+  const shown = f ? upTo.filter((l) => l.line.includes(f)) : upTo;
   el.textContent = shown.map((l) => l.line).join("\n");
   if (!dl.paused) el.scrollTop = el.scrollHeight;
 }
@@ -4203,8 +4212,9 @@ function dlCounts(r) {
     r.buffered + " events in memory \u00b7 " + r.dropped + " dropped" + dlSince(r.since_unlock_ms) +
     " \u00b7 kept in memory only, cleared when the vault locks";
 }
+// I4 (flight step 13): the poll ALWAYS reads -- the counts line keeps growing while Paused and the new lines are
+// buffered here; only the RENDER waits, so the list stops following and Resume shows everything that arrived.
 async function dlPoll() {
-  if (dl.paused) return;
   let r;
   try { r = await tauriInvoke("debug_log_read", { sinceSeq: dl.lastSeq, max: 2048 }); } catch (_) { return; }
   if (r.reset) { dl.lines = []; dl.lastSeq = 0; }
@@ -4212,7 +4222,7 @@ async function dlPoll() {
   if (dl.lines.length > DL_CLIENT_CAP) dl.lines.splice(0, dl.lines.length - DL_CLIENT_CAP);
   if (r.on !== dl.on || r.level !== dl.level) dlAdopt({ on: r.on, level: r.level });
   dlCounts(r);
-  dlRender();
+  if (!dl.paused) dlRender();
 }
 function dlPaneVisibility(visible) {
   if (visible && !dl.timer) {
@@ -4224,6 +4234,7 @@ function dlPaneVisibility(visible) {
   if (!visible && dl.timer) {
     clearInterval(dl.timer);
     dl.timer = null;
+    dlResultClear();
   }
 }
 async function refreshDiagnosticsPane() {
@@ -4255,8 +4266,9 @@ for (const a of document.querySelectorAll(".dl-seg-item")) {
 }
 byId("btn-dl-pause").addEventListener("click", () => {
   dl.paused = !dl.paused;
+  if (dl.paused) dl.pausedAt = dl.lastSeq;
   byId("btn-dl-pause").textContent = dl.paused ? "Resume" : "Pause";
-  if (!dl.paused) dlPoll();
+  if (!dl.paused) { dlRender(); dlPoll(); }
 });
 byId("dl-filter").addEventListener("input", () => {
   dl.filter = byId("dl-filter").value;
@@ -4267,11 +4279,27 @@ byId("btn-dl-clear").addEventListener("click", async () => {
   dl.lines = [];
   dlRender();
 });
+// I5 (18d): one short line after an export -- "Saved <the name's tail from its random label> . <size in KB>" -- no path, no
+// sha; it clears after ten seconds (one one-shot timer, never a poll) or when the pane is left. A failure line stays
+// until the next action or the pane is left. The path is the field's directory (or the placeholder's own default).
+const DL_RESULT_MS = 10000;
+let dlResultTimer = null;
+function dlResultClear() {
+  if (dlResultTimer) { clearTimeout(dlResultTimer); dlResultTimer = null; }
+  const p = byId("dl-export-result");
+  if (p) { p.replaceChildren(); p.classList.add("hidden"); }
+}
 function dlResult(parts, danger) {
+  dlResultClear();
   const p = byId("dl-export-result");
   p.replaceChildren(...parts);
   p.classList.toggle("is-danger", !!danger);
   p.classList.remove("hidden");
+  if (!danger) dlResultTimer = setTimeout(dlResultClear, DL_RESULT_MS);
+}
+function dlNameTail(name) {
+  const m = /-([0-9a-f]{16})\.txt$/.exec(name);
+  return m ? "\u2026-" + m[1] + ".txt" : name;
 }
 function dlCode(text) {
   const c = document.createElement("code");
@@ -4309,8 +4337,7 @@ byId("btn-dl-export").addEventListener("click", async () => {
       else throw e;
     }
     const name = String(r.path).split("/").pop();
-    const inDir = String(r.path).slice(0, String(r.path).length - name.length - 1);
-    dlResult(["Written ", dlCode(name), " in " + inDir + " \u00b7 " + Number(r.bytes).toLocaleString("en-US") + " bytes \u00b7 sha256 " + r.sha256.slice(0, 16) + "\u2026"], false);
+    dlResult(["Saved ", dlCode(dlNameTail(name)), " \u00b7 " + Math.max(1, Math.round(Number(r.bytes) / 1024)) + " KB"], false);
   } catch (e) {
     dlResult(["Export failed: " + String(e)], true);
   }

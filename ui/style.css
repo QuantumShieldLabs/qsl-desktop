@@ -488,6 +488,16 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
 .rail-btn svg { width: 21px; height: 21px; }  /* E.7 (item 9): with --fs-glyph */
 .rail-btn:hover { background: var(--bg-raised); color: var(--fg); }
 .rail-btn.active { background: var(--rail-active-bg); color: var(--accent-text); }
+/* NA-0779 (D-0048 004c, RBANK_rail_icons_todo T1-T2; the reference mockup-rail-icons-preview.html): the NAV rail's
+   three tabs at the reference's size (a 28px icon in a 36px square; the rail is 52px) and ONE selection treatment --
+   a soft filled square in the raised-surface token, the icon in the text colour, no border. Scoped to `.rail` so the
+   contacts header's "+" keeps the pinned 34px / 21px shape. The sliders' knobs are filled with the surface they sit
+   on, so they read as knobs ON the lines. */
+.rail .rail-btn { width: 36px; height: 36px; }
+.rail .rail-btn svg { width: 28px; height: 28px; }
+.rail .rail-btn.active { background: var(--bg-raised); color: var(--fg); border-color: transparent; }
+.rail-btn svg .knob { fill: var(--bg-inset); }
+.rail-btn:hover svg .knob, .rail .rail-btn.active svg .knob { fill: var(--bg-raised); }
 .rail-spacer { flex: 1; }
 
 /* one tooltip pattern for every rail entry */
@@ -542,7 +552,7 @@ details.tech[open] { display: flex; flex-direction: column; gap: var(--sp-2); }
    With both: rows client 556px, pane 642px <= 673px window, scrollHeight >
    clientHeight. The header is a sibling ABOVE this container, so it never
    scrolls and never leaves the viewport. */
-#contacts-rows { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+#contacts-rows { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-top: var(--sp-3); }  /* NA-0779 (004c I2): room above the first contact */
 
 /* D.2: the welcome content pane */
 .content-pane { display: flex; min-width: 0; }
@@ -1019,7 +1029,6 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
 .dl-toggle:checked::after { left: 19px; }
 .dl-toggle:focus-visible { outline: 1px solid var(--accent-text); }
 .dl-levelrow { display: inline-flex; align-items: center; gap: var(--sp-2); }
-.dl-muted { color: var(--fg-secondary); font-size: var(--fs-body); }
 .dl-seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-small); overflow: hidden; height: var(--sz-ctl); box-sizing: border-box; }
 .dl-seg-item { display: inline-block; padding: 0 var(--sp-x10); line-height: calc(var(--sz-ctl) - 2px); color: var(--fg-secondary); font-size: var(--fs-body); cursor: pointer; text-decoration: none; }
 .dl-seg-item.on { background: var(--rail-active-bg); color: var(--fg); }
@@ -1048,4 +1057,3 @@ input.dl-ctl { padding: 0 var(--sp-x10); }
 .status-line .status-left { min-width: 0; }
 .status-line .status-right { margin-left: auto; flex: none; }
 .status-line .status-right b { color: var(--fg); font-weight: var(--fw-mid); }
-#scr-unlock .status-line { position: absolute; left: 0; right: 0; bottom: 0; }

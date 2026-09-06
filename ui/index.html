@@ -99,7 +99,6 @@
     <button id="btn-unlock" class="primary full">Unlock</button>
     <div class="linkrow"><a id="link-forgot" href="#" class="link-danger">Delete vault?</a></div>
   </div>
-  <footer class="status-line status-bar" data-status-bar="unlock"><span class="status-left">Relay: not configured &middot; Vault: locked &middot; Auto-lock: 60 min</span><span class="status-right"></span></footer>
 </section>
 
 <section id="scr-erase" class="screen hidden">
@@ -133,11 +132,14 @@
 
 <section id="scr-main" class="screen hidden">
   <div class="main-layout">
+    <!-- NA-0779 (D-0048 004c, RBANK_rail_icons_todo T1-T2, promoted by the operator): the three tabs as ONE family of
+         outline icons drawn by the Director -- a speech bubble, two people, three sliders (the gear retired); one stroke,
+         one size, one selection treatment (a soft filled square, no border). The same three in the Settings rail below. -->
     <nav class="rail">
-      <button class="rail-btn tip active" id="btn-rail-chats-m" data-tip="Chats" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.5-.7L3 21l1.7-5.1a8.4 8.4 0 1 1 16.3-4.4z"/></svg></button>
-      <button class="rail-btn tip" id="btn-rail-contacts" data-tip="Contacts" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
+      <button class="rail-btn tip active" id="btn-rail-chats-m" data-tip="Chats" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
+      <button class="rail-btn tip" id="btn-rail-contacts" data-tip="Contacts" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 13.5c2.8 0 5 1.9 5 4.5"/></svg></button>
       <div class="rail-spacer"></div>
-      <button class="rail-btn tip" id="btn-settings" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="rail-btn tip" id="btn-settings" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle class="knob" cx="9" cy="7" r="2"/><circle class="knob" cx="15" cy="12" r="2"/><circle class="knob" cx="8" cy="17" r="2"/></svg></button>
     </nav>
     <section class="list-pane">
       <div class="list-header pane-header">
@@ -244,10 +246,10 @@
 <section id="scr-settings" class="screen hidden">
   <div class="settings-layout">
     <nav class="rail">
-      <button class="rail-btn tip" id="btn-rail-chats" data-tip="Chats" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.5-.7L3 21l1.7-5.1a8.4 8.4 0 1 1 16.3-4.4z"/></svg></button>
-      <button class="rail-btn tip" id="btn-rail-contacts-s" data-tip="Contacts" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
+      <button class="rail-btn tip" id="btn-rail-chats" data-tip="Chats" aria-label="Chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
+      <button class="rail-btn tip" id="btn-rail-contacts-s" data-tip="Contacts" aria-label="Contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 13.5c2.8 0 5 1.9 5 4.5"/></svg></button>
       <div class="rail-spacer"></div>
-      <button class="rail-btn tip active" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="rail-btn tip active" data-tip="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle class="knob" cx="9" cy="7" r="2"/><circle class="knob" cx="15" cy="12" r="2"/><circle class="knob" cx="8" cy="17" r="2"/></svg></button>
     </nav>
     <aside class="settings-rail">
       <!-- NA-0776 (RULING_016): THE SETTINGS LIST-COLUMN HEADING JOINS THE UNIFIED SET.
@@ -258,7 +260,7 @@
       <header class="pane-head-row"><span>Settings</span></header>
       <button data-pane="identity" class="cat active">Identity</button>
       <button data-pane="server" class="cat">Relay</button>
-      <button data-pane="vault" class="cat">Vault and Security</button>
+      <button data-pane="vault" class="cat">Security</button>
       <button data-pane="invitations" class="cat">Invitations</button>
       <button data-pane="diagnostics" class="cat">Diagnostics</button>
       <button data-pane="appearance" class="cat dim">Appearance</button>
@@ -401,7 +403,7 @@
         </div>
       </div>
       <div id="pane-vault" class="pane hidden">
-        <div class="pane-header"><div class="pane-head-row"><h2>Vault and Security</h2></div></div>
+        <div class="pane-header"><div class="pane-head-row"><h2>Security</h2></div></div>
         <p class="muted">How this vault defends itself.</p>
         <div id="attempts-alert" class="alert-amber hidden"><span id="attempts-alert-text"></span><button id="btn-attempts-dismiss" class="secondary">Dismiss</button></div>
         <!-- R-10: FOUR sections at --sp-6, hairlines between them only. -->
@@ -522,7 +524,7 @@
         <div class="dl-card">
           <div class="dl-cardrow">
             <label class="dl-switch"><input type="checkbox" id="dl-on" class="dl-toggle" aria-label="Debug Log"> Debug Log</label>
-            <div class="dl-levelrow"><span class="dl-muted">Level</span><span class="dl-seg" role="radiogroup" aria-label="Level"><a id="dl-level-events" class="dl-seg-item on" role="radio" aria-checked="true" tabindex="0" data-level="events">Events</a><a id="dl-level-detailed" class="dl-seg-item" role="radio" aria-checked="false" tabindex="0" data-level="detailed">Detailed</a></span></div>
+            <div class="dl-levelrow"><span class="dl-seg" role="radiogroup" aria-label="Level"><a id="dl-level-events" class="dl-seg-item on" role="radio" aria-checked="true" tabindex="0" data-level="events">Events</a><a id="dl-level-detailed" class="dl-seg-item" role="radio" aria-checked="false" tabindex="0" data-level="detailed">Detailed</a></span></div>
           </div>
           <p id="dl-counts" class="dl-counts">0 events in memory &middot; 0 dropped &middot; kept in memory only, cleared when the vault locks</p>
         </div>
@@ -538,7 +540,7 @@
         <pre id="dl-log" class="dl-log" aria-label="Recent events"></pre>
         <div class="dl-exportrow">
           <input type="text" id="dl-export-dir" class="dl-ctl dl-path" autocomplete="off" spellcheck="false" placeholder="/home/&lt;user&gt;/Documents" aria-label="Export directory">
-          <button id="btn-dl-export" class="primary dl-ctl">Export</button>
+          <button id="btn-dl-export" class="secondary dl-ctl">Export</button>
         </div>
         <p id="dl-export-result" class="dl-result hidden"></p>
       </div>
