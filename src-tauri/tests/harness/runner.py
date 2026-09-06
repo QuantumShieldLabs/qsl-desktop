@@ -479,6 +479,21 @@ class Runner:
                 self.op_poll_screen(st["screen"], "screen")
             elif op == "poll_hidden":
                 self.op_poll_screen(st["screen"], "screen hidden")
+            elif op == "resize":
+                # NA-0779 (18c L1): the window at a named size, so a layout can be rendered at the mockup's frames.
+                rc, out = self.wd("rect", str(st["width"]), str(st["height"]))
+                got = ""
+                try:
+                    v = json.loads(out)["value"]; got = "%sx%s" % (v.get("width"), v.get("height"))
+                except (ValueError, KeyError, AttributeError):
+                    got = out.strip()[:60]
+                self.step("resize %dx%d" % (st["width"], st["height"]), "rc=0", "rc=%d rect=%s" % (rc, got), rc == 0)
+            elif op == "screenshot":
+                # NA-0779 (18c L1): a PNG of the window, frozen in the run dir (the manifest lists it with its sha).
+                path = self.run / st["name"]
+                rc, out = self.wd("screenshot", str(path))
+                self.step("screenshot %s" % st["name"], "png written", out.strip()[:80], rc == 0 and path.exists(),
+                          evidence=[st["name"]])
             elif op == "exec":
                 rc, out = self.wd("execute", st["script"])
                 ok = rc == 0

@@ -2,44 +2,170 @@
   "scenario": "na0752_gui_h_status_footer_truth",
   "destructive": false,
   "steps": [
-    {"op": "note", "text": "NA-0752 (D-0033; ruled at R374): the #status-line footer reports the desk's typed state through the ruled table. TWO drivable states are asserted by EQUALITY on extracted text."},
-    {"op": "note", "text": "INSTRUMENT: read_text, not read_tc. read_tc (runner :343) reads textContent ONCE with no poll, and enterMain() writes the footer AFTER two awaits - so read_tc would race. read_text (:299) polls AND is visibility-coupled, so it cannot pass while scr-main is hidden. Same seal (equality on extracted text), no race."},
-    {"op": "launch"},
-
-    {"op": "type", "sel": "#vault-pass", "text": "na0752-fh-passphrase"},
-    {"op": "type", "sel": "#vault-confirm", "text": "na0752-fh-passphrase"},
-    {"op": "prop_eq", "sel": "#req-len", "prop": "className", "expect": "req ok", "poll": 5},
-    {"op": "prop_eq", "sel": "#req-match", "prop": "className", "expect": "req ok", "poll": 5},
-    {"op": "prop_eq", "sel": "#btn-vault-create", "prop": "disabled", "expect": false, "poll": 5},
-    {"op": "click", "sel": "#btn-vault-create"},
-    {"op": "poll_visible", "screen": "scr-wizard-identity"},
-    {"op": "poll_hidden", "screen": "scr-wizard-vault"},
-    {"op": "type", "sel": "#alias-input", "text": "FH"},
-    {"op": "prop_eq", "sel": "#btn-identity-done", "prop": "disabled", "expect": false, "poll": 5},
-    {"op": "click", "sel": "#btn-identity-done"},
-    {"op": "poll_visible", "screen": "scr-main"},
-
-    {"op": "note", "text": "STATE 1 - fresh profile, no relay configured. The desk answers missing_seed (a PER-CONTACT reason, deliberately non-signalling), so the table falls through to ROW 4."},
-    {"op": "read_text", "sel": "#status-line", "literal": "No relay configured — add one in Settings › Relay.", "poll": 15},
-    {"op": "note", "text": "ROW 4 proven, and proven STRONGLY: index.html:156's static default is the SHORTER 'No relay configured.' - a different string - so a writer that never ran would leave the static text and FAIL here. The assertion cannot pass by accident."},
-
-    {"op": "click", "sel": "#btn-settings"},
-    {"op": "poll_visible", "screen": "scr-settings"},
-    {"op": "click", "sel": "[data-pane=\"server\"]"},
-    {"op": "prop_eq", "sel": "#pane-server", "prop": "className", "expect": "pane", "poll": 10},
-    {"op": "note", "text": "NA-0754: this step used to type an address and press Save. The Save button is GONE, and with it OFFLINE PRE-CONFIGURATION - the ruled ACCEPTED COST of test-and-save-on-proof (design bank v2 item 1): a relay you cannot currently reach can no longer be saved, and no relay is reachable from this harness. This scenario SUBJECT is the STATUS FOOTER, not the control that arranged its state, so the address is arranged DIRECTLY through the same command the UI would call. What the footer proves is unchanged; only the means is. The on-disk assertion below still gates the footer read, so a footer miss still cannot be blamed on an unsaved relay."},
-    {"op": "exec", "script": "return window.__TAURI__.core.invoke('relay_config_set', {url: 'https://relay.example.test:8443'}).then(function(){ return true; });", "expect": true},
-    {"op": "json_field_eq", "file": "qsld-data/settings.json", "key": "relay_url", "expect": "https://relay.example.test:8443", "poll": 10},
-    {"op": "note", "text": "The commit is proven ON DISK before the footer is read, so a footer miss cannot be blamed on an unsaved relay. normalize_relay_endpoint is Url::parse().to_string() minus a trailing slash - measured identity for this input."},
-
-    {"op": "click", "sel": "#btn-rail-chats"},
-    {"op": "poll_visible", "screen": "scr-main"},
-    {"op": "note", "text": "STATE 2 - relay configured. btn-rail-chats re-runs enterMain (main.js:616), which is the EXISTING event point the footer reuses; no new wiring and no timer."},
-    {"op": "note", "text": "⚠⚠ NA-0764 (R5) - THIS ROW ACQUIRED A PRECONDITION IT DID NOT HAVE WHEN IT WAS WRITTEN, AND IT IS NOW DECLARED (cold read C-09). F1 put the reachability arm into this same footer, BELOW every reason arm but ABOVE Ready, so 'Ready. Relay: ...' now holds only while the tick's consecutive-failure count is under its threshold. This rig configures a DELIBERATELY UNREACHABLE relay, so on a slow enough box the tick could accrue failures mid-run and flip the line - turning a deterministic assertion into a race. The row below pins the precondition, so that if it ever does flip the failure names its own cause instead of looking like a footer defect."},
-    {"op": "exec", "script": "return String(tickFails < TICK_FAIL_THRESHOLD);", "expect": "true"},
-    {"op": "read_text", "sel": "#status-line", "literal": "Ready. Relay: https://relay.example.test:8443", "poll": 15},
-
-    {"op": "note", "text": "NOT DRIVEN HERE, each for a measured structural reason. ROW 1 storage: missing_home is unreachable while bootstrap() sets QSC_CONFIG_DIR before the runtime exists (lib.rs:302-311), and unsafe_parent needs the app's own 0700 qsc dir chmodded mid-session - no harness op writes or chmods the profile. ROW 2 locked: this footer lives INSIDE scr-main (index.html:156) and every lock path navigates to scr-unlock, so it is not on screen while locked; and reaching vault_locked needs a fabricated session blob no harness op can write - the DESK-side behaviour is already sealed protocol-side by na0751_facade_locked_control.rs:141-174. ROW 3 unrecognized: untestable by construction (an EIGHTH upstream reason string). All three sentences are presence-asserted in design_polish.rs (seal F1b)."},
-    {"op": "teardown"}
+    {
+      "op": "note",
+      "text": "NA-0752 (D-0033; ruled at R374): the #status-line footer reports the desk's typed state through the ruled table. TWO drivable states are asserted by EQUALITY on extracted text."
+    },
+    {
+      "op": "note",
+      "text": "NA-0779 (D-0048, mockup 18c L6; RBANK_status_footer_todo F2/F3): the footer is now the STATUS BAR and speaks state words at its left end -- the two drivable states read 'Relay: not configured' and 'Relay: configured' (an address stored, no call succeeded: F3 forbids 'connected' before a measured success; this scenario's relay is a name that never answers). The bar's LEFT span is read, because the runner arms the debug log on scr-main and the right end then carries 'Logging: on . detailed'."
+    },
+    {
+      "op": "note",
+      "text": "INSTRUMENT: read_text, not read_tc. read_tc (runner :343) reads textContent ONCE with no poll, and enterMain() writes the footer AFTER two awaits - so read_tc would race. read_text (:299) polls AND is visibility-coupled, so it cannot pass while scr-main is hidden. Same seal (equality on extracted text), no race."
+    },
+    {
+      "op": "launch"
+    },
+    {
+      "op": "type",
+      "sel": "#vault-pass",
+      "text": "na0752-fh-passphrase"
+    },
+    {
+      "op": "type",
+      "sel": "#vault-confirm",
+      "text": "na0752-fh-passphrase"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#req-len",
+      "prop": "className",
+      "expect": "req ok",
+      "poll": 5
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#req-match",
+      "prop": "className",
+      "expect": "req ok",
+      "poll": 5
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#btn-vault-create",
+      "prop": "disabled",
+      "expect": false,
+      "poll": 5
+    },
+    {
+      "op": "click",
+      "sel": "#btn-vault-create"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-wizard-identity"
+    },
+    {
+      "op": "poll_hidden",
+      "screen": "scr-wizard-vault"
+    },
+    {
+      "op": "type",
+      "sel": "#alias-input",
+      "text": "FH"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#btn-identity-done",
+      "prop": "disabled",
+      "expect": false,
+      "poll": 5
+    },
+    {
+      "op": "click",
+      "sel": "#btn-identity-done"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-main"
+    },
+    {
+      "op": "note",
+      "text": "STATE 1 - fresh profile, no relay configured. The desk answers missing_seed (a PER-CONTACT reason, deliberately non-signalling), so the table falls through to ROW 4."
+    },
+    {
+      "op": "read_text",
+      "sel": "#status-line .status-left",
+      "literal": "Relay: not configured \u00b7 Vault: unlocked \u00b7 Auto-lock: 60 min",
+      "poll": 15
+    },
+    {
+      "op": "note",
+      "text": "ROW 4 proven, and proven STRONGLY: index.html:156's static default is the SHORTER 'No relay configured.' - a different string - so a writer that never ran would leave the static text and FAIL here. The assertion cannot pass by accident."
+    },
+    {
+      "op": "click",
+      "sel": "#btn-settings"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-settings"
+    },
+    {
+      "op": "click",
+      "sel": "[data-pane=\"server\"]"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#pane-server",
+      "prop": "className",
+      "expect": "pane",
+      "poll": 10
+    },
+    {
+      "op": "note",
+      "text": "NA-0754: this step used to type an address and press Save. The Save button is GONE, and with it OFFLINE PRE-CONFIGURATION - the ruled ACCEPTED COST of test-and-save-on-proof (design bank v2 item 1): a relay you cannot currently reach can no longer be saved, and no relay is reachable from this harness. This scenario SUBJECT is the STATUS FOOTER, not the control that arranged its state, so the address is arranged DIRECTLY through the same command the UI would call. What the footer proves is unchanged; only the means is. The on-disk assertion below still gates the footer read, so a footer miss still cannot be blamed on an unsaved relay."
+    },
+    {
+      "op": "exec",
+      "script": "return window.__TAURI__.core.invoke('relay_config_set', {url: 'https://relay.example.test:8443'}).then(function(){ return true; });",
+      "expect": true
+    },
+    {
+      "op": "json_field_eq",
+      "file": "qsld-data/settings.json",
+      "key": "relay_url",
+      "expect": "https://relay.example.test:8443",
+      "poll": 10
+    },
+    {
+      "op": "note",
+      "text": "The commit is proven ON DISK before the footer is read, so a footer miss cannot be blamed on an unsaved relay. normalize_relay_endpoint is Url::parse().to_string() minus a trailing slash - measured identity for this input."
+    },
+    {
+      "op": "click",
+      "sel": "#btn-rail-chats"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-main"
+    },
+    {
+      "op": "note",
+      "text": "STATE 2 - relay configured. btn-rail-chats re-runs enterMain (main.js:616), which is the EXISTING event point the footer reuses; no new wiring and no timer."
+    },
+    {
+      "op": "note",
+      "text": "\u26a0\u26a0 NA-0764 (R5) - THIS ROW ACQUIRED A PRECONDITION IT DID NOT HAVE WHEN IT WAS WRITTEN, AND IT IS NOW DECLARED (cold read C-09). F1 put the reachability arm into this same footer, BELOW every reason arm but ABOVE Ready, so 'Ready. Relay: ...' now holds only while the tick's consecutive-failure count is under its threshold. This rig configures a DELIBERATELY UNREACHABLE relay, so on a slow enough box the tick could accrue failures mid-run and flip the line - turning a deterministic assertion into a race. The row below pins the precondition, so that if it ever does flip the failure names its own cause instead of looking like a footer defect."
+    },
+    {
+      "op": "exec",
+      "script": "return String(tickFails < TICK_FAIL_THRESHOLD);",
+      "expect": "true"
+    },
+    {
+      "op": "read_text",
+      "sel": "#status-line .status-left",
+      "literal": "Relay: configured \u00b7 Vault: unlocked \u00b7 Auto-lock: 60 min",
+      "poll": 15
+    },
+    {
+      "op": "note",
+      "text": "NOT DRIVEN HERE, each for a measured structural reason. ROW 1 storage: missing_home is unreachable while bootstrap() sets QSC_CONFIG_DIR before the runtime exists (lib.rs:302-311), and unsafe_parent needs the app's own 0700 qsc dir chmodded mid-session - no harness op writes or chmods the profile. ROW 2 locked: this footer lives INSIDE scr-main (index.html:156) and every lock path navigates to scr-unlock, so it is not on screen while locked; and reaching vault_locked needs a fabricated session blob no harness op can write - the DESK-side behaviour is already sealed protocol-side by na0751_facade_locked_control.rs:141-174. ROW 3 unrecognized: untestable by construction (an EIGHTH upstream reason string). All three sentences are presence-asserted in design_polish.rs (seal F1b)."
+    },
+    {
+      "op": "teardown"
+    }
   ]
 }

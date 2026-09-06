@@ -2,67 +2,330 @@
   "scenario": "f_v_debug_log_pane",
   "destructive": false,
   "steps": [
-    {"op": "note", "text": "NA-0779 (D-0048) STOP 004: Settings > Diagnostics. The runner ARMS the log (on + detailed, through debug_log_control) the first time scr-main is visible and EXPORTS it into the run dir at every teardown (the L4 capture); this scenario then drives the pane: the switch and the pill, the live list, Pause/Resume, the filter, the Copy MEASUREMENT (RULING_NA0779_002 R2 (b)), the Export button, and the switch's persistence across a relaunch."},
-    {"op": "launch"},
-    {"op": "type", "sel": "#vault-pass", "text": "na0779-fv-passphrase"},
-    {"op": "type", "sel": "#vault-confirm", "text": "na0779-fv-passphrase"},
-    {"op": "prop_eq", "sel": "#btn-vault-create", "prop": "disabled", "expect": false, "poll": 5},
-    {"op": "click", "sel": "#btn-vault-create"},
-    {"op": "poll_visible", "screen": "scr-wizard-identity"},
-    {"op": "type", "sel": "#alias-input", "text": "FV"},
-    {"op": "prop_eq", "sel": "#btn-identity-done", "prop": "disabled", "expect": false, "poll": 5},
-    {"op": "click", "sel": "#btn-identity-done"},
-    {"op": "poll_visible", "screen": "scr-main"},
-    {"op": "note", "text": "the runner armed the log on scr-main; the pill must show on scr-main BEFORE any pane is opened (the indicator arm: present iff on)"},
-    {"op": "poll_exec", "script": "return !document.getElementById('debug-log-pill').classList.contains('hidden');", "expect": true},
-    {"op": "poll_exec", "script": "return document.getElementById('debug-log-pill').textContent;", "expect": "LOG ON \u00b7 DETAILED"},
-    {"op": "click", "sel": "#btn-settings"},
-    {"op": "poll_visible", "screen": "scr-settings"},
-    {"op": "click", "sel": ".settings-rail .cat[data-pane=\"diagnostics\"]"},
-    {"op": "prop_eq", "sel": "#pane-diagnostics", "prop": "className", "expect": "pane", "poll": 5},
-    {"op": "prop_eq", "sel": "#dl-on", "prop": "checked", "expect": true, "poll": 5},
-    {"op": "prop_eq", "sel": "#dl-level-detailed", "prop": "checked", "expect": true, "poll": 5},
-    {"op": "poll_exec", "script": "return !document.getElementById('dl-live').classList.contains('hidden');", "expect": true},
-    {"op": "note", "text": "the live list: the log's own gw.log on / level_detailed events, a gateway command the pane itself calls (protection_status; settings_get is SYNC and never crosses the gateway, so it has no gw.command by design) and the ui.surface transition are the SAME lines the export carries"},
-    {"op": "poll_exec", "script": "return document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length >= 4;", "expect": true},
-    {"op": "poll_exec", "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=gw.log')>=0 && t.indexOf('c.action=on')>=0 && t.indexOf('c.action=level_detailed')>=0;", "expect": true},
-    {"op": "poll_exec", "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=ui.surface')>=0 && t.indexOf('c.screen=scr-settings')>=0;", "expect": true},
-    {"op": "poll_exec", "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=gw.command')>=0 && t.indexOf('c.name=protection_status')>=0;", "expect": true},
-    {"op": "poll_exec", "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('na0779-fv-passphrase')<0 && t.indexOf('FV')<0 && t.split('\\n').every(function(l){return l===''||/^[\\x20-\\x7e]+$/.test(l);});", "expect": true},
-    {"op": "note", "text": "THE COPY MEASUREMENT (R2 (b)): the button places the export's bytes on the clipboard via navigator.clipboard.writeText; the handler records its result in window.__qsld_dl_copy, and the clipboard is read back with readText where the webview allows it"},
-    {"op": "click", "sel": "#btn-dl-copy"},
-    {"op": "poll_exec", "script": "return String(window.__qsld_dl_copy||'').indexOf('ok:')===0;", "expect": true},
-    {"op": "exec", "script": "window.__qsld_clip=null; navigator.clipboard.readText().then(function(t){window.__qsld_clip=t.slice(0,40);}).catch(function(e){window.__qsld_clip='err:'+String(e);}); return 'fired';"},
-    {"op": "poll_exec", "script": "return window.__qsld_clip!==null && window.__qsld_clip!==undefined;", "expect": true},
-    {"op": "exec", "script": "return String(window.__qsld_clip);"},
-    {"op": "note", "text": "the row above RECORDS the read-back (the first 40 bytes of the clipboard, or the webview's refusal); the writeText result is the R2 (b) answer, the read-back its corroboration"},
-    {"op": "note", "text": "Pause / Resume and the display filter: the filter narrows what is SHOWN only"},
-    {"op": "click", "sel": "#btn-dl-pause"},
-    {"op": "read_tc", "sel": "#btn-dl-pause", "literal": "Resume"},
-    {"op": "poll_exec", "script": "return document.getElementById('dl-live').classList.contains('hidden');", "expect": true},
-    {"op": "click", "sel": "#btn-dl-pause"},
-    {"op": "read_tc", "sel": "#btn-dl-pause", "literal": "Pause"},
-    {"op": "type", "sel": "#dl-filter", "text": "gw.log"},
-    {"op": "poll_exec", "script": "var t=document.getElementById('dl-log').textContent; return t.length>0 && t.split('\\n').every(function(l){return l===''||l.indexOf('gw.log')>=0;});", "expect": true},
-    {"op": "note", "text": "THE EXPORT BUTTON: the directory the operator chose (the run dir here, never the real HOME -- the isolation bracket), one file, its digest verified by the runner's own capture at teardown as well"},
-    {"op": "clear_type", "sel": "#dl-export-dir", "text": "{run_dir}"},
-    {"op": "click", "sel": "#btn-dl-export"},
-    {"op": "poll_exec", "script": "return document.getElementById('dl-export-result').textContent.indexOf('qsl-desktop-debug-log-')>=0;", "expect": true},
-    {"op": "poll_exec", "script": "return document.getElementById('dl-export-result').textContent.indexOf('sha256 ')>=0;", "expect": true},
-    {"op": "teardown"},
-    {"op": "note", "text": "launch #2 on the persisted profile: the switch PERSISTS (RULING 002 R3) -- the pill shows after unlock; the contents did NOT persist -- the new session's record begins with gw.unlock"},
-    {"op": "launch"},
-    {"op": "poll_visible", "screen": "scr-unlock"},
-    {"op": "type", "sel": "#unlock-pass", "text": "na0779-fv-passphrase"},
-    {"op": "click", "sel": "#btn-unlock"},
-    {"op": "poll_visible", "screen": "scr-main"},
-    {"op": "poll_exec", "script": "return !document.getElementById('debug-log-pill').classList.contains('hidden');", "expect": true},
-    {"op": "click", "sel": "#btn-settings"},
-    {"op": "poll_visible", "screen": "scr-settings"},
-    {"op": "click", "sel": ".settings-rail .cat[data-pane=\"diagnostics\"]"},
-    {"op": "poll_exec", "script": "var t=document.getElementById('dl-log').textContent; var first=t.split('\\n').filter(function(l){return l.indexOf('seq=')===0;})[0]||''; return first.indexOf('seq=1 ')===0 && first.indexOf('ev=gw.unlock')>=0;", "expect": true},
-    {"op": "note", "text": "the runner re-arms the log on THIS launch too (gw.log on / level_detailed appear again by the harness's design); what proves the contents did not persist is the first line above (seq=1 gw.unlock) and the ABSENCE of the previous session's export events"},
-    {"op": "poll_exec", "script": "return document.getElementById('dl-log').textContent.indexOf('c.action=export')<0;", "expect": true},
-    {"op": "teardown"}
+    {
+      "op": "note",
+      "text": "NA-0779 (D-0048) STOP 004: Settings > Diagnostics. The runner ARMS the log (on + detailed, through debug_log_control) the first time scr-main is visible and EXPORTS it into the run dir at every teardown (the L4 capture); this scenario then drives the pane: the switch and the pill, the live list, Pause/Resume, the filter, the Copy MEASUREMENT (RULING_NA0779_002 R2 (b)), the Export button, and the switch's persistence across a relaunch."
+    },
+    {
+      "op": "launch"
+    },
+    {
+      "op": "type",
+      "sel": "#vault-pass",
+      "text": "na0779-fv-passphrase"
+    },
+    {
+      "op": "type",
+      "sel": "#vault-confirm",
+      "text": "na0779-fv-passphrase"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#btn-vault-create",
+      "prop": "disabled",
+      "expect": false,
+      "poll": 5
+    },
+    {
+      "op": "click",
+      "sel": "#btn-vault-create"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-wizard-identity"
+    },
+    {
+      "op": "type",
+      "sel": "#alias-input",
+      "text": "FV"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#btn-identity-done",
+      "prop": "disabled",
+      "expect": false,
+      "poll": 5
+    },
+    {
+      "op": "click",
+      "sel": "#btn-identity-done"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-main"
+    },
+    {
+      "op": "note",
+      "text": "the runner armed the log on scr-main; the STATUS BAR's right end must read 'Logging: on . detailed' on scr-main (18c L5: the pill is gone; the bar speaks)"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.querySelector('#status-line .status-right').textContent;",
+      "expect": "Logging: on \u00b7 detailed"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-settings"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-settings"
+    },
+    {
+      "op": "click",
+      "sel": ".settings-rail .cat[data-pane=\"diagnostics\"]"
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#pane-diagnostics",
+      "prop": "className",
+      "expect": "pane pane-fill",
+      "poll": 5
+    },
+    {
+      "op": "poll_exec",
+      "script": "var f=document.querySelector('#scr-settings footer.status-line'); return f ? f.querySelector('.status-left').textContent.indexOf('Relay: not configured')===0 && f.querySelector('.status-right').textContent : 'no bar';",
+      "expect": "Logging: on \u00b7 detailed"
+    },
+    {
+      "op": "note",
+      "text": "18c L1, RENDERED AT THE MOCKUP's TWO FRAMES: the window is resized to 1120x760 (wide) and 840x600 (narrow); the events list must be the ONLY element that changes height (the card, the toolbar row and the export row keep theirs); a screenshot of each frame is frozen in the run dir for the comparison against the mockup"
+    },
+    {
+      "op": "resize",
+      "width": 1120,
+      "height": 760
+    },
+    {
+      "op": "poll_exec",
+      "script": "var l=document.getElementById('dl-log').getBoundingClientRect(); var c=document.querySelector('.dl-card').getBoundingClientRect(); window.__qsld_wide={log:Math.round(l.height), card:Math.round(c.height), row:Math.round(document.querySelector('.dl-listhead').getBoundingClientRect().height), exp:Math.round(document.querySelector('.dl-exportrow').getBoundingClientRect().height)}; return l.height > 250;",
+      "expect": true
+    },
+    {
+      "op": "screenshot",
+      "name": "diagnostics_wide_1120x760.png"
+    },
+    {
+      "op": "resize",
+      "width": 840,
+      "height": 600
+    },
+    {
+      "op": "poll_exec",
+      "script": "var l=document.getElementById('dl-log').getBoundingClientRect(); var c=document.querySelector('.dl-card').getBoundingClientRect(); var w=window.__qsld_wide||{}; return l.height < w.log - 100 && Math.round(c.height)===w.card && Math.round(document.querySelector('.dl-listhead').getBoundingClientRect().height)===w.row && Math.round(document.querySelector('.dl-exportrow').getBoundingClientRect().height)===w.exp;",
+      "expect": true
+    },
+    {
+      "op": "exec",
+      "script": "var l=document.getElementById('dl-log').getBoundingClientRect(); var w=window.__qsld_wide; return JSON.stringify({wide:w, narrow_log:Math.round(l.height)});"
+    },
+    {
+      "op": "screenshot",
+      "name": "diagnostics_narrow_840x600.png"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var h=[]; document.querySelectorAll('#pane-diagnostics .dl-ctl, #pane-diagnostics .dl-seg').forEach(function(e){h.push(Math.round(e.getBoundingClientRect().height));}); return h.length>=7 && h.every(function(x){return x===h[0];});",
+      "expect": true
+    },
+    {
+      "op": "resize",
+      "width": 1120,
+      "height": 760
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#dl-on",
+      "prop": "checked",
+      "expect": true,
+      "poll": 5
+    },
+    {
+      "op": "prop_eq",
+      "sel": "#dl-level-detailed",
+      "prop": "className",
+      "expect": "dl-seg-item on",
+      "poll": 5
+    },
+    {
+      "op": "note",
+      "text": "the live list: the log's own gw.log on / level_detailed events, a gateway command the pane itself calls (protection_status; settings_get is SYNC and never crosses the gateway, so it has no gw.command by design) and the ui.surface transition are the SAME lines the export carries"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('dl-log').textContent.split('\\n').filter(function(l){return l.indexOf('seq=')===0;}).length >= 4;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=gw.log')>=0 && t.indexOf('c.action=on')>=0 && t.indexOf('c.action=level_detailed')>=0;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=ui.surface')>=0 && t.indexOf('c.screen=scr-settings')>=0;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('ev=gw.command')>=0 && t.indexOf('c.name=protection_status')>=0;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.indexOf('na0779-fv-passphrase')<0 && t.indexOf('FV')<0 && t.split('\\n').every(function(l){return l===''||/^[\\x20-\\x7e]+$/.test(l);});",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "THE COPY MEASUREMENT (R2 (b)): the button places the export's bytes on the clipboard via navigator.clipboard.writeText; the handler records its result in window.__qsld_dl_copy, and the clipboard is read back with readText where the webview allows it"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-copy"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return String(window.__qsld_dl_copy||'').indexOf('ok:')===0;",
+      "expect": true
+    },
+    {
+      "op": "exec",
+      "script": "window.__qsld_clip=null; navigator.clipboard.readText().then(function(t){window.__qsld_clip=t.slice(0,40);}).catch(function(e){window.__qsld_clip='err:'+String(e);}); return 'fired';"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return window.__qsld_clip!==null && window.__qsld_clip!==undefined;",
+      "expect": true
+    },
+    {
+      "op": "exec",
+      "script": "return String(window.__qsld_clip);"
+    },
+    {
+      "op": "note",
+      "text": "the row above RECORDS the read-back (the first 40 bytes of the clipboard, or the webview's refusal); the writeText result is the R2 (b) answer, the read-back its corroboration"
+    },
+    {
+      "op": "note",
+      "text": "Pause / Resume and the display filter: the filter narrows what is SHOWN only"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-pause"
+    },
+    {
+      "op": "read_tc",
+      "sel": "#btn-dl-pause",
+      "literal": "Resume"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-pause"
+    },
+    {
+      "op": "read_tc",
+      "sel": "#btn-dl-pause",
+      "literal": "Pause"
+    },
+    {
+      "op": "type",
+      "sel": "#dl-filter",
+      "text": "gw.log"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; return t.length>0 && t.split('\\n').every(function(l){return l===''||l.indexOf('gw.log')>=0;});",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "THE EXPORT BUTTON: the directory the operator chose (the run dir here, never the real HOME -- the isolation bracket), one file, its digest verified by the runner's own capture at teardown as well"
+    },
+    {
+      "op": "clear_type",
+      "sel": "#dl-export-dir",
+      "text": "{run_dir}"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-dl-export"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('dl-export-result').textContent.indexOf('qsl-desktop-debug-log-')>=0;",
+      "expect": true
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('dl-export-result').textContent.indexOf('sha256 ')>=0;",
+      "expect": true
+    },
+    {
+      "op": "teardown"
+    },
+    {
+      "op": "note",
+      "text": "launch #2 on the persisted profile: the switch PERSISTS (RULING 002 R3) -- the bar's right end reads 'Logging: on . detailed' on the UNLOCK screen already (the setting needs no vault) and on scr-main after unlock; the contents did NOT persist -- the new session's record begins with gw.unlock"
+    },
+    {
+      "op": "launch"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-unlock"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var f=document.querySelector('#scr-unlock footer.status-line'); return f ? f.querySelector('.status-left').textContent.indexOf('Vault: locked')>=0 && f.querySelector('.status-right').textContent : 'no bar';",
+      "expect": "Logging: on \u00b7 detailed"
+    },
+    {
+      "op": "type",
+      "sel": "#unlock-pass",
+      "text": "na0779-fv-passphrase"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-unlock"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-main"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.querySelector('#status-line .status-right').textContent;",
+      "expect": "Logging: on \u00b7 detailed"
+    },
+    {
+      "op": "click",
+      "sel": "#btn-settings"
+    },
+    {
+      "op": "poll_visible",
+      "screen": "scr-settings"
+    },
+    {
+      "op": "click",
+      "sel": ".settings-rail .cat[data-pane=\"diagnostics\"]"
+    },
+    {
+      "op": "poll_exec",
+      "script": "var t=document.getElementById('dl-log').textContent; var first=t.split('\\n').filter(function(l){return l.indexOf('seq=')===0;})[0]||''; return first.indexOf('seq=1 ')===0 && first.indexOf('ev=gw.unlock')>=0;",
+      "expect": true
+    },
+    {
+      "op": "note",
+      "text": "the runner re-arms the log on THIS launch too (gw.log on / level_detailed appear again by the harness's design); what proves the contents did not persist is the first line above (seq=1 gw.unlock) and the ABSENCE of the previous session's export events"
+    },
+    {
+      "op": "poll_exec",
+      "script": "return document.getElementById('dl-log').textContent.indexOf('c.action=export')<0;",
+      "expect": true
+    },
+    {
+      "op": "teardown"
+    }
   ]
 }

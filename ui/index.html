@@ -99,6 +99,7 @@
     <button id="btn-unlock" class="primary full">Unlock</button>
     <div class="linkrow"><a id="link-forgot" href="#" class="link-danger">Delete vault?</a></div>
   </div>
+  <footer class="status-line status-bar" data-status-bar="unlock"><span class="status-left">Relay: not configured &middot; Vault: locked &middot; Auto-lock: 60 min</span><span class="status-right"></span></footer>
 </section>
 
 <section id="scr-erase" class="screen hidden">
@@ -234,13 +235,12 @@
        by the pin itself while this notice was being added. -->
   <p id="notice-line" class="status-line-quiet hidden"><i class="icon"></i><span class="status-text"></span><button id="btn-notice-dismiss" class="secondary">Dismiss</button></p>
   <p id="tick-status" class="status-line-quiet hidden"><i class="icon"></i><span class="status-text"></span></p>
-  <footer id="status-line" class="status-line">No relay configured.</footer>
+  <!-- NA-0779 (D-0048, mockup 18c L5/L6; RBANK_status_footer_todo F2/F3): THE STATUS BAR. State words only at the
+       left -- Relay / Vault / Auto-lock from measured signals, never a host or an address -- and "Logging: on . level"
+       at the right while the log is on. The same bar is repeated on the Settings and unlock screens (below). -->
+  <footer id="status-line" class="status-line status-bar"><span class="status-left">Relay: not configured &middot; Vault: unlocked &middot; Auto-lock: 60 min</span><span class="status-right"></span></footer>
 </section>
 
-<!-- NA-0779 (D-0048): THE INDICATOR. A pill on EVERY screen while the log is on (RULING 002 R3: the
-     switch persists). It is a body-level element BESIDE the status footer, never a third source of the
-     footer's text (NA-0752's two-source line is untouched). -->
-<span id="debug-log-pill" class="dl-pill hidden" aria-live="polite">LOG ON</span>
 <section id="scr-settings" class="screen hidden">
   <div class="settings-layout">
     <nav class="rail">
@@ -513,54 +513,41 @@
         </div>
       </div>
       <!-- NA-0779 (spine D-1422, desktop D-0048): Settings > Diagnostics -- THE DEBUG LOG.
-           Layout authority: mockup 18b (docs/mockups/mockup-18b-diagnostics-pane.html, banked by sha;
-           RULING_NA0779_002 R2 (a)(b), R3). Colour from the shipped tokens only. The switch persists
-           across restarts; the log's contents never do. The list renders the SAME lines the export
-           carries -- there is no second, richer view. -->
-      <div id="pane-diagnostics" class="pane hidden">
+           Layout authority: mockup 18c (docs/mockups/mockup-18c-diagnostics-proposal.html, blessed on its bytes,
+           RBANK_mockup_18c_blessed_20260905 L1-L7), which supersedes 18b's layout; colour from the shipped tokens.
+           The Invitations idiom: the pane fills the window and the events list is the ONLY element that grows. -->
+      <div id="pane-diagnostics" class="pane pane-fill hidden">
         <div class="pane-header"><div class="pane-head-row"><h2>Diagnostics</h2></div></div>
-        <p class="muted">A debug log of what this app does, for you and for the people who help you. It records event names, outcomes, reason codes, counters and timings. Never a name, a code, a token, an address or a message.</p>
-        <div class="pane-form">
-          <div class="pane-sect">
-            <h3>Debug log</h3>
-            <p class="hint">Off by default. The switch stays across restarts; what was logged never does: the log lives in memory, is cleared when the vault locks, and is wiped by Erase.</p>
-            <label class="inline"><input type="checkbox" id="dl-on"> Keep a debug log</label>
-            <div class="ctlrow dl-levelrow">
-              <span class="inline-label">Level</span>
-              <label class="inline"><input type="radio" name="dl-level" id="dl-level-events" value="events" checked> Events</label>
-              <label class="inline"><input type="radio" name="dl-level" id="dl-level-detailed" value="detailed"> Detailed</label>
-            </div>
-            <p class="hint">Events: transitions and outcomes. Detailed: every relay call, tick beat, pull, lease, frame, ratchet step and guard.</p>
-            <p id="dl-counts" class="status-line-quiet"><i class="icon"></i><span class="status-text">In memory: 0 events, 0 dropped.</span></p>
+        <p class="muted dl-sub">A debug log of what the app does. Never a name, a code, a token, an address or a message.</p>
+        <div class="dl-card">
+          <div class="dl-cardrow">
+            <label class="dl-switch"><input type="checkbox" id="dl-on" class="dl-toggle" aria-label="Debug Log"> Debug Log</label>
+            <div class="dl-levelrow"><span class="dl-muted">Level</span><span class="dl-seg" role="radiogroup" aria-label="Level"><a id="dl-level-events" class="dl-seg-item on" role="radio" aria-checked="true" tabindex="0" data-level="events">Events</a><a id="dl-level-detailed" class="dl-seg-item" role="radio" aria-checked="false" tabindex="0" data-level="detailed">Detailed</a></span></div>
           </div>
-          <div class="pane-sect">
-            <div class="pane-head-row"><h3>Live events <span id="dl-live" class="dl-live hidden">LIVE</span></h3>
-              <div class="ctlrow">
-                <input type="text" id="dl-filter" class="dl-filter" autocomplete="off" spellcheck="false" placeholder="filter: event name or code" aria-label="Filter the shown events">
-                <button id="btn-dl-pause" class="secondary">Pause</button>
-              </div>
-            </div>
-            <pre id="dl-log" class="dl-log" aria-label="Recent events"></pre>
-            <p class="hint">The filter narrows what this list shows. It never changes what is kept, exported or copied: those are always the whole log. While paused the list stops following; Resume jumps to the newest.</p>
-            <div class="ctlrow dl-exportrow">
-              <span class="inline-label">Export to</span>
-              <input type="text" id="dl-export-dir" class="full" autocomplete="off" spellcheck="false" aria-label="Export directory">
-            </div>
-            <div class="btnrow">
-              <button id="btn-dl-clear" class="secondary">Clear</button>
-              <button id="btn-dl-copy" class="secondary">Copy</button>
-              <button id="btn-dl-export" class="primary">Export</button>
-            </div>
-            <p id="dl-export-result" class="status-line-quiet hidden"><i class="icon"></i><span class="status-text"></span></p>
-            <p class="hint">Export writes one text file, named by the time and a random label, with a checksum on its last line. Copy places exactly the same bytes on the clipboard.</p>
+          <p id="dl-counts" class="dl-counts">0 events in memory &middot; 0 dropped &middot; kept in memory only, cleared when the vault locks</p>
+        </div>
+        <div class="dl-listhead">
+          <h3>Live events</h3>
+          <div class="dl-tools">
+            <input type="text" id="dl-filter" class="dl-ctl dl-filter" autocomplete="off" spellcheck="false" placeholder="filter by event name or code" aria-label="Filter the shown events">
+            <button id="btn-dl-pause" class="secondary dl-ctl">Pause</button>
+            <button id="btn-dl-copy" class="secondary dl-ctl">Copy</button>
+            <button id="btn-dl-clear" class="secondary dl-ctl">Clear</button>
           </div>
         </div>
+        <pre id="dl-log" class="dl-log" aria-label="Recent events"></pre>
+        <div class="dl-exportrow">
+          <input type="text" id="dl-export-dir" class="dl-ctl dl-path" autocomplete="off" spellcheck="false" placeholder="/home/&lt;user&gt;/Documents" aria-label="Export directory">
+          <button id="btn-dl-export" class="primary dl-ctl">Export</button>
+        </div>
+        <p id="dl-export-result" class="dl-result hidden"></p>
       </div>
       <div id="pane-appearance" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>Appearance</h2></div></div><p class="muted">Not yet — coming in a later update.</p></div>
       <div id="pane-notifications" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>Notifications</h2></div></div><p class="muted">Not yet — coming in a later update.</p></div>
       <div id="pane-about" class="pane hidden"><div class="pane-header"><div class="pane-head-row"><h2>About</h2></div></div><p id="about-name" class="sect-status"></p><p id="about-text" class="hint"></p></div>
     </main>
   </div>
+  <footer class="status-line status-bar" data-status-bar="settings"><span class="status-left">Relay: not configured &middot; Vault: unlocked &middot; Auto-lock: 60 min</span><span class="status-right"></span></footer>
 </section>
 
 <!-- ===================================================================

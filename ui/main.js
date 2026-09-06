@@ -114,6 +114,7 @@ function show(id) {
   for (const s of SCREENS) byId(s).classList.toggle("hidden", s !== id);
   currentScreen = id;
   if (id !== "scr-settings") dlPaneVisibility(false); // NA-0779 (`D-0048`)
+  paintStatusFooter(lastFooterReason, lastFooterRelayUrl); // NA-0779 (18c L5): the bar follows the surface
   // Item 15 (R1): the backend disables the state-dependent menu entries
   // (File > Settings / Lock now) unless an unlocked surface is showing.
   // R-14: the measurement rides the same carrier.
@@ -247,6 +248,7 @@ function adoptSettings(cfg) {
   // NA-0779 (`D-0048`): the debug log's switch and level ride the same read.
   dlAdopt(cfg.debug_log || null);
   if (cfg.autolock_minutes === 0) dlEmit("ui.autolock", { decision: "zero_disabled" });
+  paintStatusFooter(lastFooterReason, lastFooterRelayUrl); // NA-0779 (18c L6): the auto-lock word
 }
 
 // ---- failed-attempts capture (binding D596 rule, unchanged) --------------
@@ -265,6 +267,14 @@ async function showUnlockScreen(next) {
     observedFailedUnlocks = s.failed_unlocks;
   } catch (_) { /* fail-quiet: the alert simply stays silent */ }
   show("scr-unlock");
+  // NA-0779 (18c L5): the bar on the unlock screen -- the stored switch and autolock, the stored relay address; the
+  // vault's word is "locked" by the surface. Nothing here needs the vault.
+  dlRefreshSwitch();
+  try {
+    const cfg = await invoke("relay_config_get");
+    lastFooterRelayUrl = cfg.relay_url || "";
+  } catch (_) { /* the bar keeps its last address */ }
+  paintStatusFooter("vault_locked", lastFooterRelayUrl);
 }
 
 // unlock routing: where a successful unlock goes (S1 → wizard identity,
@@ -675,10 +685,22 @@ byId("btn-erase-cancel").addEventListener("click", () => showUnlockScreen(unlock
 //
 // PRECEDENCE IS WORST-FIRST and it is load-bearing: the first matching row
 // wins, so a storage fault is never hidden behind a cheerful "Ready."
-const STATUS_FOOTER_STORAGE = "Storage problem — check Settings › Vault.";
-const STATUS_FOOTER_LOCKED = "Locked — unlock to connect.";
-const STATUS_FOOTER_UNKNOWN = "Status unknown — please report this.";
-const STATUS_FOOTER_NO_RELAY = "No relay configured — add one in Settings › Relay.";
+// NA-0779 (D-0048, mockup 18c L6; RBANK_status_footer_todo F2/F3): the footer is now THE STATUS BAR, and it speaks
+// in STATE WORDS ONLY -- distinct words for distinct causes, never a host or an address, no "connected" until a
+// call has succeeded, no red (unreachable is the accent tier). NA-0752's two-source line (the desk's reason and the
+// relay config) still feeds it; the words below are its vocabulary. The three undrivable sentences of NA-0752
+// became the three undrivable WORDS, pinned by the same test.
+const STATUS_FOOTER_STORAGE = "storage error";   // the vault's word when the desk reports missing_home / unsafe_parent
+const STATUS_FOOTER_LOCKED = "locked";           // the vault's word when the desk reports vault_locked (or on a locked surface)
+const STATUS_FOOTER_UNKNOWN = "unknown";         // the relay's word when the desk answers nothing or an unrecognized reason
+const STATUS_FOOTER_NO_RELAY = "not configured"; // the relay's word with no relay address stored
+const STATUS_RELAY_CONFIGURED = "configured";    // an address is stored; no call has succeeded yet (F3)
+const STATUS_RELAY_CONNECTED = "connected";      // a call succeeded and nothing failed since
+const STATUS_RELAY_NOT_TRUSTED = "not trusted";  // the last test or probe reported cert_not_trusted (TLS is fail-closed)
+// Measured signals behind the relay's word. `relayProven` flips on a scan that reaches the relay and does not fail
+// (recordScanOutcome), or a Server-pane test / probe that reports reachable; it resets when the stored address changes.
+let relayProven = false;
+let relayTrust = null;
 
 // NA-0764 (R5): the footer's last known inputs. The tick repaints the SAME line
 // when its failure counter crosses the threshold, and it must not re-invoke the
@@ -731,24 +753,33 @@ let lastFooterRelayUrl = "";
 // resets and this function's last arm answers again. A "Reconnected" line was
 // refused for this lane.
 function statusFooterLine(reason, relayUrl, tickTrouble) {
+  // The vault's word.
+  let vault = "unlocked";
   if (reason === "missing_home" || reason === "unsafe_parent") {
-    return STATUS_FOOTER_STORAGE;
+    vault = STATUS_FOOTER_STORAGE;
+  } else if (reason === "vault_locked" || !(currentScreen === "scr-main" || currentScreen === "scr-settings")) {
+    vault = STATUS_FOOTER_LOCKED;
   }
-  if (reason === "vault_locked") {
-    return STATUS_FOOTER_LOCKED;
-  }
-  // The honest tripwire: an EIGHTH upstream reason string, or a desk that did
-  // not answer at all. A typed failure must never arrive as silence.
-  if (reason === null || reason === "unrecognized") {
-    return STATUS_FOOTER_UNKNOWN;
-  }
+  // The relay's word, in the ruled precedence: a problem the user can act on before the outage, the outage before
+  // the connected word (NA-0764 R5), and "connected" only on a measured success (F3).
+  let relay;
   if (!relayUrl) {
-    return STATUS_FOOTER_NO_RELAY;
+    relay = STATUS_FOOTER_NO_RELAY;
+  } else if (reason === "missing_home" || reason === "unsafe_parent" || reason === null || reason === "unrecognized") {
+    relay = STATUS_FOOTER_UNKNOWN;
+  } else if (reason === "vault_locked" || vault === STATUS_FOOTER_LOCKED) {
+    relay = STATUS_RELAY_CONFIGURED;
+  } else if (relayTrust === "cert_not_trusted") {
+    relay = STATUS_RELAY_NOT_TRUSTED;
+  } else if (tickTrouble) {
+    relay = TICK_UNREACHABLE_COPY;
+  } else if (relayProven) {
+    relay = STATUS_RELAY_CONNECTED;
+  } else {
+    relay = STATUS_RELAY_CONFIGURED;
   }
-  if (tickTrouble) {
-    return TICK_UNREACHABLE_COPY;
-  }
-  return `Ready. Relay: ${relayUrl}`;
+  const autolock = autolockMinutes === 0 ? "off" : autolockMinutes + " min";
+  return "Relay: " + relay + " \u00b7 Vault: " + vault + " \u00b7 Auto-lock: " + autolock;
 }
 
 // The footer's TIER. Accent, never danger: an unreachable relay needs
@@ -756,9 +787,16 @@ function statusFooterLine(reason, relayUrl, tickTrouble) {
 // NA-0763's ruling, carried forward unchanged rather than reversed here.
 function paintStatusFooter(reason, relayUrl) {
   const trouble = tickFails >= TICK_FAIL_THRESHOLD;
-  const el = byId("status-line");
-  el.textContent = statusFooterLine(reason, relayUrl, trouble);
-  el.classList.toggle("is-trouble", trouble && !!relayUrl && isPlainReason(reason));
+  const left = statusFooterLine(reason, relayUrl, trouble);
+  const right = dl.on ? "Logging: on \u00b7 " + dl.level : "";
+  // NA-0779 (18c L5): the same bar on every screen that carries one; one painter, one text.
+  for (const el of document.querySelectorAll("footer.status-line")) {
+    const l = el.querySelector(".status-left");
+    const r = el.querySelector(".status-right");
+    if (l) l.textContent = left;
+    if (r) r.textContent = right;
+    el.classList.toggle("is-trouble", trouble && !!relayUrl && isPlainReason(reason));
+  }
 }
 
 // The outage tier paints only where the outage arm can actually render — the
@@ -800,6 +838,7 @@ async function enterMain() {
   } catch (_) {
     reason = null;
   }
+  if (relayUrl !== lastFooterRelayUrl) { relayProven = false; relayTrust = null; } // a new address: nothing proven yet
   lastFooterReason = reason;
   lastFooterRelayUrl = relayUrl;
   paintStatusFooter(reason, relayUrl);
@@ -1691,6 +1730,7 @@ function renderServerOutcome(res, committed) {
   doc.innerHTML = "";
   switch (res.kind) {
     case "reachable": {
+      relayProven = true; relayTrust = null; // NA-0779 (F3): a measured success
       setBanner(status, "neutral", "Connected");
       const bearer = res.auth_mode === "bearer";
       detail.textContent = bearer
@@ -1714,6 +1754,7 @@ function renderServerOutcome(res, committed) {
         : "This app sent no token, and the relay requires one. Ask the operator for one, set it above, and test again.";
       break;
     case "cert_not_trusted":
+      relayTrust = "cert_not_trusted"; // NA-0779 (F3): a distinct word for a distinct cause
       setBanner(status, "accent", "Certificate not trusted");
       detail.textContent =
         "This relay presented a certificate your computer doesn't recognise. That's expected if the operator runs their own certificate authority — and it's also what an interception attack looks like. Ask the operator for their CA certificate and add it above, or install it on this computer.";
@@ -1918,6 +1959,7 @@ byId("btn-relay-test").addEventListener("click", async () => {
     // (4) PERSIST ONLY ON PROOF. Connected is the ONLY accepting outcome; every
     //     other variant is a rung that failed, and a failed rung saves nothing.
     if (res && res.kind === "reachable") {
+      relayProven = true; relayTrust = null; // NA-0779 (F3)
       const fail = await persistProvenSettings(proven);
       if (fail) {
         handleFailedCommit(fail);
@@ -2008,8 +2050,7 @@ const TICK_DEFAULT = "instant";       // the blessed default, held in code
 const TICK_CHECK_MS = 250;            // the checker's period => beat granularity
 const TICK_BACKOFF_CEIL_MS = 900000;  // R7: 900 s
 const TICK_FAIL_THRESHOLD = 3;        // R7: consecutive scan failures before we speak
-const TICK_UNREACHABLE_COPY =
-  "Can't reach the relay — still trying. Contacts may not finish connecting until it's back.";
+const TICK_UNREACHABLE_COPY = "unreachable"; // NA-0779 (18c L6, F3): the relay's state WORD; the sentence retired with the pill
 
 let tickTempo = TICK_DEFAULT;
 let tickOverrideMs = null;   // the TEST-ONLY seam; null in every ordinary run
@@ -3982,7 +4023,7 @@ function recordScanOutcome(ev, marks) {
   // would report an outage it never observed.
   if (marks.attempted > 0) {
     if (marks.failed === marks.attempted) tickFails += 1;
-    else tickFails = 0;
+    else { tickFails = 0; relayProven = true; } // NA-0779 (F3): a call succeeded -- the bar may say "connected"
   }
   renderTickStatus();
   tickMark();
@@ -4096,43 +4137,39 @@ document.addEventListener("keydown", (ev) => {
   await route();
 })();
 
-// ===== NA-0779 (spine `D-1422`, desktop `D-0048`): THE DEBUG LOG -- the pane, the pill, the ui.* sources =====
-// The switch and the level are a STORED SETTING (settings.json, the 0600 writer) read at unlock; this
-// file MIRRORS them so a ui.* event costs nothing while the log is off, and the backend is the truth on
-// every read. The list renders the SAME lines the export carries (no second view); the filter narrows the
-// DISPLAY only; Copy places exactly the export's bytes on the clipboard. RULING_NA0779_002 R2 (b), MEASURED:
-// `navigator.clipboard.writeText` works in this webview within a fresh activation -- NA-0778 measured it
-// (:2461) and the invite code's copy link relies on it; the export's bytes come from the backend in one
-// in-memory call, and the harness re-measures the whole gesture (f_v_debug_log_pane).
+// ===== NA-0779 (spine `D-1422`, desktop `D-0048`): THE DEBUG LOG -- the pane (mockup 18c), the bar's right end, the ui.* sources =====
+// The switch and the level are a STORED SETTING (settings.json, the 0600 writer) read at unlock; this file MIRRORS
+// them so a ui.* event costs nothing while the log is off, and the backend is the truth on every read. The list
+// renders the SAME lines the export carries (no second view); the filter narrows the DISPLAY only; Copy places
+// exactly the export's bytes on the clipboard. RULING_NA0779_002 R2 (b), MEASURED: writeText works in this webview
+// (the invite code's copy link relies on it; the driver measured it again); readText is refused by the webview.
+// 18c (RBANK_mockup_18c_blessed_20260905): no pill -- the bar's right end says "Logging: on . level" while on.
 const DL_POLL_MS = 500;
 const DL_CLIENT_CAP = 8192;
 const dl = { on: false, level: "events", paused: false, lastSeq: 0, lines: [], timer: null, filter: "" };
 let dlLastGate = null;
 
-function dlPill() {
-  const pill = byId("debug-log-pill");
-  if (!pill) return;
-  pill.textContent = dl.on ? ("LOG ON \u00b7 " + (dl.level === "detailed" ? "DETAILED" : "EVENTS")) : "";
-  pill.classList.toggle("hidden", !dl.on);
-}
 function dlAdopt(setting) {
   const s = setting || { on: false, level: "events" };
   dl.on = !!s.on;
   dl.level = s.level === "detailed" ? "detailed" : "events";
-  dlPill();
   const cb = byId("dl-on");
   if (cb) cb.checked = dl.on;
-  const r = byId(dl.level === "detailed" ? "dl-level-detailed" : "dl-level-events");
-  if (r) r.checked = true;
+  for (const a of document.querySelectorAll(".dl-seg-item")) {
+    const on = a.dataset.level === dl.level;
+    a.classList.toggle("on", on);
+    a.setAttribute("aria-checked", on ? "true" : "false");
+  }
+  paintStatusFooter(lastFooterReason, lastFooterRelayUrl);
 }
 async function dlRefreshSwitch() {
   try {
     const cfg = await tauriInvoke("settings_get");
-    dlAdopt(cfg.debug_log || null);
-  } catch (_) { /* the pill keeps its last state; the next read corrects it */ }
+    adoptSettings(cfg);
+  } catch (_) { /* the bar keeps its last state; the next read corrects it */ }
 }
-// The ui.* door. Fire-and-forget through the RAW invoke: no busy indicator, no await in a hot path. A
-// refusal (a name or value outside the closed vocabulary) is the backend's to record; nothing here retries.
+// The ui.* door. Fire-and-forget through the RAW invoke: no busy indicator, no await in a hot path. A refusal (a
+// name or value outside the closed vocabulary) is the backend's to record; nothing here retries.
 function dlEmit(name, fields) {
   if (!dl.on) return;
   tauriInvoke("debug_log_event", { name, fields }).catch(() => {});
@@ -4156,10 +4193,15 @@ function dlRender() {
   el.textContent = shown.map((l) => l.line).join("\n");
   if (!dl.paused) el.scrollTop = el.scrollHeight;
 }
+function dlSince(ms) {
+  if (ms == null) return "";
+  const s = Math.floor(ms / 1000);
+  return " \u00b7 " + (s < 120 ? s + " s" : Math.floor(s / 60) + " min") + " since unlock";
+}
 function dlCounts(r) {
-  const t = byId("dl-counts").querySelector(".status-text");
-  const since = r.since_unlock_ms == null ? "" : ", " + Math.floor(r.since_unlock_ms / 1000) + " s since unlock";
-  t.textContent = "In memory: " + r.buffered + " events, " + r.dropped + " dropped" + since + ".";
+  byId("dl-counts").textContent =
+    r.buffered + " events in memory \u00b7 " + r.dropped + " dropped" + dlSince(r.since_unlock_ms) +
+    " \u00b7 kept in memory only, cleared when the vault locks";
 }
 async function dlPoll() {
   if (dl.paused) return;
@@ -4178,7 +4220,6 @@ function dlPaneVisibility(visible) {
     dl.lines = [];
     dlPoll();
     dl.timer = setInterval(dlPoll, DL_POLL_MS);
-    byId("dl-live").classList.toggle("hidden", dl.paused);
   }
   if (!visible && dl.timer) {
     clearInterval(dl.timer);
@@ -4187,14 +4228,10 @@ function dlPaneVisibility(visible) {
 }
 async function refreshDiagnosticsPane() {
   await dlRefreshSwitch();
-  const dir = byId("dl-export-dir");
-  if (dir && dir.value === "") {
-    try { dir.value = await tauriInvoke("home_dir"); } catch (_) { dir.value = ""; }
-  }
   dlPaneVisibility(true);
 }
-// The switch by PUSH: any caller of debug_log_control (the pane, the harness, a future window)
-// moves the pill here at once -- the same carrier as the menu events above.
+// The switch by PUSH: any caller of debug_log_control (the pane, the harness, a future window) moves the bar's
+// right end at once -- the same carrier as the menu events above.
 if (window.__TAURI__.event && window.__TAURI__.event.listen) {
   window.__TAURI__.event.listen("debug-log-switch", (ev) => { if (ev && ev.payload) dlAdopt(ev.payload); });
 }
@@ -4204,19 +4241,21 @@ byId("dl-on").addEventListener("change", async () => {
     dlAdopt(r);
   } catch (_) { dlRefreshSwitch(); }
 });
-for (const id of ["dl-level-events", "dl-level-detailed"]) {
-  byId(id).addEventListener("change", async () => {
-    const action = byId("dl-level-detailed").checked ? "level_detailed" : "level_events";
+// The level as a two-way segment (18c L2): the Invitations chips' idiom -- anchors with a role, never buttons.
+for (const a of document.querySelectorAll(".dl-seg-item")) {
+  const pick = async () => {
+    const action = a.dataset.level === "detailed" ? "level_detailed" : "level_events";
     try {
       const r = await invoke("debug_log_control", { action });
       dlAdopt(r);
     } catch (_) { dlRefreshSwitch(); }
-  });
+  };
+  a.addEventListener("click", pick);
+  a.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); pick(); } });
 }
 byId("btn-dl-pause").addEventListener("click", () => {
   dl.paused = !dl.paused;
   byId("btn-dl-pause").textContent = dl.paused ? "Resume" : "Pause";
-  byId("dl-live").classList.toggle("hidden", dl.paused);
   if (!dl.paused) dlPoll();
 });
 byId("dl-filter").addEventListener("input", () => {
@@ -4228,10 +4267,16 @@ byId("btn-dl-clear").addEventListener("click", async () => {
   dl.lines = [];
   dlRender();
 });
-function dlResult(text, danger) {
+function dlResult(parts, danger) {
   const p = byId("dl-export-result");
-  setStatusLine(p, danger ? "danger" : "neutral", text);
+  p.replaceChildren(...parts);
+  p.classList.toggle("is-danger", !!danger);
   p.classList.remove("hidden");
+}
+function dlCode(text) {
+  const c = document.createElement("code");
+  c.textContent = text;
+  return c;
 }
 byId("btn-dl-copy").addEventListener("click", async () => {
   window.__qsld_dl_copy = "pending";
@@ -4242,15 +4287,31 @@ byId("btn-dl-copy").addEventListener("click", async () => {
     acknowledge(byId("btn-dl-copy"), "\u2713 Copied");
   } catch (e) {
     window.__qsld_dl_copy = "err:" + String(e);
-    dlResult("Copy didn't complete. Select the list and copy, or use Export.", false);
+    dlResult(["Copy didn't complete. Select the list and copy, or use Export."], false);
   }
 });
+// 18c L3: the directory field alone, an EXAMPLE directory as its placeholder. Empty means the example's own place --
+// the home directory's Documents if it exists, else the home directory; the result line names where the file went.
 byId("btn-dl-export").addEventListener("click", async () => {
-  const dir = byId("dl-export-dir").value.trim();
+  let dir = byId("dl-export-dir").value.trim();
+  let home = "";
+  if (dir === "") {
+    try { home = await tauriInvoke("home_dir"); } catch (_) { home = ""; }
+    dir = home ? home + "/Documents" : "";
+  }
+  const write = (d) => invoke("debug_log_export", { dir: d });
   try {
-    const r = await invoke("debug_log_export", { dir });
-    dlResult("Written: " + r.path + " (" + r.bytes + " bytes, sha256 " + r.sha256.slice(0, 16) + "\u2026)", false);
+    let r;
+    try {
+      r = await write(dir);
+    } catch (e) {
+      if (home && dir === home + "/Documents" && String(e).includes("export_dir_not_a_directory")) r = await write(home);
+      else throw e;
+    }
+    const name = String(r.path).split("/").pop();
+    const inDir = String(r.path).slice(0, String(r.path).length - name.length - 1);
+    dlResult(["Written ", dlCode(name), " in " + inDir + " \u00b7 " + Number(r.bytes).toLocaleString("en-US") + " bytes \u00b7 sha256 " + r.sha256.slice(0, 16) + "\u2026"], false);
   } catch (e) {
-    dlResult("Export failed: " + String(e), true);
+    dlResult(["Export failed: " + String(e)], true);
   }
 });

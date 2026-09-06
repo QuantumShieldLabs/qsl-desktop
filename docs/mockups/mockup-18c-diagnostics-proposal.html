@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mockup 18c (proposal, take 6) -- Settings > Diagnostics, cleaned up; the status bar on every screen</title>
+<style>
+  /* PROPOSAL 18c, drawn from the operator's build screenshots (NA-0779 flight, 2026-09-05). Fixed geometry on purpose:
+     two frames (wide, narrow) show the reflow statically. LAYOUT AUTHORITY once blessed; every colour below is a
+     placeholder named for the token it stands for -- the shipped tokens are the colour authority. */
+  body { margin: 0; padding: 18px; background: #0f1113; color: #e6e8eb; font: 14px/1.45 "DejaVu Sans", system-ui, sans-serif; }
+  .frame { position: relative; background: #1c2024; border: 1px solid #3a4148; border-radius: 8px; overflow: hidden; margin: 0 auto 26px; }
+  .frame.wide   { width: 1120px; height: 760px; }
+  .frame.narrow { width: 840px;  height: 600px; }
+  .abs { position: absolute; }
+  .menubar { left: 0; right: 0; top: 0; height: 30px; background: #171a1e; border-bottom: 1px solid #343b42; color: #9aa0a6; font-size: 13px; line-height: 30px; padding-left: 12px; }
+  .menubar span { margin-right: 18px; }
+  .rail { left: 0; top: 31px; bottom: 27px; width: 52px; background: #171a1e; border-right: 1px solid #343b42; }
+  .rail svg { position: absolute; left: 12px; width: 28px; height: 28px; }
+  .rail .sel { background: #2a3036; border: 1px solid #3d8bfd; border-radius: 6px; left: 11px; }
+  .subnav { left: 53px; top: 31px; bottom: 27px; width: 200px; background: #171a1e; border-right: 1px solid #343b42; }
+  .subnav h1 { font-size: 18px; font-weight: bold; margin: 16px 18px 12px; }
+  .subnav div { padding: 7px 18px; }
+  .subnav div.sel { background: #2a3036; border-left: 3px solid #3d8bfd; padding-left: 15px; }
+  .subnav div.dim { color: #9aa0a6; }
+  .pane { left: 254px; top: 31px; right: 0; bottom: 27px; }
+  .pane .in { position: absolute; left: 24px; right: 24px; top: 18px; bottom: 12px; }
+  h2 { font-size: 20px; font-weight: bold; margin: 0 0 2px; }
+  .sub { color: #9aa0a6; margin: 0 0 26px; }
+  .card { background: #23282d; border: 1px solid #343b42; border-radius: 8px; padding: 14px 16px; }
+  .card table { border-collapse: collapse; width: 100%; }
+  .card td { padding: 0; vertical-align: middle; }
+  .toggle { display: inline-block; vertical-align: middle; width: 38px; height: 22px; border-radius: 11px; background: #3d8bfd; position: relative; margin-right: 10px; }
+  .toggle i { position: absolute; top: 3px; left: 19px; width: 16px; height: 16px; border-radius: 8px; background: #fff; }
+  .seg { display: inline-block; border: 1px solid #343b42; border-radius: 5px; overflow: hidden; vertical-align: middle; margin-left: 8px; }
+  .seg span { display: inline-block; padding: 3px 10px; color: #9aa0a6; font-size: 12.5px; line-height: 1.4; }
+  .seg span.on { background: #2a3036; color: #e6e8eb; }
+  .muted { color: #9aa0a6; }
+  .counts { color: #9aa0a6; font-size: 13px; padding-top: 12px; }
+  .listhead { margin: 30px 0 14px; height: 28px; position: relative; }
+  .listhead h3 { font-size: 15px; font-weight: bold; margin: 0; line-height: 28px; float: left; }
+  .live { float: left; margin: 0 0 0 10px; line-height: 30px; color: #6cc38a; font-size: 12px; }
+  .live b { display: inline-block; width: 7px; height: 7px; border-radius: 4px; background: #6cc38a; margin-right: 6px; vertical-align: middle; }
+  .tools { float: right; }
+  .filter { display: inline-block; vertical-align: middle; width: 300px; background: #23282d; border: 1px solid #343b42; border-radius: 5px; padding: 3px 10px; color: #9aa0a6; font: 12.5px/1.4 "DejaVu Sans Mono", monospace; }
+  .btn { display: inline-block; vertical-align: middle; background: #23282d; border: 1px solid #343b42; border-radius: 5px; padding: 3px 10px; color: #e6e8eb; font-size: 12.5px; line-height: 1.4; margin-left: 8px; }
+  .btn.primary { background: #3d8bfd; border-color: #3d8bfd; color: #fff; margin-left: 0; }
+  .log { background: #23282d; border: 1px solid #343b42; border-radius: 8px; padding: 8px 10px; font: 12px/1.6 "DejaVu Sans Mono", monospace; white-space: pre; overflow: hidden; }
+  .log .new { background: #2a3036; }
+  .exportrow { margin-top: 24px; height: 28px; position: relative; }
+  .exportrow .lbl { float: left; line-height: 28px; color: #9aa0a6; margin-right: 10px; }
+  .path { float: left; width: 500px; background: #23282d; border: 1px solid #343b42; border-radius: 5px; padding: 3px 10px; font: 12.5px/1.4 "DejaVu Sans Mono", monospace; color: #e6e8eb; margin-right: 10px; }
+  .exportrow .btn { float: left; margin-top: 0; }
+  .path.placeholder { color: #6f757c; }
+  .result { color: #9aa0a6; font-size: 13px; margin-top: 12px; }
+  .result code { font: 12px "DejaVu Sans Mono", monospace; }
+  .how { color: #9aa0a6; font-size: 13px; margin-top: 14px; }
+  .status { left: 0; right: 0; bottom: 0; height: 26px; background: #171a1e; border-top: 1px solid #343b42; color: #9aa0a6; font-size: 12.5px; line-height: 26px; padding: 0 12px; }
+  .status .r { float: right; }
+  .status .r b { color: #e6e8eb; }
+  .caption { width: 1120px; margin: 0 auto 8px; color: #9aa0a6; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="caption"><b style="color:#e6e8eb">Wide window.</b> The list takes the height the window gives it; everything else is one row.</div>
+<div class="frame wide">
+  <div class="abs menubar"><span>File</span><span>Edit</span><span>View</span><span>Help</span></div>
+  <div class="abs rail">
+    <svg style="top:16px" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.6"><path d="M4 5h16v11H9l-5 4z"/></svg>
+    <svg style="top:56px" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.6"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 13.5c2.8 0 5 1.9 5 4.5"/></svg>
+    <svg class="sel" style="bottom:14px;top:auto" viewBox="0 0 24 24" fill="none" stroke="#e6e8eb" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg>
+  </div>
+  <div class="abs subnav">
+    <h1>Settings</h1>
+    <div>Identity</div><div>Relay</div><div>Vault and Security</div><div>Invitations</div><div class="sel">Diagnostics</div>
+    <div class="dim">Appearance</div><div class="dim">Notifications</div><div>About</div>
+  </div>
+  <div class="abs pane"><div class="in">
+    <h2>Diagnostics</h2>
+    <p class="sub">A debug log of what the app does. Never a name, a code, a token, an address or a message.</p>
+    <div class="card">
+      <table><tr>
+        <td><span class="toggle"><i></i></span>Debug Log</td>
+        <td style="text-align:right"><span class="muted">Level</span><span class="seg"><span>Events</span><span class="on">Detailed</span></span></td>
+      </tr></table>
+      <div class="counts">201 events in memory &middot; 0 dropped &middot; 10 min since unlock &middot; kept in memory only, cleared when the vault locks</div>
+    </div>
+    <div class="listhead">
+      <h3>Live events</h3>
+      <span class="tools"><span class="filter">filter by event name or code</span><span class="btn">Pause</span><span class="btn">Copy</span><span class="btn">Clear</span></span>
+    </div>
+    <div class="log" style="height:300px">seq=190 utc=2026-09-05T22:22:29.884Z lvl=e src=ui  ev=ui.tick_beat    out=ok  c.source=tick dur=412 n.contacts=1
+seq=191 utc=2026-09-05T22:22:52.866Z lvl=d src=gw  ev=gw.command      out=ok  c.name=contact_list dur=6
+seq=193 utc=2026-09-05T22:22:53.346Z lvl=d src=gw  ev=gw.command      out=ok  c.name=protection_status dur=3
+seq=194 utc=2026-09-05T22:22:53.852Z lvl=d src=gw  ev=gw.command      out=ok  c.name=invite_list dur=5
+seq=195 utc=2026-09-05T22:22:53.854Z lvl=e src=ui  ev=ui.tick_beat    out=ok  c.source=tick dur=508 n.contacts=1
+seq=196 utc=2026-09-05T22:23:06.734Z lvl=e src=gw  ev=gw.log          c.action=export
+seq=197 utc=2026-09-05T22:23:17.739Z lvl=d src=gw  ev=gw.command      out=ok  c.name=contact_list dur=5
+seq=198 utc=2026-09-05T22:23:18.211Z lvl=e src=eng ev=session_load    out=ok  c.state=active
+seq=199 utc=2026-09-05T22:23:18.211Z lvl=d src=gw  ev=gw.command      out=ok  c.name=protection_status dur=2
+seq=200 utc=2026-09-05T22:23:18.717Z lvl=d src=gw  ev=gw.command      out=ok  c.name=invite_list dur=4
+seq=201 utc=2026-09-05T22:23:18.718Z lvl=e src=ui  ev=ui.tick_beat    out=ok  c.source=tick dur=506 n.contacts=1
+seq=202 utc=2026-09-05T22:23:39.702Z lvl=d src=ui  ev=ui.tick_gate    out=ok  c.gate=open
+seq=203 utc=2026-09-05T22:23:39.704Z lvl=e src=ui  ev=ui.tick_beat    out=ok  c.source=tick dur=401 n.contacts=1
+seq=204 utc=2026-09-05T22:23:40.107Z lvl=d src=gw  ev=gw.command      out=ok  c.name=contact_list dur=5
+<span class="new">seq=205 utc=2026-09-05T22:23:40.612Z lvl=d src=gw  ev=gw.command      out=ok  c.name=invite_list dur=4</span></div>
+    <div class="exportrow">
+      <span class="path placeholder">/home/&lt;user&gt;/Documents</span><span class="btn primary">Export</span>
+    </div>
+    <div class="result">Written <code>qsl-desktop-debug-log-20260905T222306Z-8ef7532c480dbe72.txt</code> &middot; 19,442 bytes &middot; sha256 47d28eae107a51c0&hellip;</div>
+  </div></div>
+  <div class="abs status"><span>Relay: connected &nbsp;&middot;&nbsp; Vault: unlocked &nbsp;&middot;&nbsp; Auto-lock: 10 min</span><span class="r">Logging: <b>on</b> &middot; detailed</span></div>
+</div>
+
+<div class="caption"><b style="color:#e6e8eb">Narrow window.</b> Same rows; only the list shrank. The status bar stays, on this screen and every other.</div>
+<div class="frame narrow">
+  <div class="abs menubar"><span>File</span><span>Edit</span><span>View</span><span>Help</span></div>
+  <div class="abs rail">
+    <svg style="top:16px" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.6"><path d="M4 5h16v11H9l-5 4z"/></svg>
+    <svg style="top:56px" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.6"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 13.5c2.8 0 5 1.9 5 4.5"/></svg>
+    <svg class="sel" style="bottom:14px;top:auto" viewBox="0 0 24 24" fill="none" stroke="#e6e8eb" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg>
+  </div>
+  <div class="abs subnav" style="width:170px">
+    <h1>Settings</h1>
+    <div>Identity</div><div>Relay</div><div>Vault and Security</div><div>Invitations</div><div class="sel">Diagnostics</div>
+    <div class="dim">Appearance</div><div class="dim">Notifications</div><div>About</div>
+  </div>
+  <div class="abs pane" style="left:224px"><div class="in" style="left:18px;right:18px;top:14px">
+    <h2>Diagnostics</h2>
+    <p class="sub">A debug log of what the app does. Never a name, a code, a token, an address or a message.</p>
+    <div class="card">
+      <table><tr>
+        <td><span class="toggle"><i></i></span>Debug Log</td>
+        <td style="text-align:right"><span class="muted">Level</span><span class="seg"><span>Events</span><span class="on">Detailed</span></span></td>
+      </tr></table>
+      <div class="counts">201 events in memory &middot; 0 dropped &middot; 10 min since unlock</div>
+    </div>
+    <div class="listhead">
+      <h3>Live events</h3>
+      <span class="tools"><span class="filter" style="width:170px">filter</span><span class="btn">Pause</span><span class="btn">Copy</span><span class="btn">Clear</span></span>
+    </div>
+    <div class="log" style="height:150px">seq=197 utc=2026-09-05T22:23:17.739Z lvl=d src=gw  ev=gw.command      out=ok  c.name=contact_list dur=5
+seq=198 utc=2026-09-05T22:23:18.211Z lvl=e src=eng ev=session_load    out=ok  c.state=active
+seq=199 utc=2026-09-05T22:23:18.211Z lvl=d src=gw  ev=gw.command      out=ok  c.name=protection_status dur=2
+seq=200 utc=2026-09-05T22:23:18.717Z lvl=d src=gw  ev=gw.command      out=ok  c.name=invite_list dur=4
+seq=201 utc=2026-09-05T22:23:18.718Z lvl=e src=ui  ev=ui.tick_beat    out=ok  c.source=tick dur=506 n.contacts=1
+seq=202 utc=2026-09-05T22:23:39.702Z lvl=d src=ui  ev=ui.tick_gate    out=ok  c.gate=open
+<span class="new">seq=203 utc=2026-09-05T22:23:39.704Z lvl=e src=ui  ev=ui.tick_beat    out=ok  c.source=tick dur=401 n.contacts=1</span></div>
+    <div class="exportrow">
+      <span class="path placeholder" style="width:300px">/home/&lt;user&gt;/Documents</span><span class="btn primary">Export</span>
+    </div>
+    <div class="result">Written <code>qsl-desktop-debug-log-20260905T222306Z-8ef7&hellip;txt</code> &middot; 19,442 bytes</div>
+  </div></div>
+  <div class="abs status"><span>Relay: connected &nbsp;&middot;&nbsp; Vault: unlocked &nbsp;&middot;&nbsp; Auto-lock: 10 min</span><span class="r">Logging: <b>on</b> &middot; detailed</span></div>
+</div>
+
+<div class="caption">Proposal 18c. Changes from the build: the pane fills the window and only the list grows or shrinks (the Invitations idiom); the switch, level and counts are one card; the list has one toolbar row (filter, Pause, Copy, Clear) and the export one row (a directory field with an example path, Export) with a one-line result; the hint paragraphs become one sentence under the title; the floating pill is removed -- the log state is plain text at the right end of a status bar present on every screen, and the bar shows state words only, never a host or an address. Sample lines from the flight's screenshots; colours are placeholders.</div>
+</body>
+</html>

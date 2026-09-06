@@ -268,8 +268,12 @@ fn the_footer_outage_arm_sits_below_every_reason_arm() {
              replaces a problem the user can actually act on"
         );
     }
+    // NA-0779 (18c L6): "Ready. Relay: <url>" became the state word "connected" (STATUS_RELAY_CONNECTED), still
+    // the arm BELOW the outage: an outage must never be painted over as connected.
     assert!(
-        body.find("Ready. Relay:").expect("the ready arm") > trouble,
-        "the outage arm renders only in the otherwise-Ready case, so it sits ABOVE Ready"
+        body.find("relay = STATUS_RELAY_CONNECTED")
+            .expect("the connected arm")
+            > trouble,
+        "the outage arm renders only in the otherwise-connected case, so it sits ABOVE connected"
     );
 }

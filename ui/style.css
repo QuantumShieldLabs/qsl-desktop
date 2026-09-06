@@ -90,6 +90,7 @@
      assertion is the enforcement. 34px is .rail-btn's height, which is what
      governs the Contacts row today. */
   --sz-head-row: 34px;
+  --sz-ctl: 28px;          /* NA-0779 (18c L3): one control height for the Diagnostics pane's fields, buttons and segment */
   --sp-x6: 6px;
   --sp-x7: 7px;
   --sp-x10: 10px;
@@ -1002,28 +1003,49 @@ a.rm.plain.link-danger:hover { color: var(--danger-text); }
    ceremony. Carried forward from NA-0763's ruling rather than reversed. */
 .status-line.is-trouble { color: var(--accent-text); }
 
-/* ---- NA-0779 (D-0048): Settings > Diagnostics, the debug log (mockup 18b; tokens only) ---- */
-.dl-levelrow { margin-top: var(--sp-2); }
-.dl-levelrow label.inline { margin: 0; }
-.dl-filter { width: 220px; font-family: ui-monospace, monospace; font-size: var(--fs-hint); }
-.dl-log {
-  font-family: ui-monospace, monospace; font-size: var(--fs-hint); line-height: 1.5;
-  color: var(--fg-secondary); background: var(--bg-inset);
-  border: 1px solid var(--border); border-radius: var(--radius-small);
-  padding: var(--sp-2) var(--sp-x10); margin: var(--sp-2) 0 0 0;
-  height: 220px; overflow: auto; white-space: pre; user-select: text;
-}
-.dl-live {
-  font-size: var(--fs-micro); font-weight: var(--fw-mid); letter-spacing: .04em;
-  border: 1px solid var(--accent-border); color: var(--accent-text); border-radius: var(--radius-small);
-  padding: 0 var(--sp-x6); margin-left: var(--sp-x6); vertical-align: middle;
-}
-.dl-exportrow { margin-top: var(--sp-3); }
-.dl-exportrow input { flex: 1; }
-/* the indicator: bottom-right of the window, over the footer's right end, on every screen */
-.dl-pill {
-  position: fixed; right: var(--sp-3); bottom: var(--sp-x6); z-index: 5;
-  font-size: var(--fs-micro); font-weight: var(--fw-mid); letter-spacing: .04em;
-  padding: var(--sp-1) var(--sp-2); border-radius: var(--radius-small);
-  background: var(--accent-bg); border: 1px solid var(--accent-border); color: var(--accent-text);
-}
+/* ---- NA-0779 (D-0048): Settings > Diagnostics, the debug log -- mockup 18c (L1-L6); tokens only ---- */
+/* L1: the pane fills the window (no max-width) and is a column whose list is the ONLY growing element. */
+.pane.pane-fill { max-width: none; height: 100%; gap: 0; min-height: 0; }
+.pane-fill .dl-sub { margin: 0 0 var(--sp-5) 0; }
+/* L2: one card -- the switch, the level segment, one counts line */
+.dl-card { background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-small); padding: var(--sp-x14) var(--sp-4); }
+.dl-cardrow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+/* `.pane label` (a class + an element) outranks a lone class: the switch's row is written at that specificity. */
+.pane .dl-switch { display: inline-flex; flex-direction: row; align-items: center; gap: var(--sp-x10); font-size: var(--fs-body); color: var(--fg); max-width: none; margin: 0; }
+/* the tree's checkbox drawn as the mockup's toggle (L7: the control stays a checkbox; only its face changes) */
+.dl-toggle { appearance: none; -webkit-appearance: none; width: 38px; height: 22px; border-radius: 11px; background: var(--border); position: relative; margin: 0; cursor: pointer; flex: none; }
+.dl-toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 8px; background: var(--accent-fill-text); }
+.dl-toggle:checked { background: var(--accent-fill); }
+.dl-toggle:checked::after { left: 19px; }
+.dl-toggle:focus-visible { outline: 1px solid var(--accent-text); }
+.dl-levelrow { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.dl-muted { color: var(--fg-secondary); font-size: var(--fs-body); }
+.dl-seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-small); overflow: hidden; height: var(--sz-ctl); box-sizing: border-box; }
+.dl-seg-item { display: inline-block; padding: 0 var(--sp-x10); line-height: calc(var(--sz-ctl) - 2px); color: var(--fg-secondary); font-size: var(--fs-body); cursor: pointer; text-decoration: none; }
+.dl-seg-item.on { background: var(--rail-active-bg); color: var(--fg); }
+.dl-seg-item:focus-visible { outline: 1px solid var(--accent-text); outline-offset: -1px; }
+.dl-counts { color: var(--fg-secondary); font-size: var(--fs-body); margin: var(--sp-3) 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* L3: one toolbar row (title, filter, Pause, Copy, Clear); every control one height */
+.dl-listhead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-6) 0 var(--sp-x14) 0; }
+.dl-listhead h3 { margin: 0; font-size: var(--fs-section); font-weight: var(--fw-section); white-space: nowrap; }
+.dl-tools { display: flex; align-items: center; gap: var(--sp-2); flex: 1; justify-content: flex-end; min-width: 0; }
+.dl-ctl { height: var(--sz-ctl); box-sizing: border-box; font-size: var(--fs-body); line-height: calc(var(--sz-ctl) - 2px); }
+button.dl-ctl { padding: 0 var(--sp-x10); }
+input.dl-ctl { padding: 0 var(--sp-x10); }
+.dl-filter { flex: 0 1 300px; min-width: 120px; }
+/* the list: the one growing element */
+.dl-log { flex: 1; min-height: 120px; overflow: auto; white-space: pre; user-select: text; margin: 0;
+  font-family: ui-monospace, monospace; font-size: var(--fs-hint); line-height: 1.6; color: var(--fg-secondary);
+  background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-small); padding: var(--sp-2) var(--sp-x10); }
+/* the export row: the directory field alone (an example directory as its placeholder), then Export; one result line */
+.dl-exportrow { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-5) 0 0 0; }
+.dl-path { flex: 0 1 500px; min-width: 160px; font-family: ui-monospace, monospace; font-size: var(--fs-hint); }
+.dl-result { color: var(--fg-secondary); font-size: var(--fs-body); margin: var(--sp-3) 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-result code { font-family: ui-monospace, monospace; font-size: var(--fs-hint); }
+.dl-result.is-danger { color: var(--danger-text); }
+/* L5/L6: the status bar -- state words at the left, "Logging: on . level" at the right; on every screen */
+.status-line.status-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); white-space: nowrap; }
+.status-line .status-left { min-width: 0; }
+.status-line .status-right { margin-left: auto; flex: none; }
+.status-line .status-right b { color: var(--fg); font-weight: var(--fw-mid); }
+#scr-unlock .status-line { position: absolute; left: 0; right: 0; bottom: 0; }

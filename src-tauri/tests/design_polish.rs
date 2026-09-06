@@ -1148,16 +1148,13 @@ fn na0752_the_three_undrivable_footer_sentences_are_present_and_wired() {
     // The sentences, as CONST DECLARATIONS — not merely as text somewhere in the
     // file. A string that survived only inside a comment would satisfy a naive
     // `contains` and render nothing.
+    // NA-0779 (D-0048, mockup 18c L6; RBANK_status_footer_todo F2/F3): the footer became the STATUS BAR and
+    // speaks in STATE WORDS -- the three undrivable sentences became the three undrivable WORDS. Same rows,
+    // same wiring, pinned the same way.
     for (name, sentence) in [
-        (
-            "STATUS_FOOTER_STORAGE",
-            "Storage problem — check Settings › Vault.",
-        ),
-        ("STATUS_FOOTER_LOCKED", "Locked — unlock to connect."),
-        (
-            "STATUS_FOOTER_UNKNOWN",
-            "Status unknown — please report this.",
-        ),
+        ("STATUS_FOOTER_STORAGE", "storage error"),
+        ("STATUS_FOOTER_LOCKED", "locked"),
+        ("STATUS_FOOTER_UNKNOWN", "unknown"),
     ] {
         let decl = format!("const {name} = \"{sentence}\";");
         assert!(
