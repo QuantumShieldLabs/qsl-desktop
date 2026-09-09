@@ -2840,7 +2840,7 @@ dependencies = [
 [[package]]
 name = "qsc"
 version = "0.1.0"
-source = "git+https://github.com/QuantumShieldLabs/qsl-protocol?rev=4e03092fb14a6129065b711f8c17fc7252965e07#4e03092fb14a6129065b711f8c17fc7252965e07"
+source = "git+https://github.com/QuantumShieldLabs/qsl-protocol?rev=08c0e327d21cabb100c1c43cfcd1bb1619fee149#08c0e327d21cabb100c1c43cfcd1bb1619fee149"
 dependencies = [
  "argon2",
  "base64 0.22.1",
@@ -2871,7 +2871,7 @@ dependencies = [
 [[package]]
 name = "quantumshield_refimpl"
 version = "0.1.0"
-source = "git+https://github.com/QuantumShieldLabs/qsl-protocol?rev=4e03092fb14a6129065b711f8c17fc7252965e07#4e03092fb14a6129065b711f8c17fc7252965e07"
+source = "git+https://github.com/QuantumShieldLabs/qsl-protocol?rev=08c0e327d21cabb100c1c43cfcd1bb1619fee149#08c0e327d21cabb100c1c43cfcd1bb1619fee149"
 dependencies = [
  "aes-gcm",
  "ed25519-dalek",

@@ -2585,6 +2585,10 @@ function inviteErrorLine(code, detail, verb) {
   // a `code` for one input and a `detail` for another (ENG-0228), and position is the only
   // thing that separates them.
   if (verb === "redeem") {
+    if (c === "self_invitation") {
+      return { banner: "This is your invitation",
+        detail: "This invitation was created by this app. Ask the other person for their invitation." };
+    }
     if (c === "relay_rejected") {
       return { banner: "Couldn't add the contact",
         detail: "Nothing was added — their relay couldn't be reached, or it refused the request. Check the code is complete, and try again in a moment." };
@@ -2649,6 +2653,10 @@ function inviteErrorLine(code, detail, verb) {
   }
   if (c === "locked") {
     return { banner: "Vault is locked", detail: "Unlock to continue." };
+  }
+  if (c === "store_unavailable") {
+    return { banner: "Invitation storage is unavailable",
+      detail: "The app could not check its invitation records. Close this window and try again after checking the vault." };
   }
   if (c === "vault_unavailable") {
     // ⚠ MUST NOT say "unlock it": this code carries THREE provenances — locked mid-operation,
@@ -3297,7 +3305,17 @@ function redeemShow(view) {
 // transition — including the autolock — clears a pasted code rather than leaving it rendered
 // over the unlock screen. The pasted code is a one-time capability and is held to the same
 // rule as the minted one.
+let redeemInFlight = false;
+let redeemEpoch = 0;
+
+function redeemInputChanged() {
+  redeemEpoch += 1;
+  redeemClearError();
+  redeemSyncConnect();
+}
+
 function closeRedeemModal() {
+  redeemEpoch += 1;
   const ov = byId("redeem-overlay");
   if (!ov || ov.classList.contains("hidden")) return;
   ov.classList.add("hidden");
@@ -3328,7 +3346,11 @@ function redeemSyncConnect() {
   const code = byId("redeem-code").value.trim();
   const name = byId("redeem-name").value.trim();
   const nameOk = redeemNameOk(name);
-  byId("btn-redeem-connect").disabled = !(code !== "" && nameOk);
+  if (redeemInFlight) {
+    byId("btn-redeem-connect").disabled = true;
+  } else {
+    byId("btn-redeem-connect").disabled = !(code !== "" && nameOk);
+  }
   byId("redeem-name-hint").textContent =
     (name !== "" && !nameOk) ? REDEEM_NAME_HINT_BAD : REDEEM_NAME_HINT_OK;
 }
@@ -3359,6 +3381,7 @@ function redeemShowSecurityFailure(code) {
 // inside that body; the two share four lines by design and fire the same trigger AFTER painting.
 async function openRedeemEntry() {
   if (inviteLive()) return; // NA-0778 (004f / R74 (a)): refused while a mint is live
+  redeemEpoch += 1;
   redeemClearError();
   byId("redeem-code").value = "";
   byId("redeem-name").value = "";
@@ -3370,6 +3393,7 @@ async function openRedeemEntry() {
 
 async function openRedeemChooser() {
   if (inviteLive()) return; // NA-0778 (004f / R74 (a)): refused while a mint is live
+  redeemEpoch += 1;
   redeemClearError();
   byId("redeem-code").value = "";
   byId("redeem-name").value = "";
@@ -4078,20 +4102,33 @@ function redeemMark(m) {
 
 // ── THE ONE COMMIT ─────────────────────────────────────────────────────────────────────
 async function redeemConnect() {
-  const btn = byId("btn-redeem-connect");
+  if (redeemInFlight || byId("redeem-overlay").classList.contains("hidden") ||
+      byId("redeem-form").classList.contains("hidden")) return;
   const code = byId("redeem-code").value.trim();
   const name = byId("redeem-name").value.trim();
   redeemClearError();
-  // Belt and braces: the button cannot be armed otherwise, but the handler refuses anyway —
-  // a gate that exists only in the enable/disable path is one keyboard event from being bypassed.
   if (code === "" || !redeemNameOk(name)) { redeemSyncConnect(); return; }
-  btn.disabled = true;
+  const epoch = redeemEpoch;
+  const current = () => epoch === redeemEpoch &&
+    !byId("redeem-overlay").classList.contains("hidden") &&
+    !byId("redeem-form").classList.contains("hidden") &&
+    byId("redeem-code").value.trim() === code && byId("redeem-name").value.trim() === name;
+  // One flight spans both calls, including closure/reopening. Edits and screen changes
+  // invalidate this attempt; an earlier success is never permission for a later click.
+  redeemInFlight = true;
+  redeemSyncConnect();
   try {
+    await invoke("invite_preflight", { code, selfLabel: null });
+    if (!current()) return;
+    // The same captured code goes to the guarded handler, which rechecks ownership,
+    // lock state and normal validation under the serialized core gateway.
     await invoke("invite_redeem", { code, alias: name, selfLabel: null });
+    if (!current()) return;
     byId("redeem-sent-name").textContent = name;
     byId("redeem-sent-name2").textContent = name;
     redeemShow("redeem-sent");
   } catch (e) {
+    if (!current()) return;
     const c = (e && e.code) ? String(e.code) : "";
     if (c === "commitment_mismatch" || c === "signature_invalid") {
       redeemShowSecurityFailure(c);
@@ -4099,7 +4136,7 @@ async function redeemConnect() {
       redeemRenderError(c, (e && e.detail) ? e.detail : "");
     }
   } finally {
-    // ⚠ Re-armed only from the CURRENT field state, never unconditionally.
+    redeemInFlight = false;
     redeemSyncConnect();
   }
 }
@@ -4128,8 +4165,8 @@ byId("btn-choose-close").addEventListener("click", closeRedeemModal);
 // state NA-0765 found it in and cured with an X. Close reuses `closeRedeemModal`, the one
 // dismissal Escape and the scrim already take, so all three agree by construction.
 byId("btn-redeem-close3").addEventListener("click", closeRedeemModal);
-byId("redeem-code").addEventListener("input", redeemSyncConnect);
-byId("redeem-name").addEventListener("input", redeemSyncConnect);
+byId("redeem-code").addEventListener("input", redeemInputChanged);
+byId("redeem-name").addEventListener("input", redeemInputChanged);
 byId("btn-redeem-connect").addEventListener("click", redeemConnect);
 byId("btn-redeem-close").addEventListener("click", closeRedeemModal);
 byId("btn-redeem-close2").addEventListener("click", closeRedeemModal);

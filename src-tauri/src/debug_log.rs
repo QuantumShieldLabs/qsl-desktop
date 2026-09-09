@@ -104,6 +104,7 @@ pub const COMMAND_NAMES: &[&str] = &[
     "invite_create",
     "invite_finish",
     "invite_list",
+    "invite_preflight",
     "invite_redeem",
     "invite_revoke",
     "launch_state",

@@ -1,5 +1,7 @@
 # qsl-desktop
 
+Goals: G4
+
 Desktop client (GUI) for the QSL protocol — in development, pre-release.
 
 ## What this is
@@ -44,6 +46,64 @@ is no contact list to browse and nothing can be sent to it yet.
 No security, privacy, or availability claims are made for anything in this
 repository beyond factual feature description; the app's status line shows
 only what is actually true.
+
+## Local self-invitation rejection (NA-0780)
+Connect checks the submitted invitation locally before redemption. An invitation
+owned by this app is refused with: “This invitation was created by this app.
+Ask the other person for their invitation.” Locked, unavailable invitation storage,
+and invalid-code errors also stop the attempt, with separate explanations.
+The existing redemption handler repeats ownership and lock checks; preflight
+success does not authenticate the sender or authorize a later attempt.
+
+Changing either field or closing the window invalidates an outstanding preflight.
+Only one Connect attempt runs at a time, and late results cannot repaint a closed
+or reopened window. Closing after redemption has started does not undo the request.
+
+The encrypted vault retains recoverable ownership through visible-history clearing,
+restart and identity rotation. Ownership deleted before the engine upgrade cannot
+be recovered; restoring an older vault backup restores its older history. Full vault
+erasure removes that history. Automated fixtures do not establish two-machine
+acceptance or resolve the lane's other invitation-reliability findings.
+
+### Operator check
+Build the PR with `cargo build --locked` using the repository's pinned toolchain,
+then run the resulting `qsl-desktop` binary on each Linux machine. In the managed
+build tree, select the shared target in a child shell:
+
+```bash
+bash -c 'source /home/victor/work/build/state/tools/env_qbuild.sh
+qbuild_export_repo_env qsl-desktop
+cargo build --locked
+exec "$CARGO_TARGET_DIR/debug/qsl-desktop"'
+```
+
+Run from the checked-out PR repository. On another Linux build host, with the
+required Tauri libraries and pinned toolchain already available, use
+`cargo build --locked` and `./target/debug/qsl-desktop` from that checkout (or the
+binary under its configured `CARGO_TARGET_DIR`). Use a separate profile on each
+machine and the same reviewed desktop commit.
+
+1. Unlock the app and configure/test the intended relay on both machines. Enable
+   the existing detailed debug log before the test if diagnostic exports are needed.
+2. On A, create an invitation for B. Paste it into A's Connect window, give it a
+   valid local name, and press Connect. Verify the exact self-invitation message,
+   no pending contact, and no redemption call in the local debug log. Repeat with
+   an older invitation after closing and restarting A. A background scan may log
+   independently; it is not a redemption caused by this refusal.
+3. Send A's invitation privately to B. On B, paste it into Connect, name A, and
+   press Connect once. Keep both apps unlocked; follow the existing incoming
+   request/approval flow on A. Verify that both contact states reach connected.
+   “Request sent” alone does not establish connection completion.
+4. Record the desktop commit, engine revision, each observed result and both
+   privacy-safe debug-log exports. Keep invitation codes and private profile files
+   out of reports. A failure to complete remains an observation for the lane's
+   separate reliability analysis, not an acceptance result.
+
+CI waits use the installed `state/tools/bin/qci-wait` helper, pinned to the exact
+repository, PR and full head SHA, with each known check passed via `--expect`.
+Keep its new log in lane evidence; use its default 60-second interval and 60-minute
+limit. Pending, missing, failed, cancelled and skipped checks stay distinct. Never
+rerun jobs or merge automatically.
 
 ## One profile, one program (R8)
 Do not run the qsc CLI and this app against the same profile. The app
