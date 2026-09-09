@@ -2586,8 +2586,8 @@ function inviteErrorLine(code, detail, verb) {
   // thing that separates them.
   if (verb === "redeem") {
     if (c === "self_invitation") {
-      return { banner: "This is your invitation",
-        detail: "This invitation was created by this app. Ask the other person for their invitation." };
+      return { banner: "You can’t connect to yourself",
+        detail: "Please share this invitation code with your intended contact." };
     }
     if (c === "relay_rejected") {
       return { banner: "Couldn't add the contact",

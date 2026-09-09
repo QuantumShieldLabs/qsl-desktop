@@ -49,9 +49,10 @@ only what is actually true.
 
 ## Local self-invitation rejection (NA-0780)
 Connect checks the submitted invitation locally before redemption. An invitation
-owned by this app is refused with: “This invitation was created by this app.
-Ask the other person for their invitation.” Locked, unavailable invitation storage,
-and invalid-code errors also stop the attempt, with separate explanations.
+owned by this app is refused with the banner “You can’t connect to yourself”
+and helper “Please share this invitation code with your intended contact.”
+Locked, unavailable invitation storage, and invalid-code errors also stop the
+attempt, with separate explanations.
 The existing redemption handler repeats ownership and lock checks; preflight
 success does not authenticate the sender or authorize a later attempt.
 
