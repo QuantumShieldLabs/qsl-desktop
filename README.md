@@ -68,11 +68,19 @@ acceptance or resolve the lane's other invitation-reliability findings.
 ### Operator check
 Build the PR with `cargo build --locked` using the repository's pinned toolchain,
 then run the resulting `qsl-desktop` binary on each Linux machine. In the managed
-build tree, select the shared target in a child shell:
+build tree, export `QBUILD_ROOT` as the absolute path to the build-tree root (the
+directory containing `state/tools/env_qbuild.sh`). Keep its machine-specific value
+in your local shell. Select the shared target and build in a child shell that exits
+on failure before attempting to launch:
 
 ```bash
-bash -c 'source /home/victor/work/build/state/tools/env_qbuild.sh
+bash -c 'set -e
+: "${QBUILD_ROOT:?Export QBUILD_ROOT as the absolute build-tree root}"
+[[ "$QBUILD_ROOT" = /* ]]
+source "$QBUILD_ROOT/state/tools/env_qbuild.sh"
 qbuild_export_repo_env qsl-desktop
+: "${CARGO_TARGET_DIR:?Environment selection did not set CARGO_TARGET_DIR}"
+[[ "$CARGO_TARGET_DIR" = /* ]]
 cargo build --locked
 exec "$CARGO_TARGET_DIR/debug/qsl-desktop"'
 ```
