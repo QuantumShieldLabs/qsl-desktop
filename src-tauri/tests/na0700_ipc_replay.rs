@@ -14,6 +14,9 @@
 //! `contentHeight`). DTO wire shapes are pinned as serialized — the `kind`
 //! strings the FE string-matches on.
 //!
+//! NA-0780 additionally replays preflight and guarded redemption; the exclusion
+//! loses invite_redeem, while the existing test name remains unchanged.
+//!
 //! Claim boundary (R108, absolute): this harness does NOT click, type, or read
 //! the interface; it closes the IPC half of the blindness. The rendered-DOM
 //! driver is NA-0701.
@@ -101,7 +104,6 @@ fn the_replay_exclusion_is_the_frozen_baseline() {
         "invite_create",
         "invite_finish",
         "invite_list",
-        "invite_redeem",
         "invite_revoke",
         "relay_probe",
     ];
@@ -164,7 +166,7 @@ fn the_replay_exclusion_is_the_frozen_baseline() {
     assert_eq!(
         actual,
         expected,
-        "THE REPLAY EXCLUSION SET MOVED. Seventeen commands are expected to be \
+        "THE REPLAY EXCLUSION SET MOVED. Sixteen commands are expected to be \
          un-replayed ({} inherited at base 83019356 + restart_app by ruling). A LONGER \
          list means a command was added and not replayed; a SHORTER one means coverage \
          GREW and this pin must be updated to record it -- both are deliberate acts, \
@@ -263,6 +265,9 @@ fn all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes() {
 
     let shown = ok(&wv, "identity_show", Value::Null);
     assert_eq!(shown["fingerprint"], ident["fingerprint"]);
+
+    // NA-0780: real command decoding/error DTOs, before any redemption effects.
+    na0780_invitation_boundaries(&wv, &qsc_dir);
 
     // The InApp drain path is live in this composition: identity emissions
     // landed in the queue and the gateway drained them into the buffer.
@@ -455,4 +460,114 @@ fn all_27_registered_commands_invoke_through_real_ipc_with_fe_arg_shapes() {
         "IPC ingestion accepted relay_config_set without its `url` arg — the \
          arg-mapping instrument cannot be trusted if this passes"
     );
+}
+
+// Compare without printing private file contents, including on assertion failure.
+fn na0780_snapshot(root: &std::path::Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
+    fn visit(
+        root: &std::path::Path,
+        dir: &std::path::Path,
+        out: &mut Vec<(std::path::PathBuf, Vec<u8>)>,
+    ) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                visit(root, &path, out);
+            } else {
+                out.push((
+                    path.strip_prefix(root).unwrap().to_owned(),
+                    std::fs::read(path).unwrap(),
+                ));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    visit(root, root, &mut out);
+    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out
+}
+
+fn na0780_invitation_boundaries(wv: &MockWebview, cfg: &std::path::Path) {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let mut payload = qsc::invite::InvitePayload {
+        ver: 1,
+        typ: 1,
+        invite_id: [71; 16],
+        cap: [17; 16],
+        commit: [93; 32],
+        expiry: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 3600,
+        relay_ep: format!("http://{}", listener.local_addr().unwrap()),
+    };
+    let own = qsc::invite::encode_invite_code(&payload).unwrap();
+    let id = qsc::invite::wire_id(&payload.invite_id);
+    // An old Creating row is recoverable ownership even without its original identity.
+    qsc::vault::secret_set(
+        "invite.created",
+        &json!({"invites": {id.clone(): {
+            "invite_id": id, "cap": qsc::invite::wire_id(&payload.cap),
+            "expiry": payload.expiry, "relay_ep": payload.relay_ep, "state": "Creating"
+        }}})
+        .to_string(),
+    )
+    .unwrap();
+    let reject = |code: &str, expected: &str| {
+        let before = na0780_snapshot(cfg);
+        for cmd in ["invite_redeem", "invite_preflight"] {
+            let args = if cmd == "invite_preflight" {
+                json!({"code":code,"selfLabel":null})
+            } else {
+                json!({"code":code,"alias":"RejectedSelf","selfLabel":null})
+            };
+            let error = invoke(wv, cmd, args).expect_err("invitation must refuse");
+            assert!(error.contains(expected), "expected error class {expected}");
+        }
+        assert!(
+            na0780_snapshot(cfg) == before,
+            "rejection changed profile bytes"
+        );
+        assert!(
+            matches!(listener.accept(), Err(e) if e.kind()==std::io::ErrorKind::WouldBlock),
+            "rejection attempted network"
+        );
+    };
+    reject(&own, "self_invitation");
+    qsc::invite::invite_clear(&id).unwrap();
+    qsc::identity_rotate("self", true, false).unwrap();
+    reject(&own, "self_invitation");
+    // Unlock reopens persisted ownership after clear and rotation.
+    ok(wv, "lock_now", json!({"cause":"user"}));
+    reject(&own, "locked");
+    qsc::vault::unlock_with_passphrase(PASS).unwrap();
+    qsc::set_vault_unlocked(true);
+    reject(&own, "self_invitation");
+    reject("incomplete", "malformed");
+    payload.invite_id = [72; 16];
+    let foreign = qsc::invite::encode_invite_code(&payload).unwrap();
+    let before = na0780_snapshot(cfg);
+    assert_eq!(
+        ok(
+            wv,
+            "invite_preflight",
+            json!({"code":foreign,"selfLabel":null})
+        ),
+        Value::Null
+    );
+    assert!(
+        na0780_snapshot(cfg) == before,
+        "preflight success wrote storage"
+    );
+    assert!(matches!(listener.accept(), Err(e) if e.kind()==std::io::ErrorKind::WouldBlock));
+    ok(wv, "lock_now", json!({"cause":"user"}));
+    reject(&foreign, "locked"); // no cached permission from successful preflight
+    qsc::vault::unlock_with_passphrase(PASS).unwrap();
+    qsc::set_vault_unlocked(true);
+    let history = qsc::vault::secret_get("invite.ownership").unwrap().unwrap();
+    qsc::vault::secret_set("invite.ownership", "invalid-record").unwrap();
+    reject(&foreign, "store_unavailable");
+    qsc::vault::secret_set("invite.ownership", &history).unwrap();
 }

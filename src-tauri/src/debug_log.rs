@@ -53,7 +53,7 @@ pub const FORMAT: &str = "qsl-debug-log/1";
 pub const DIGEST_CONSTRUCTION: &str = "sha256-of-all-bytes-before-the-footer-line";
 /// The qsc pin this build carries (`RULING_NA0779_003` R4 (3): `#1819`'s MERGE COMMIT, no later
 /// bump). A test asserts it equals `src-tauri/Cargo.toml`'s `rev`.
-pub const QSC_PIN: &str = "4e03092fb14a6129065b711f8c17fc7252965e07";
+pub const QSC_PIN: &str = "08c0e327d21cabb100c1c43cfcd1bb1619fee149";
 /// The literal an unlisted reason or command name becomes. Never a copy of the input.
 pub const UNLISTED: &str = "?";
 
@@ -104,6 +104,7 @@ pub const COMMAND_NAMES: &[&str] = &[
     "invite_create",
     "invite_finish",
     "invite_list",
+    "invite_preflight",
     "invite_redeem",
     "invite_revoke",
     "launch_state",

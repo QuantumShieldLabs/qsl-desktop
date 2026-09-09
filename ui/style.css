@@ -785,6 +785,9 @@ a.rm:hover { color: var(--fg); }
 /* The mockup's vertical rhythm wrapper. */
 .block { margin-top: var(--sp-x20); }
 
+/* Keep invitation errors separated from the stacked Close control. */
+#redeem-error { margin-top: var(--sp-3); }
+
 /* ==========================================================================
    NA-0755 v2 (D-0036) — THE SINGLE-VIEW MINT AND THE LIST.
    Every selector below was MEASURED absent before it was minted; everything the

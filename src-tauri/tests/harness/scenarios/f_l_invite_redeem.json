@@ -597,6 +597,86 @@
    "expect": "{\"copyFull\":true,\"closeFull\":true,\"closeStacked\":true,\"order\":true}"
   },
   {
+   "op": "note",
+   "text": "NA-0780: execute the production Connect handler with controlled IPC promises. These synthetic results test ordering, refusals and stale-window behavior; real ownership and guarded redemption are separately exercised through IPC."
+  },
+  {
+   "op": "exec",
+   "script": "window.NA0780_RESULT = 'RUNNING';\n(async () => {\n  const originalInvoke = invoke;\n  const check = (ok, name) => { if (!ok) throw Error(name); };\n  const entry = () => {\n    byId('redeem-overlay').classList.remove('hidden');\n    redeemShow('redeem-form');\n    byId('redeem-code').value = 'synthetic-foreign';\n    byId('redeem-name').value = 'Peer';\n    redeemSyncConnect();\n  };\n  const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return {promise, resolve}; };\n  let calls = [];\n  try {\n    for (const code of ['self_invitation','locked','store_unavailable','malformed','expired','other','signature_invalid','commitment_mismatch']) {\n      entry(); calls = [];\n      invoke = async (cmd, args) => { if(!['invite_preflight','invite_redeem'].includes(cmd)) return originalInvoke(cmd,args); calls.push(cmd); throw {code}; };\n      await redeemConnect();\n      check(calls.join(',') === 'invite_preflight', 'preflight refusal reached redemption: '+code);\n      if (code === 'self_invitation') check(byId('redeem-error').querySelector('.hint').textContent === 'Please share this invitation code with your intended contact.', 'self copy');\n    }\n    check(new Set(['self_invitation','locked','store_unavailable','malformed'].map(c=>inviteErrorLine(c,'','redeem').banner)).size === 4, 'distinct error copy');\n    for (const action of ['success','edit','edit-back','name','close','reopen','lock']) {\n      entry(); calls = []; const gate = deferred();\n      invoke = async (cmd,args) => { if(!['invite_preflight','invite_redeem'].includes(cmd)) return originalInvoke(cmd,args); calls.push({cmd,args}); if(cmd==='invite_preflight') await gate.promise; };\n      const first = redeemConnect();\n      await redeemConnect();\n      check(calls.length === 1, 'double click');\n      if (action==='edit' || action==='edit-back') {\n        byId('redeem-code').value='changed'; byId('redeem-code').dispatchEvent(new Event('input', {bubbles:true}));\n        if(action==='edit-back') {byId('redeem-code').value='synthetic-foreign'; byId('redeem-code').dispatchEvent(new Event('input', {bubbles:true}));}\n      }\n      if(action==='name') {byId('redeem-name').value='Changed'; byId('redeem-name').dispatchEvent(new Event('input', {bubbles:true}));}\n      if(action==='close'||action==='reopen') closeRedeemModal();\n      if(action==='lock') show('scr-unlock');\n      if(action==='reopen') entry();\n      gate.resolve(); await first;\n      if(action==='success') {\n        check(calls.length===2 && calls[1].cmd==='invite_redeem', 'valid flow');\n        check(calls[0].args.code===calls[1].args.code && calls[1].args.alias==='Peer', 'checked code binding');\n        check(!byId('redeem-sent').classList.contains('hidden'), 'sent view');\n      } else check(calls.length===1, 'stale preflight reached redemption: '+action);\n      if(action==='lock') show('scr-main');\n    }\n    entry(); calls=[];\n    invoke=async(cmd,args)=>{if(!['invite_preflight','invite_redeem'].includes(cmd))return originalInvoke(cmd,args);calls.push(cmd); if(cmd==='invite_redeem') throw {code:'locked'};};\n    await redeemConnect();\n    check(calls.join(',')==='invite_preflight,invite_redeem', 'guarded lock boundary');\n    check(byId('redeem-error').querySelector('.status-banner').textContent==='Vault is locked', 'lock after preflight');\n    for (const reject of [false,true]) {\n      entry(); calls=[]; const gate=deferred();\n      invoke=async(cmd,args)=>{if(!['invite_preflight','invite_redeem'].includes(cmd))return originalInvoke(cmd,args);calls.push(cmd); if(cmd==='invite_redeem'){await gate.promise;if(reject)throw {code:'self_invitation'};}};\n      const pending=redeemConnect(); await Promise.resolve(); await Promise.resolve();\n      check(calls.length===2, 'redemption pending');\n      closeRedeemModal(); entry(); gate.resolve(); await pending;\n      check(byId('redeem-sent').classList.contains('hidden') && byId('redeem-error').classList.contains('hidden'), 'late result repainted reopened window');\n    }\n    entry(); calls=[]; invoke=async(cmd,args)=>{if(!['invite_preflight','invite_redeem'].includes(cmd))return originalInvoke(cmd,args);calls.push(cmd);};\n    await redeemConnect(); entry(); await redeemConnect();\n    check(calls.join(',')==='invite_preflight,invite_redeem,invite_preflight,invite_redeem','preflight success cached');\n    window.NA0780_RESULT='PASS';\n  } catch(e) {window.NA0780_RESULT=String(e.message || 'FAIL');}\n  finally {invoke=originalInvoke; closeRedeemModal();}\n})();\nreturn 'started';\n",
+   "expect": "started"
+  },
+  {
+   "op": "poll_exec",
+   "script": "return window.NA0780_RESULT;",
+   "expect": "PASS",
+   "poll": 10
+  },
+  {
+   "op": "note",
+   "text": "NA-0780 operator copy/layout: actual rendered token gap, accent, exact copy and uncut wrapped helper at normal and narrow widths."
+  },
+  {
+   "op": "exec",
+   "script": "byId('redeem-overlay').classList.remove('hidden'); redeemShow('redeem-form'); byId('redeem-code').value='synthetic-self'; byId('redeem-name').value='Peer'; redeemSyncConnect(); redeemRenderError('self_invitation',''); return true;",
+   "expect": true
+  },
+  {
+   "op": "resize",
+   "width": 1000,
+   "height": 800
+  },
+  {
+   "op": "exec",
+   "script": "const box=byId('redeem-error'), banner=box.querySelector('.status-banner'), hint=box.querySelector('.hint');\nconst close=byId('btn-redeem-close3').getBoundingClientRect(), area=box.getBoundingClientRect();\nconst gap=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-3'));\nconst texts=[banner.querySelector('.status-text'),hint];\nconst fits=texts.every(el=>{const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);return Array.from(range.getClientRects()).every(t=>t.left>=r.left-1&&t.right<=r.right+1&&t.top>=r.top-1&&t.bottom<=r.bottom+1)&&el.scrollWidth<=el.clientWidth+1;});\nconst range=document.createRange();range.selectNodeContents(hint);\nreturn JSON.stringify({copy:banner.textContent==='You can’t connect to yourself'&&hint.textContent==='Please share this invitation code with your intended contact.',accent:banner.classList.contains('status-accent'),gap:Math.abs(area.top-close.bottom-gap)<1,visible:area.width>0&&area.bottom<=innerHeight&&area.left>=0&&area.right<=innerWidth,fits,wrapped:range.getClientRects().length>1});",
+   "expect": "{\"copy\":true,\"accent\":true,\"gap\":true,\"visible\":true,\"fits\":true,\"wrapped\":false}"
+  },
+  {
+   "op": "screenshot",
+   "name": "self-invitation-1000.png"
+  },
+  {
+   "op": "resize",
+   "width": 640,
+   "height": 800
+  },
+  {
+   "op": "exec",
+   "script": "const box=byId('redeem-error'), banner=box.querySelector('.status-banner'), hint=box.querySelector('.hint');\nconst close=byId('btn-redeem-close3').getBoundingClientRect(), area=box.getBoundingClientRect();\nconst gap=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-3'));\nconst texts=[banner.querySelector('.status-text'),hint];\nconst fits=texts.every(el=>{const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);return Array.from(range.getClientRects()).every(t=>t.left>=r.left-1&&t.right<=r.right+1&&t.top>=r.top-1&&t.bottom<=r.bottom+1)&&el.scrollWidth<=el.clientWidth+1;});\nconst range=document.createRange();range.selectNodeContents(hint);\nreturn JSON.stringify({copy:banner.textContent==='You can’t connect to yourself'&&hint.textContent==='Please share this invitation code with your intended contact.',accent:banner.classList.contains('status-accent'),gap:Math.abs(area.top-close.bottom-gap)<1,visible:area.width>0&&area.bottom<=innerHeight&&area.left>=0&&area.right<=innerWidth,fits,wrapped:range.getClientRects().length>1});",
+   "expect": "{\"copy\":true,\"accent\":true,\"gap\":true,\"visible\":true,\"fits\":true,\"wrapped\":false}"
+  },
+  {
+   "op": "screenshot",
+   "name": "self-invitation-640.png"
+  },
+  {
+   "op": "note",
+   "text": "The native minimum window is 640px. Exercise wrapping additionally with doubled error text size, restoring fixture-only inline styles afterward."
+  },
+  {
+   "op": "exec",
+   "script": "for(const el of byId('redeem-error').querySelectorAll('.status-banner,.hint')) el.style.fontSize=(parseFloat(getComputedStyle(el).fontSize)*2)+'px'; return true;",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "const box=byId('redeem-error'), banner=box.querySelector('.status-banner'), hint=box.querySelector('.hint');\nconst close=byId('btn-redeem-close3').getBoundingClientRect(), area=box.getBoundingClientRect();\nconst gap=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-3'));\nconst texts=[banner.querySelector('.status-text'),hint];\nconst fits=texts.every(el=>{const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);return Array.from(range.getClientRects()).every(t=>t.left>=r.left-1&&t.right<=r.right+1&&t.top>=r.top-1&&t.bottom<=r.bottom+1)&&el.scrollWidth<=el.clientWidth+1;});\nconst range=document.createRange();range.selectNodeContents(hint);\nreturn JSON.stringify({copy:banner.textContent==='You can’t connect to yourself'&&hint.textContent==='Please share this invitation code with your intended contact.',accent:banner.classList.contains('status-accent'),gap:Math.abs(area.top-close.bottom-gap)<1,visible:area.width>0&&area.bottom<=innerHeight&&area.left>=0&&area.right<=innerWidth,fits,wrapped:range.getClientRects().length>1});",
+   "expect": "{\"copy\":true,\"accent\":true,\"gap\":true,\"visible\":true,\"fits\":true,\"wrapped\":true}"
+  },
+  {
+   "op": "screenshot",
+   "name": "self-invitation-large-text.png"
+  },
+  {
+   "op": "exec",
+   "script": "for(const el of byId('redeem-error').querySelectorAll('.status-banner,.hint')) el.style.removeProperty('font-size'); return true;",
+   "expect": true
+  },
+  {
+   "op": "exec",
+   "script": "closeRedeemModal(); return true;",
+   "expect": true
+  },
+  {
    "op": "teardown"
   }
  ]

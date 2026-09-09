@@ -20,7 +20,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-qsc = { git = "https://github.com/QuantumShieldLabs/qsl-protocol", rev = "4e03092fb14a6129065b711f8c17fc7252965e07" }
+qsc = { git = "https://github.com/QuantumShieldLabs/qsl-protocol", rev = "08c0e327d21cabb100c1c43cfcd1bb1619fee149" }
 
 [dev-dependencies]
 tempfile = "3"

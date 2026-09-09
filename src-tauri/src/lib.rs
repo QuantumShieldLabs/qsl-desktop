@@ -541,6 +541,7 @@ pub fn configure_builder<R: tauri::Runtime>(
             commands::contact_set_display_name,
             commands::invite_list,
             commands::invite_create,
+            commands::invite_preflight,
             commands::invite_redeem,
             commands::invite_accept,
             commands::invite_finish,

@@ -1428,6 +1428,20 @@ pub async fn invite_clear(st: State<'_, AppState>, invite_id: String) -> Result<
         .await
 }
 
+/// Read-only local check; success never replaces the guarded redemption call.
+#[tauri::command]
+pub async fn invite_preflight(
+    st: State<'_, AppState>,
+    code: String,
+    self_label: Option<String>,
+) -> Result<(), ErrorDto> {
+    st.gw
+        .call_named("invite_preflight", move || {
+            Ok(qsc::facade::invite_preflight(&code, self_label.as_deref())?)
+        })
+        .await
+}
+
 #[tauri::command]
 pub async fn invite_redeem(
     st: State<'_, AppState>,
