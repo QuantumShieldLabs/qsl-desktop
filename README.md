@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/32136468/README_qsl-desktop.md)
+[README.md](https://github.com/user-attachments/files/32136915/README_qsl-desktop.md)
 
 # QSL Desktop
 
@@ -8,8 +8,7 @@ server you have to trust.**
 > [!WARNING]
 > **Pre-release. Not independently audited. There is no messaging yet.**
 > This app can create a vault, mint and redeem invitations, and record contacts. It cannot
-> send or receive messages. Do not rely on it for anything real. If you need a secure
-> messenger today, use [Signal](https://signal.org).
+> send or receive messages. Do not rely on it for anything real.
 
 ---
 
@@ -46,14 +45,15 @@ packages has a supply chain nobody can audit. This one does not have that proble
 
 ---
 
-## What works today
+## Status: local lifecycle, relay configuration, invitations and contacts — no messaging
 
 **Vault and identity**
 Onboarding and vault creation, identity display, the unlock screen with its escalating-delay
 protection, idle autolock, and the Vault & Security settings including destroy and erase.
 
-**Relay configuration**
-Settings › Relay takes a relay address, an access token, and a CA certificate file. One
+**Relay**
+The Settings › Relay pane takes a relay address, an access token, and a CA certificate
+file. One
 **Save** commits the pane. **Test connection** saves first, then reports what the relay
 actually answered — not what the app hoped it would say.
 
