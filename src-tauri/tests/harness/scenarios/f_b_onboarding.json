@@ -93,6 +93,17 @@
    "screen": "scr-main"
   },
   {
+   "op": "note",
+   "text": "desktop lock follow-up F2: the identity step's alias save runs UNLOCKED, so the settings_set gate does not refuse it (its handler swallows errors)"
+  },
+  {
+   "op": "json_field_eq",
+   "file": "qsld-data/settings.json",
+   "key": "self_alias",
+   "expect": "FB",
+   "poll": 10
+  },
+  {
    "op": "teardown"
   }
  ]

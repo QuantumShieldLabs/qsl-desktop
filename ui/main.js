@@ -1171,7 +1171,8 @@ byId("btn-wipe-arm").addEventListener("click", async () => {
     renderWipeState(s);
     acknowledge(byId("btn-wipe-arm"), "✓ Armed");
   } catch (e) {
-    err.textContent = mapErr(e, { wipe_limit_out_of_bounds: "Limit must be between 1 and 100." });
+    err.textContent = plainError(e, { wipe_limit_out_of_bounds: "Limit must be between 1 and 100." },
+      "That setting wasn't changed.");
   }
 });
 byId("btn-wipe-disarm").addEventListener("click", async () => {
@@ -4204,7 +4205,19 @@ document.addEventListener("keydown", (ev) => {
   // process restarting) it is not: the process still holds the passphrase, and without
   // this call the unlock screen would be drawn over an unlocked engine, and the autolock
   // (which skips the unlock surface) would never fire again.
-  try { await invoke("lock_now"); } catch (_) { /* lock_now has no Err arm */ }
+  // The seal is LOAD-BEARING: the Rust command always answers Ok, but the IPC boundary can
+  // still reject the call (an unregistered command, an ACL refusal). A boot that could not
+  // prove the seal draws NO screen -- every surface route() can reach is a locked one -- and
+  // says so in one fixed line instead.
+  let sealed = false;
+  try { await invoke("lock_now"); sealed = true; } catch (_) { /* fail CLOSED below */ }
+  if (!sealed) {
+    const msg = document.createElement("div");
+    msg.className = "notice";
+    msg.textContent = "This window could not be secured. Quit and relaunch.";
+    document.body.appendChild(msg);
+    return;
+  }
   await route();
 })();
 
