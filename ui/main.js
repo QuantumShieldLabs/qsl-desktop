@@ -4198,6 +4198,13 @@ document.addEventListener("keydown", (ev) => {
     tickOverrideMs =
       typeof info.tick_override_ms === "number" ? info.tick_override_ms : null;
   } catch (_) { /* no seam: the blessed tempo stands */ }
+  // A BOOT IS A LOCKED START. Every surface route() can reach before a passphrase is typed
+  // is a locked one, so the engine is sealed to match BEFORE the first surface is drawn.
+  // On a fresh process this is a no-op. After a webview reload (View > Reload, or the web
+  // process restarting) it is not: the process still holds the passphrase, and without
+  // this call the unlock screen would be drawn over an unlocked engine, and the autolock
+  // (which skips the unlock surface) would never fire again.
+  try { await invoke("lock_now"); } catch (_) { /* lock_now has no Err arm */ }
   await route();
 })();
 

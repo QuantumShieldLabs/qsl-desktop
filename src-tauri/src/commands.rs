@@ -411,6 +411,7 @@ pub async fn wipe_arm(st: State<'_, AppState>, limit: u32) -> Result<(), String>
     }
     st.gw
         .call_named("wipe_arm", move || {
+            require_unlocked()?;
             qsc::vault::protection::wipe_after_failed_unlocks_arm(limit).map_err(|e| e.to_string())
         })
         .await
@@ -420,9 +421,22 @@ pub async fn wipe_arm(st: State<'_, AppState>, limit: u32) -> Result<(), String>
 pub async fn wipe_disarm(st: State<'_, AppState>) -> Result<(), String> {
     st.gw
         .call_named("wipe_disarm", || {
+            require_unlocked()?;
             qsc::vault::protection::wipe_after_failed_unlocks_disarm().map_err(|e| e.to_string())
         })
         .await
+}
+
+/// Arming or disarming the wipe ZEROES the failure counter and the last-failure time (qsc
+/// `set_attempt_limit`), so a caller on the LOCKED screen could clear the escalating unlock
+/// delay between guesses. Both are Settings acts, and Settings is reached only unlocked; the
+/// engine is asked here, inside the gateway, so a lock cannot slip between the check and the act.
+fn require_unlocked() -> Result<(), String> {
+    if qsc::vault_unlocked() {
+        Ok(())
+    } else {
+        Err("vault_locked".into())
+    }
 }
 
 #[tauri::command]

@@ -24,8 +24,12 @@ against an adversary who records them now and waits for a quantum computer.
   tied to a SIM or a carrier.
 - **Self-hosted relays.** You point the app at a relay you choose, and the protocol does not
   assume that relay is trustworthy.
-- **It connects only when you ask it to.** Nothing reaches the network at launch, in the
-  background, or on a timer. Every connection is the direct result of a button you pressed.
+- **It connects only while unlocked.** Nothing reaches the network at launch or while the
+  vault is locked. While it is unlocked and a relay is configured, the app also checks in the
+  background for invitations to complete: at unlock, when you open the send or redeem
+  invitation windows, and about every 20 seconds after that (less often while the relay does
+  not answer). Those checks go to your relay and to the relay each of your open invitations was
+  made on. Everything else is the direct result of a button you pressed.
 - **Local-only contact names.** The name you give a contact lives on your machine. No display
   name is ever accepted from the network.
 - **Your vault, your keys.** Secrets live in an encrypted local vault with idle autolock,
