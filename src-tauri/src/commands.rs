@@ -450,6 +450,9 @@ pub fn settings_set(
     autolock_minutes: u32,
     self_alias: String,
 ) -> Result<(), String> {
+    // A Settings act: refused while locked (autolock 0 = never would move the protection
+    // posture from the locked screen). Point-in-time: a lock landing after the check is harmless.
+    require_unlocked()?;
     // Load-mutate-save so the slice-B relay_url (and any future key) survives an
     // autolock/alias save — settings_set owns ONLY these two fields.
     let mut s = settings::load(&st.data_dir);
@@ -850,6 +853,7 @@ pub fn relay_config_get(st: State<'_, AppState>) -> RelayConfigDto {
 /// probe was attempted. Stores the normalized form (what the probe uses).
 #[tauri::command]
 pub fn relay_config_set(st: State<'_, AppState>, url: String) -> Result<(), String> {
+    require_unlocked()?;
     let normalized =
         qsc::adversarial::route::normalize_relay_endpoint(&url).map_err(|c| c.to_string())?;
     let mut s = settings::load(&st.data_dir);
@@ -860,21 +864,21 @@ pub fn relay_config_set(st: State<'_, AppState>, url: String) -> Result<(), Stri
 /// Probe `GET {url}/v1/server-info` through the serial blocking gate (R1) and
 /// return the pre-classified outcome. `Err` carries a LOCAL-config code
 /// (`relay_endpoint_*` for a bad address, `relay_ca_file_*` for an unreadable
-/// configured CA, `relay_server_info_failed` for a client build failure); the
+/// configured CA, `relay_server_info_failed` for a client build failure), or
+/// `vault_locked` while the vault is locked (no connection is attempted); the
 /// FE maps it per R2 — the CA-file case is its OWN line, NOT CertNotTrusted.
 #[tauri::command]
 pub async fn relay_test(st: State<'_, AppState>, url: String) -> Result<RelayTestDto, String> {
-    let outcome = st
-        .gw
+    st.gw
         .call_named("relay_test", move || {
+            // Refused while locked, inside the gateway and before any network call.
+            require_unlocked()?;
             // F-04: the DTO is built inside the named call so `gw.command` reads ITS outcome
-            qsc::transport::relay_server_info(&url).map(relay_test_dto)
+            qsc::transport::relay_server_info(&url)
+                .map(relay_test_dto)
+                .map_err(|c| c.to_string())
         })
-        .await;
-    match outcome {
-        Ok(o) => Ok(o),
-        Err(code) => Err(code.to_string()),
-    }
+        .await
 }
 
 /// Set the relay bearer token — into the qsc vault via the trio, NEVER
@@ -1007,18 +1011,17 @@ pub async fn relay_probe(
     token: Option<String>,
     ca_path: Option<String>,
 ) -> Result<RelayTestDto, String> {
-    let outcome = st
-        .gw
+    st.gw
         .call_named("relay_probe", move || {
+            // Refused while locked, inside the gateway and before any network call.
+            require_unlocked()?;
             let _token_guard = EnvGuard::set("QSC_RELAY_TOKEN", token.as_deref());
             let _ca_guard = EnvGuard::set("QSC_RELAY_CA_FILE", ca_path.as_deref());
-            qsc::transport::relay_server_info(&address).map(relay_test_dto)
+            qsc::transport::relay_server_info(&address)
+                .map(relay_test_dto)
+                .map_err(|c| c.to_string())
         })
-        .await;
-    match outcome {
-        Ok(o) => Ok(o),
-        Err(code) => Err(code.to_string()),
-    }
+        .await
 }
 
 /// The user's home directory, so the front end can expand a leading `~/` in the
