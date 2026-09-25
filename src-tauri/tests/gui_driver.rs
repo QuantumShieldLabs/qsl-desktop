@@ -448,3 +448,13 @@ fn na0778_gui_u_invitations_page() {
 fn na0779_gui_v_debug_log_pane() {
     run_scenario("f_v_debug_log_pane");
 }
+
+/// REVIEW-desktop RD-02: a webview reload (View > Reload) re-runs the boot, which draws the
+/// unlock surface; the ENGINE must be sealed to match. Red at 92cba80a: `protection_status`
+/// reads `locked: false` and `contact_list` answers without the passphrase on the unlock
+/// screen. Delta symbol: the boot block's `lock_now` call before `route()` (ui/main.js).
+#[test]
+#[ignore]
+fn rd02_gui_w_reload_seals_engine() {
+    run_scenario("f_w_reload_seals_engine");
+}

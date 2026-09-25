@@ -1,0 +1,123 @@
+{
+ "scenario": "f_w_reload_seals_engine",
+ "destructive": false,
+ "steps": [
+  {
+   "op": "launch"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-pass",
+   "text": "fw-reload-passphrase"
+  },
+  {
+   "op": "type",
+   "sel": "#vault-confirm",
+   "text": "fw-reload-passphrase"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-vault-create",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-vault-create"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-wizard-identity"
+  },
+  {
+   "op": "type",
+   "sel": "#alias-input",
+   "text": "FW"
+  },
+  {
+   "op": "prop_eq",
+   "sel": "#btn-identity-done",
+   "prop": "disabled",
+   "expect": false,
+   "poll": 5
+  },
+  {
+   "op": "click",
+   "sel": "#btn-identity-done"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "note",
+   "text": "CONTROL: the engine is unlocked on scr-main, so the instrument can read false"
+  },
+  {
+   "op": "exec",
+   "script": "window.__fw_b=null; window.__TAURI__.core.invoke('protection_status').then(function(v){window.__fw_b=v;}); return 1;"
+  },
+  {
+   "op": "poll_exec",
+   "label": "control protection_status.locked",
+   "script": "return window.__fw_b ? String(window.__fw_b.locked) : null;",
+   "expect": "false",
+   "poll": 10
+  },
+  {
+   "op": "note",
+   "text": "THE ACT: the webview reload View > Reload performs (lib.rs qsl-reload -> location.reload())"
+  },
+  {
+   "op": "exec",
+   "script": "setTimeout(function(){ location.reload(); }, 0); return 1;"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-unlock"
+  },
+  {
+   "op": "exec",
+   "script": "window.__fw_a=null; window.__TAURI__.core.invoke('protection_status').then(function(v){window.__fw_a=v;}); return 1;"
+  },
+  {
+   "op": "poll_exec",
+   "label": "after reload protection_status.locked",
+   "script": "return window.__fw_a ? String(window.__fw_a.locked) : null;",
+   "expect": "true",
+   "poll": 10
+  },
+  {
+   "op": "exec",
+   "script": "window.__fw_c=null; window.__TAURI__.core.invoke('contact_list').then(function(v){window.__fw_c='ok';}).catch(function(e){window.__fw_c='refused';}); return 1;"
+  },
+  {
+   "op": "poll_exec",
+   "label": "after reload contact_list without the passphrase",
+   "script": "return window.__fw_c;",
+   "expect": "refused",
+   "poll": 10
+  },
+  {
+   "op": "note",
+   "text": "the passphrase still opens the vault after the reload"
+  },
+  {
+   "op": "type",
+   "sel": "#unlock-pass",
+   "text": "fw-reload-passphrase"
+  },
+  {
+   "op": "click",
+   "sel": "#btn-unlock"
+  },
+  {
+   "op": "poll_visible",
+   "screen": "scr-main"
+  },
+  {
+   "op": "teardown"
+  }
+ ]
+}
