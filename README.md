@@ -31,7 +31,7 @@ flowchart LR
 
 The frontend uses vanilla web assets. The Rust dependency graph, system webview and operating system remain part of the supply chain and security boundary. A small frontend is an aid to review, not evidence of supply-chain immunity.
 
-Contact aliases are local data. Network activity currently includes invitation-completion checks while unlocked; it is not limited to explicit button presses. The relay can observe traffic metadata. Future transport or message-flow designs are not implemented features merely because they appear in project plans.
+Configure the connection in the Settings › Relay pane. Contact aliases are local data. While unlocked, the app checks in the background for invitation completion; network activity is not limited to explicit button presses. The relay can observe traffic metadata. Future transport or message-flow designs are not implemented features merely because they appear in project plans.
 
 ## Build for development
 
