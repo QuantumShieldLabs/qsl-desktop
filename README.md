@@ -7,6 +7,18 @@ A Tauri application with a Rust client core linked in-process. The current publi
 > [!WARNING]
 > Pre-release, not independently audited and not production-ready. The current public application does not provide message sending or receiving. Do not use it for safety-critical communications.
 
+## The experience we’re working toward
+
+[![QuantumShield Chat v6 mockup with synthetic contacts and conversation.](docs/images/qsl-chat-preview-v6.jpg)](https://quantumshieldlabs.org/preview)
+
+*Interface preview v6. Sample data only: encryption, identity verification, messaging and the KP connection are simulated. The image shows a proposed experience, not features available in this public prototype.*
+
+The intended direction is **QSL end-to-end encryption over Katzenpost (KP)**, with clear contact verification, understandable delivery states and a locally controlled vault. KP is the lead transport candidate; the real composition still needs validation. No partnership, endorsement or anonymity guarantee is implied.
+
+The current engineering priority is completing the vault baseline and review, followed by the required application prerequisites and a real two-instance QSL/KP integration proof. Focused core-path development results do not establish finished desktop behavior.
+
+[Explore the conversation and network mockups](https://quantumshieldlabs.org/preview) · [Read the November project update](https://github.com/QuantumShieldLabs/qsl-protocol/blob/main/docs/public/PROJECT_STATUS_2026-11.md)
+
 ## Current capabilities
 
 | Area | Public prototype |
